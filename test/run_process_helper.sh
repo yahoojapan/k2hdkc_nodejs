@@ -131,7 +131,7 @@ K2HDKC2_LOGFILE=/dev/null
 ##############################################################
 # Script mode
 #
-# Valiables take value as run/stop/no
+# Variables take value as run/stop/no
 #
 #
 CHMPX_SERVER=no
@@ -187,7 +187,7 @@ while [ $# -ne 0 ]; do
 			CHMPX_DBG_OPTION="-d dump"
 			K2HDKC_DBG_OPTION="-d dump"
 		else
-			echo "ERROR: Unkown option -d paraemter"
+			echo "ERROR: Unknown option -d parameter"
 			echo ""
 			exit 1
 		fi
@@ -197,7 +197,7 @@ while [ $# -ne 0 ]; do
 		K2HDKC1_LOGFILE=/tmp/test_helper_k2hdkc_server1.log
 		K2HDKC2_LOGFILE=/tmp/test_helper_k2hdkc_server2.log
 	else
-		echo "ERROR: Unkown option $1"
+		echo "ERROR: Unknown option $1"
 		echo ""
 		exit 1
 	fi

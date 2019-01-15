@@ -27,16 +27,16 @@
 //---------------------------------------------------------
 // InitWorker class
 //
-// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin)
+// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin)
 // Callback function:	function(string error)
 //
 //---------------------------------------------------------
 class InitWorker : public Nan::AsyncWorker
 {
 	public:
-		InitWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin) :
+		InitWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin) :
 			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configration), conf(configration ? configration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin)
+			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin)
 		{}
 		~InitWorker() {}
 
@@ -47,7 +47,7 @@ class InitWorker : public Nan::AsyncWorker
 				return;
 			}
 			if(!is_set_conf){
-				this->SetErrorMessage("No configutration is associated to async worker");
+				this->SetErrorMessage("No configuration is associated to async worker");
 				return;
 			}
 
@@ -104,16 +104,16 @@ class InitWorker : public Nan::AsyncWorker
 //---------------------------------------------------------
 // GetValueWorker class
 //
-// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, const char* psubkey, bool is_check_attr, const char* ppass)
+// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, const char* psubkey, bool is_check_attr, const char* ppass)
 // Callback function:	function(string error[, string value])
 //
 //---------------------------------------------------------
 class GetValueWorker : public Nan::AsyncWorker
 {
 	public:
-		GetValueWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, const char* psubkey, bool is_check_attr, const char* ppass) :
+		GetValueWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, const char* psubkey, bool is_check_attr, const char* ppass) :
 			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configration), conf(configration ? configration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
+			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
 			is_key_set(NULL != pkey), strkey(pkey ? pkey : ""), is_subkey_set(NULL != psubkey), strsubkey(psubkey ? psubkey : ""), attrchk(is_check_attr), is_pass_set(NULL != ppass), strpass(ppass ? ppass : ""), is_result_set(false), strresult("")
 		{}
 		~GetValueWorker() {}
@@ -122,7 +122,7 @@ class GetValueWorker : public Nan::AsyncWorker
 		{
 			if(!pslaveobj && !is_set_conf){
 				// onetime connection mode needs configuration
-				this->SetErrorMessage("No configutration is associated to async worker");
+				this->SetErrorMessage("No configuration is associated to async worker");
 				return;
 			}
 			if(!is_key_set){
@@ -256,16 +256,16 @@ class GetValueWorker : public Nan::AsyncWorker
 //---------------------------------------------------------
 // GetSubkeysWorker class
 //
-// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, bool is_check_attr)
+// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, bool is_check_attr)
 // Callback function:	function(string error, array subkeys)
 //
 //---------------------------------------------------------
 class GetSubkeysWorker : public Nan::AsyncWorker
 {
 	public:
-		GetSubkeysWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, bool is_check_attr) :
+		GetSubkeysWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, bool is_check_attr) :
 			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configration), conf(configration ? configration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin), is_key_set(NULL != pkey), strkey(pkey ? pkey : ""), attrchk(is_check_attr)
+			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin), is_key_set(NULL != pkey), strkey(pkey ? pkey : ""), attrchk(is_check_attr)
 		{}
 		~GetSubkeysWorker() {}
 
@@ -273,7 +273,7 @@ class GetSubkeysWorker : public Nan::AsyncWorker
 		{
 			if(!pslaveobj && !is_set_conf){
 				// onetime connection mode needs configuration
-				this->SetErrorMessage("No configutration is associated to async worker");
+				this->SetErrorMessage("No configuration is associated to async worker");
 				return;
 			}
 			if(!is_key_set){
@@ -364,16 +364,16 @@ class GetSubkeysWorker : public Nan::AsyncWorker
 //---------------------------------------------------------
 // GetAttrsWorker class
 //
-// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey)
+// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey)
 // Callback function:	function(string error, array attribute_keys)
 //
 //---------------------------------------------------------
 class GetAttrsWorker : public Nan::AsyncWorker
 {
 	public:
-		GetAttrsWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey) :
+		GetAttrsWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey) :
 			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configration), conf(configration ? configration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin), is_key_set(NULL != pkey), strkey(pkey ? pkey : "")
+			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin), is_key_set(NULL != pkey), strkey(pkey ? pkey : "")
 		{}
 		~GetAttrsWorker() {}
 
@@ -381,7 +381,7 @@ class GetAttrsWorker : public Nan::AsyncWorker
 		{
 			if(!pslaveobj && !is_set_conf){
 				// onetime connection mode needs configuration
-				this->SetErrorMessage("No configutration is associated to async worker");
+				this->SetErrorMessage("No configuration is associated to async worker");
 				return;
 			}
 			if(!is_key_set){
@@ -471,16 +471,16 @@ class GetAttrsWorker : public Nan::AsyncWorker
 //---------------------------------------------------------
 // SetValueWorker class
 //
-// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, const char* pval, const char* psubkey, const char* ppass, const time_t* pexpire)
+// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, const char* pval, const char* psubkey, const char* ppass, const time_t* pexpire)
 // Callback function:	function(string error)
 //
 //---------------------------------------------------------
 class SetValueWorker : public Nan::AsyncWorker
 {
 	public:
-		SetValueWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, const char* pval, const char* psubkey, const char* ppass, const time_t* pexpire) :
+		SetValueWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, const char* pval, const char* psubkey, const char* ppass, const time_t* pexpire) :
 			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configration), conf(configration ? configration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
+			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
 			is_key_set(NULL != pkey), strkey(pkey ? pkey : ""), is_val_set(NULL != pval), strval(pval ? pval : ""), is_subkey_set(NULL != psubkey), strsubkey(psubkey ? psubkey : ""), is_pass_set(NULL != ppass), strpass(ppass ? ppass : ""), expire(pexpire ? *pexpire : 0)
 		{}
 		~SetValueWorker() {}
@@ -489,7 +489,7 @@ class SetValueWorker : public Nan::AsyncWorker
 		{
 			if(!pslaveobj && !is_set_conf){
 				// onetime connection mode needs configuration
-				this->SetErrorMessage("No configutration is associated to async worker");
+				this->SetErrorMessage("No configuration is associated to async worker");
 				return;
 			}
 			if(!is_key_set){
@@ -585,16 +585,16 @@ class SetValueWorker : public Nan::AsyncWorker
 //---------------------------------------------------------
 // SetSubkeysWorker class
 //
-// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, unsigned char* psubkeys, size_t subkeylength)
+// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, unsigned char* psubkeys, size_t subkeylength)
 // Callback function:	function(string error)
 //
 //---------------------------------------------------------
 class SetSubkeysWorker : public Nan::AsyncWorker
 {
 	public:
-		SetSubkeysWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, unsigned char* psubkeys, size_t subkeylength) :
+		SetSubkeysWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, unsigned char* psubkeys, size_t subkeylength) :
 			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configration), conf(configration ? configration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
+			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
 			is_key_set(NULL != pkey), strkey(pkey ? pkey : ""), bysubkeys(NULL), skeylen(0)
 		{
 			if(psubkeys && 0UL < subkeylength){
@@ -612,7 +612,7 @@ class SetSubkeysWorker : public Nan::AsyncWorker
 		{
 			if(!pslaveobj && !is_set_conf){
 				// onetime connection mode needs configuration
-				this->SetErrorMessage("No configutration is associated to async worker");
+				this->SetErrorMessage("No configuration is associated to async worker");
 				return;
 			}
 			if(!is_key_set){
@@ -698,16 +698,16 @@ class SetSubkeysWorker : public Nan::AsyncWorker
 //---------------------------------------------------------
 // SetAllWorker class
 //
-// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, const char* pval, unsigned char* psubkeys, size_t subkeylength, const char* ppass, const time_t* pexpire)
+// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, const char* pval, unsigned char* psubkeys, size_t subkeylength, const char* ppass, const time_t* pexpire)
 // Callback function:	function(string error)
 //
 //---------------------------------------------------------
 class SetAllWorker : public Nan::AsyncWorker
 {
 	public:
-		SetAllWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, const char* pval, unsigned char* psubkeys, size_t subkeylength, const char* ppass, const time_t* pexpire) :
+		SetAllWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, const char* pval, unsigned char* psubkeys, size_t subkeylength, const char* ppass, const time_t* pexpire) :
 			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configration), conf(configration ? configration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
+			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
 			is_key_set(NULL != pkey), strkey(pkey ? pkey : ""), is_val_set(NULL != pval), strval(pval ? pval : ""), bysubkeys(NULL), skeylen(0), is_pass_set(NULL != ppass), strpass(ppass ? ppass : ""), expire(pexpire ? *pexpire : 0)
 		{
 			if(psubkeys && 0UL < subkeylength){
@@ -725,7 +725,7 @@ class SetAllWorker : public Nan::AsyncWorker
 		{
 			if(!pslaveobj && !is_set_conf){
 				// onetime connection mode needs configuration
-				this->SetErrorMessage("No configutration is associated to async worker");
+				this->SetErrorMessage("No configuration is associated to async worker");
 				return;
 			}
 			if(!is_key_set){
@@ -737,7 +737,7 @@ class SetAllWorker : public Nan::AsyncWorker
 			bool			result	= false;
 			dkcres_type_t	rescode = DKC_NORESTYPE;
 			if(is_pass_set && 0 < expire){
-				// set value with passphrase and expire, then the operation is sepalated.
+				// set value with passphrase and expire, then the operation is separated.
 				K2hdkcComSet*	pComObj;
 				if(!pslaveobj){
 					pComObj = GetOtSlaveK2hdkcComSet(conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin);
@@ -844,16 +844,16 @@ class SetAllWorker : public Nan::AsyncWorker
 //---------------------------------------------------------
 // RemoveWorker class
 //
-// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, bool is_del_subkeys)
+// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, bool is_del_subkeys)
 // Callback function:	function(string error)
 //
 //---------------------------------------------------------
 class RemoveWorker : public Nan::AsyncWorker
 {
 	public:
-		RemoveWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, bool is_del_subkeys) :
+		RemoveWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, bool is_del_subkeys) :
 			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configration), conf(configration ? configration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
+			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
 			is_key_set(NULL != pkey), strkey(pkey ? pkey : ""), is_subkeys(is_del_subkeys)
 		{}
 
@@ -863,7 +863,7 @@ class RemoveWorker : public Nan::AsyncWorker
 		{
 			if(!pslaveobj && !is_set_conf){
 				// onetime connection mode needs configuration
-				this->SetErrorMessage("No configutration is associated to async worker");
+				this->SetErrorMessage("No configuration is associated to async worker");
 				return;
 			}
 			if(!is_key_set){
@@ -936,16 +936,16 @@ class RemoveWorker : public Nan::AsyncWorker
 //---------------------------------------------------------
 // RenameWorker class
 //
-// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* poldkey, const char* pnewkey, const char* pparentkey, bool is_check_attr, const char* ppass, const time_t* pexpire)
+// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* poldkey, const char* pnewkey, const char* pparentkey, bool is_check_attr, const char* ppass, const time_t* pexpire)
 // Callback function:	function(string error)
 //
 //---------------------------------------------------------
 class RenameWorker : public Nan::AsyncWorker
 {
 	public:
-		RenameWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* poldkey, const char* pnewkey, const char* pparentkey, bool is_check_attr, const char* ppass, const time_t* pexpire) :
+		RenameWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* poldkey, const char* pnewkey, const char* pparentkey, bool is_check_attr, const char* ppass, const time_t* pexpire) :
 			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configration), conf(configration ? configration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
+			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
 			is_old_set(NULL != poldkey), strold(poldkey ? poldkey : ""), is_new_set(NULL != pnewkey), strnew(pnewkey ? pnewkey : ""), is_parent_set(NULL != pparentkey), strparent(pparentkey ? pparentkey : ""), attrchk(is_check_attr), is_pass_set(NULL != ppass), strpass(ppass ? ppass : ""), expire(pexpire ? *pexpire : 0)
 		{}
 
@@ -955,7 +955,7 @@ class RenameWorker : public Nan::AsyncWorker
 		{
 			if(!pslaveobj && !is_set_conf){
 				// onetime connection mode needs configuration
-				this->SetErrorMessage("No configutration is associated to async worker");
+				this->SetErrorMessage("No configuration is associated to async worker");
 				return;
 			}
 			if(!is_old_set || !is_new_set){
@@ -1035,16 +1035,16 @@ class RenameWorker : public Nan::AsyncWorker
 //---------------------------------------------------------
 // QueuePushWorker class
 //
-// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pprefix, const char* pkey, const char* pval, bool is_fifo_type, bool is_check_attr, const char* ppass, const time_t* pexpire)
+// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pprefix, const char* pkey, const char* pval, bool is_fifo_type, bool is_check_attr, const char* ppass, const time_t* pexpire)
 // Callback function:	function(string error)
 //
 //---------------------------------------------------------
 class QueuePushWorker : public Nan::AsyncWorker
 {
 	public:
-		QueuePushWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pprefix, const char* pkey, const char* pval, bool is_fifo_type, bool is_check_attr, const char* ppass, const time_t* pexpire) :
+		QueuePushWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pprefix, const char* pkey, const char* pval, bool is_fifo_type, bool is_check_attr, const char* ppass, const time_t* pexpire) :
 			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configration), conf(configration ? configration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
+			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
 			is_prefix_set(NULL != pprefix), strprefix(pprefix ? pprefix : ""), is_key_set(NULL != pkey), strkey(pkey ? pkey : ""), is_val_set(NULL != pval), strval(pval ? pval : ""), is_fifo(is_fifo_type), attrchk(is_check_attr), is_pass_set(NULL != ppass), strpass(ppass ? ppass : ""), expire(pexpire ? *pexpire : 0)
 		{}
 
@@ -1054,7 +1054,7 @@ class QueuePushWorker : public Nan::AsyncWorker
 		{
 			if(!pslaveobj && !is_set_conf){
 				// onetime connection mode needs configuration
-				this->SetErrorMessage("No configutration is associated to async worker");
+				this->SetErrorMessage("No configuration is associated to async worker");
 				return;
 			}
 			if(!is_prefix_set || !is_val_set){
@@ -1142,16 +1142,16 @@ class QueuePushWorker : public Nan::AsyncWorker
 //---------------------------------------------------------
 // QueuePopWorker class
 //
-// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pprefix, bool is_fifo_type, bool is_key_queue_type, const char* ppass)
+// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pprefix, bool is_fifo_type, bool is_key_queue_type, const char* ppass)
 // Callback function:	function(string error[[, string key], string value])
 //
 //---------------------------------------------------------
 class QueuePopWorker : public Nan::AsyncWorker
 {
 	public:
-		QueuePopWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pprefix, bool is_fifo_type, bool is_key_queue_type, const char* ppass) :
+		QueuePopWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pprefix, bool is_fifo_type, bool is_key_queue_type, const char* ppass) :
 			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configration), conf(configration ? configration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
+			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
 			is_prefix_set(NULL != pprefix), strprefix(pprefix ? pprefix : ""), is_fifo(is_fifo_type), is_key_queue(is_key_queue_type), is_pass_set(NULL != ppass), strpass(ppass ? ppass : ""),
 			is_res_key_set(false), strreskey(""), is_res_val_set(false), strresval("")
 		{}
@@ -1162,7 +1162,7 @@ class QueuePopWorker : public Nan::AsyncWorker
 		{
 			if(!pslaveobj && !is_set_conf){
 				// onetime connection mode needs configuration
-				this->SetErrorMessage("No configutration is associated to async worker");
+				this->SetErrorMessage("No configuration is associated to async worker");
 				return;
 			}
 			if(!is_prefix_set){
@@ -1286,16 +1286,16 @@ class QueuePopWorker : public Nan::AsyncWorker
 //---------------------------------------------------------
 // QueueRemoveWorker class
 //
-// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pprefix, int remove_count, bool is_fifo_type, bool is_key_queue_type, const char* ppass)
+// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pprefix, int remove_count, bool is_fifo_type, bool is_key_queue_type, const char* ppass)
 // Callback function:	function(string error[[, string key], string value])
 //
 //---------------------------------------------------------
 class QueueRemoveWorker : public Nan::AsyncWorker
 {
 	public:
-		QueueRemoveWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pprefix, int remove_count, bool is_fifo_type, bool is_key_queue_type, const char* ppass) :
+		QueueRemoveWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pprefix, int remove_count, bool is_fifo_type, bool is_key_queue_type, const char* ppass) :
 			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configration), conf(configration ? configration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
+			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
 			is_prefix_set(NULL != pprefix), strprefix(pprefix ? pprefix : ""), count(remove_count), is_fifo(is_fifo_type), is_key_queue(is_key_queue_type), is_pass_set(NULL != ppass), strpass(ppass ? ppass : "")
 		{}
 
@@ -1305,7 +1305,7 @@ class QueueRemoveWorker : public Nan::AsyncWorker
 		{
 			if(!pslaveobj && !is_set_conf){
 				// onetime connection mode needs configuration
-				this->SetErrorMessage("No configutration is associated to async worker");
+				this->SetErrorMessage("No configuration is associated to async worker");
 				return;
 			}
 			if(!is_prefix_set){
@@ -1389,16 +1389,16 @@ class QueueRemoveWorker : public Nan::AsyncWorker
 //---------------------------------------------------------
 // CasInitWorker class
 //
-// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, uint32_t val, const char* ppass, const time_t* pexpire)
+// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, uint32_t val, const char* ppass, const time_t* pexpire)
 // Callback function:	function(string error)
 //
 //---------------------------------------------------------
 class CasInitWorker : public Nan::AsyncWorker
 {
 	public:
-		CasInitWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, uint32_t val, const char* ppass, const time_t* pexpire) :
+		CasInitWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, uint32_t val, const char* ppass, const time_t* pexpire) :
 			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configration), conf(configration ? configration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
+			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
 			is_key_set(NULL != pkey), strkey(pkey ? pkey : ""), value(val), is_pass_set(NULL != ppass), strpass(ppass ? ppass : ""), expire(pexpire ? *pexpire : 0)
 		{}
 		~CasInitWorker() {}
@@ -1407,7 +1407,7 @@ class CasInitWorker : public Nan::AsyncWorker
 		{
 			if(!pslaveobj && !is_set_conf){
 				// onetime connection mode needs configuration
-				this->SetErrorMessage("No configutration is associated to async worker");
+				this->SetErrorMessage("No configuration is associated to async worker");
 				return;
 			}
 			if(!is_key_set){
@@ -1482,16 +1482,16 @@ class CasInitWorker : public Nan::AsyncWorker
 //---------------------------------------------------------
 // CasGetWorker class
 //
-// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, const char* ppass)
+// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, const char* ppass)
 // Callback function:	function(string error[, int value])
 //
 //---------------------------------------------------------
 class CasGetWorker : public Nan::AsyncWorker
 {
 	public:
-		CasGetWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, const char* ppass) :
+		CasGetWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, const char* ppass) :
 			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configration), conf(configration ? configration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
+			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
 			is_key_set(NULL != pkey), strkey(pkey ? pkey : ""), is_pass_set(NULL != ppass), strpass(ppass ? ppass : ""), resvalue(0)
 		{}
 		~CasGetWorker() {}
@@ -1500,7 +1500,7 @@ class CasGetWorker : public Nan::AsyncWorker
 		{
 			if(!pslaveobj && !is_set_conf){
 				// onetime connection mode needs configuration
-				this->SetErrorMessage("No configutration is associated to async worker");
+				this->SetErrorMessage("No configuration is associated to async worker");
 				return;
 			}
 			if(!is_key_set){
@@ -1579,16 +1579,16 @@ class CasGetWorker : public Nan::AsyncWorker
 //---------------------------------------------------------
 // CasSetWorker class
 //
-// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, uint32_t oldvalue, uint32_t newvalue, const char* ppass, const time_t* pexpire)
+// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, uint32_t oldvalue, uint32_t newvalue, const char* ppass, const time_t* pexpire)
 // Callback function:	function(string error)
 //
 //---------------------------------------------------------
 class CasSetWorker : public Nan::AsyncWorker
 {
 	public:
-		CasSetWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, uint32_t oldvalue, uint32_t newvalue, const char* ppass, const time_t* pexpire) :
+		CasSetWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, uint32_t oldvalue, uint32_t newvalue, const char* ppass, const time_t* pexpire) :
 			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configration), conf(configration ? configration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
+			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
 			is_key_set(NULL != pkey), strkey(pkey ? pkey : ""), oldval(oldvalue), newval(newvalue), is_pass_set(NULL != ppass), strpass(ppass ? ppass : ""), expire(pexpire ? *pexpire : 0)
 		{}
 		~CasSetWorker() {}
@@ -1597,7 +1597,7 @@ class CasSetWorker : public Nan::AsyncWorker
 		{
 			if(!pslaveobj && !is_set_conf){
 				// onetime connection mode needs configuration
-				this->SetErrorMessage("No configutration is associated to async worker");
+				this->SetErrorMessage("No configuration is associated to async worker");
 				return;
 			}
 			if(!is_key_set){
@@ -1673,16 +1673,16 @@ class CasSetWorker : public Nan::AsyncWorker
 //---------------------------------------------------------
 // CasIncDecWorker class
 //
-// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, bool is_increment_type, const char* ppass, const time_t* pexpire)
+// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, bool is_increment_type, const char* ppass, const time_t* pexpire)
 // Callback function:	function(string error)
 //
 //---------------------------------------------------------
 class CasIncDecWorker : public Nan::AsyncWorker
 {
 	public:
-		CasIncDecWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, bool is_increment_type, const char* ppass, const time_t* pexpire) :
+		CasIncDecWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, bool is_increment_type, const char* ppass, const time_t* pexpire) :
 			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configration), conf(configration ? configration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
+			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
 			is_key_set(NULL != pkey), strkey(pkey ? pkey : ""), is_increment(is_increment_type), is_pass_set(NULL != ppass), strpass(ppass ? ppass : ""), expire(pexpire ? *pexpire : 0)
 		{}
 		~CasIncDecWorker() {}
@@ -1691,7 +1691,7 @@ class CasIncDecWorker : public Nan::AsyncWorker
 		{
 			if(!pslaveobj && !is_set_conf){
 				// onetime connection mode needs configuration
-				this->SetErrorMessage("No configutration is associated to async worker");
+				this->SetErrorMessage("No configuration is associated to async worker");
 				return;
 			}
 			if(!is_key_set){
