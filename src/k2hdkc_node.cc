@@ -243,7 +243,7 @@ void K2hdkcNode::Init()
 	Nan::SetPrototypeMethod(tpl, "casIncDec",		CasIncDec);
 	Nan::SetPrototypeMethod(tpl, "printVersion",	PrintVersion);
 
-	// Regist
+	// Reset
 	constructor.Reset(tpl->GetFunction()); 
 }
 
@@ -267,7 +267,7 @@ NAN_METHOD(K2hdkcNode::New)
 			bool			no_giveup_rejoin= false;
 
 			if(!info[argpos]->IsString()){
-				Nan::ThrowSyntaxError("First parameter is not configration");
+				Nan::ThrowSyntaxError("First parameter is not configuration");
 			}else{
 				// 1'st argument is conf
 				Nan::Utf8String	buf(info[argpos++]);
@@ -306,7 +306,7 @@ NAN_METHOD(K2hdkcNode::New)
 					obj->_k2hdkcslave = new K2hdkcSlave();
 					if(!obj->_k2hdkcslave->Initialize(conf.c_str(), ctlport, auto_rejoin)){
 						obj->Clean();
-						Nan::ThrowError("Could not initliaze k2hdkc slave object");
+						Nan::ThrowError("Could not initialize k2hdkc slave object");
 					}else{
 						if(!obj->_k2hdkcslave->Open(no_giveup_rejoin)){
 							obj->Clean();
@@ -979,7 +979,7 @@ NAN_METHOD(K2hdkcNode::Init)
 		if(callback){
 			// [NOTE]
 			// If callback is set, it calls worker. But it returns error,
-			// because no configration is specified.
+			// because no configuration is specified.
 			//
 			Nan::AsyncQueueWorker(new InitWorker(callback, obj->_k2hdkcslave, NULL, 0, false, false));
 		}
@@ -1061,7 +1061,7 @@ NAN_METHOD(K2hdkcNode::Init)
 				callback				= new Nan::Callback(info[argpos++].As<v8::Function>());
 			}
 		}else{
-			Nan::ThrowSyntaxError("First parameter is not configration");
+			Nan::ThrowSyntaxError("First parameter is not configuration");
 			return;
 		}
 
@@ -1164,7 +1164,7 @@ NAN_METHOD(K2hdkcNode::IsPermanent)
  * @param[in] key				Specify the key name.
  * @param[in] subkey			Specify the subkey name when you want to get value for it.
  * @param[in] attrcheck			If this parameter is true, enable to check attributes which is presented by builtin.
- * @param[in] pass				Specify optional passphrase if excrypting the key
+ * @param[in] pass				Specify optional passphrase if encrypting the key
  * @param[in] cbfunc			callback function.
  *
  * @return	Returns the value. If there is no key(subkey), returns null.
@@ -1185,7 +1185,7 @@ NAN_METHOD(K2hdkcNode::IsPermanent)
  * @param[in] key			Specify the key name.
  * @param[in] subkey		Specify the subkey name when you want to get value for it.
  * @param[in] attrcheck		If this parameter is true, enable to check attributes which is presented by builtin.
- * @param[in] pass			Specify optional passphrase if excrypting the key
+ * @param[in] pass			Specify optional passphrase if encrypting the key
  * @param[in] cbfunc		callback function.
  *
  * @return	Returns the value. If there is no key(subkey), returns null.
@@ -1543,7 +1543,7 @@ NAN_METHOD(K2hdkcNode::GetSubkeys)
  * @param[in] key				Specify the key name.
  * @param[in] cbfunc			callback function.
  *
- * @return	If there are attibutes, returns attribute names list. If not, returns null.
+ * @return	If there are attributes, returns attribute names list. If not, returns null.
  *			Returns always true when the callback function is specified.
  *
  * @fn bool GetAttrs(\
@@ -1558,7 +1558,7 @@ NAN_METHOD(K2hdkcNode::GetSubkeys)
  * @param[in] key			Specify the key name.
  * @param[in] cbfunc		callback function.
  *
- * @return	If there are attibutes, returns attribute names list. If not, returns null.
+ * @return	If there are attributes, returns attribute names list. If not, returns null.
  *			Returns always true when the callback function is specified.
  *
  */
@@ -1666,10 +1666,10 @@ NAN_METHOD(K2hdkcNode::GetAttrs)
  * @param[in] port				specify control port number for chmpx for onetime connection(optional)
  * @param[in] auto_rejoin		specify automatic rejoin flag value for onetime connection(optional)
  * @param[in] no_giveup_rejoin	specify never giveup for rejoin flag value for onetime connection(optional)
- * @param[in] key				Spesify the key name
+ * @param[in] key				Specify the key name
  * @param[in] value				Specify the value
  * @param[in] subkey			Specify the subkey name, if you want to set the value to subkey.
- * @param[in] pass				Specify optional passphrase if excrypting the key
+ * @param[in] pass				Specify optional passphrase if encrypting the key
  * @param[in] expire			Specify optional timeout seconds if you need
  * @param[in] cbfunc			callback function.
  *
@@ -1694,10 +1694,10 @@ NAN_METHOD(K2hdkcNode::GetAttrs)
  *			If the callback function is specified, or on callback handles for this,
  * 			this method works asynchronization and calls callback function at finishing.
  *
- * @param[in] key				Spesify the key name
+ * @param[in] key				Specify the key name
  * @param[in] value				Specify the value
  * @param[in] subkey			Specify the subkey name, if you want to set the value to subkey.
- * @param[in] pass				Specify optional passphrase if excrypting the key
+ * @param[in] pass				Specify optional passphrase if encrypting the key
  * @param[in] expire			Specify optional timeout seconds if you need
  * @param[in] cbfunc			callback function.
  *
@@ -1877,7 +1877,7 @@ NAN_METHOD(K2hdkcNode::SetValue)
  * @param[in] port				specify control port number for chmpx for onetime connection(optional)
  * @param[in] auto_rejoin		specify automatic rejoin flag value for onetime connection(optional)
  * @param[in] no_giveup_rejoin	specify never giveup for rejoin flag value for onetime connection(optional)
- * @param[in] key				Spesify the key name
+ * @param[in] key				Specify the key name
  * @param[in] subkeys			Specify the subkeys array. if null is set to subkeys, subkeys is cleared
  * @param[in] cbfunc			callback function.
  *
@@ -1894,7 +1894,7 @@ NAN_METHOD(K2hdkcNode::SetValue)
  *			If the callback function is specified, or on callback handles for this,
  * 			this method works asynchronization and calls callback function at finishing.
  *
- * @param[in] key				Spesify the key name
+ * @param[in] key				Specify the key name
  * @param[in] subkeys			Specify the subkeys array. if null is set to subkeys, subkeys is cleared
  * @param[in] cbfunc			callback function.
  *
@@ -2036,10 +2036,10 @@ NAN_METHOD(K2hdkcNode::SetSubkeys)
  * @param[in] port				specify control port number for chmpx for onetime connection(optional)
  * @param[in] auto_rejoin		specify automatic rejoin flag value for onetime connection(optional)
  * @param[in] no_giveup_rejoin	specify never giveup for rejoin flag value for onetime connection(optional)
- * @param[in] key				Spesify the key name
+ * @param[in] key				Specify the key name
  * @param[in] value				Specify the value
  * @param[in] subkeys			Specify the subkeys array, if you want to set subkeys.
- * @param[in] pass				Specify optional passphrase if excrypting the key
+ * @param[in] pass				Specify optional passphrase if encrypting the key
  * @param[in] expire			Specify optional timeout seconds if you need
  * @param[in] cbfunc			callback function.
  *
@@ -2064,10 +2064,10 @@ NAN_METHOD(K2hdkcNode::SetSubkeys)
  *			If the callback function is specified, or on callback handles for this,
  * 			this method works asynchronization and calls callback function at finishing.
  *
- * @param[in] key				Spesify the key name
+ * @param[in] key				Specify the key name
  * @param[in] value				Specify the value
  * @param[in] subkeys			Specify the subkeys array, if you want to set subkeys.
- * @param[in] pass				Specify optional passphrase if excrypting the key
+ * @param[in] pass				Specify optional passphrase if encrypting the key
  * @param[in] expire			Specify optional timeout seconds if you need
  * @param[in] cbfunc			callback function.
  *
@@ -2218,7 +2218,7 @@ NAN_METHOD(K2hdkcNode::SetAll)
 		bool			result	= false;
 		dkcres_type_t	rescode = DKC_NORESTYPE;
 		if(is_pass_set && 0 < expire){
-			// set value with passphrase and expire, then the operation is sepalated.
+			// set value with passphrase and expire, then the operation is separated.
 			K2hdkcComSet*	pComObj;
 			if(!obj->_k2hdkcslave){
 				pComObj = GetOtSlaveK2hdkcComSet(conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin);
@@ -2295,7 +2295,7 @@ NAN_METHOD(K2hdkcNode::SetAll)
  * @param[in] port				specify control port number for chmpx for onetime connection(optional)
  * @param[in] auto_rejoin		specify automatic rejoin flag value for onetime connection(optional)
  * @param[in] no_giveup_rejoin	specify never giveup for rejoin flag value for onetime connection(optional)
- * @param[in] key				Spesify the key name
+ * @param[in] key				Specify the key name
  * @param[in] is_del_subkeys	Specify optional flag for removing subkey
  * @param[in] cbfunc			callback function.
  *
@@ -2313,7 +2313,7 @@ NAN_METHOD(K2hdkcNode::SetAll)
  *			If the callback function is specified, or on callback handles for this,
  * 			this method works asynchronization and calls callback function at finishing.
  *
- * @param[in] key				Spesify the key name
+ * @param[in] key				Specify the key name
  * @param[in] is_del_subkeys	Specify optional flag for removing subkey
  * @param[in] cbfunc			callback function.
  *
@@ -2419,11 +2419,11 @@ NAN_METHOD(K2hdkcNode::Remove)
  * @param[in] port				specify control port number for chmpx for onetime connection(optional)
  * @param[in] auto_rejoin		specify automatic rejoin flag value for onetime connection(optional)
  * @param[in] no_giveup_rejoin	specify never giveup for rejoin flag value for onetime connection(optional)
- * @param[in] oldkey			Spesify the source(old) key name
- * @param[in] newkey			Spesify the destination(new) key name
- * @param[in] parentkey			Spesify optional destination(new) parent key name
+ * @param[in] oldkey			Specify the source(old) key name
+ * @param[in] newkey			Specify the destination(new) key name
+ * @param[in] parentkey			Specify optional destination(new) parent key name
  * @param[in] attrcheck			If this parameter is true, enable to check attributes which is presented by builtin.
- * @param[in] pass				Specify optional passphrase if excrypting the key
+ * @param[in] pass				Specify optional passphrase if encrypting the key
  * @param[in] expire			Specify optional timeout seconds if you need
  * @param[in] cbfunc			callback function.
  *
@@ -2445,11 +2445,11 @@ NAN_METHOD(K2hdkcNode::Remove)
  *			If the callback function is specified, or on callback handles for this,
  * 			this method works asynchronization and calls callback function at finishing.
  *
- * @param[in] oldkey			Spesify the source(old) key name
- * @param[in] newkey			Spesify the destination(new) key name
- * @param[in] parentkey			Spesify optional destination(new) parent key name
+ * @param[in] oldkey			Specify the source(old) key name
+ * @param[in] newkey			Specify the destination(new) key name
+ * @param[in] parentkey			Specify optional destination(new) parent key name
  * @param[in] attrcheck			If this parameter is true, enable to check attributes which is presented by builtin.
- * @param[in] pass				Specify optional passphrase if excrypting the key
+ * @param[in] pass				Specify optional passphrase if encrypting the key
  * @param[in] expire			Specify optional timeout seconds if you need
  * @param[in] cbfunc			callback function.
  *
@@ -2700,12 +2700,12 @@ NAN_METHOD(K2hdkcNode::Rename)
  * @param[in] port				specify control port number for chmpx for onetime connection(optional)
  * @param[in] auto_rejoin		specify automatic rejoin flag value for onetime connection(optional)
  * @param[in] no_giveup_rejoin	specify never giveup for rejoin flag value for onetime connection(optional)
- * @param[in] prefix			Spesify prefix name for queue
- * @param[in] key				Spesify optional key name which is pushed to queue.
- * @param[in] val				Spesify value which is pushed to queue.
- * @param[in] is_fifo			Spesify optional queu mode fifo or lifo.
+ * @param[in] prefix			Specify prefix name for queue
+ * @param[in] key				Specify optional key name which is pushed to queue.
+ * @param[in] val				Specify value which is pushed to queue.
+ * @param[in] is_fifo			Specify optional queue mode fifo or lifo.
  * @param[in] attrcheck			If this parameter is true, enable to check attributes which is presented by builtin.
- * @param[in] pass				Specify optional passphrase if excrypting the key
+ * @param[in] pass				Specify optional passphrase if encrypting the key
  * @param[in] expire			Specify optional timeout seconds if you need
  * @param[in] cbfunc			callback function.
  *
@@ -2728,12 +2728,12 @@ NAN_METHOD(K2hdkcNode::Rename)
  *			If the callback function is specified, or on callback handles for this,
  * 			this method works asynchronization and calls callback function at finishing.
  *
- * @param[in] prefix			Spesify prefix name for queue
- * @param[in] key				Spesify optional key name which is pushed to queue.
- * @param[in] val				Spesify value which is pushed to queue.
- * @param[in] is_fifo			Spesify optional queu mode fifo or lifo.
+ * @param[in] prefix			Specify prefix name for queue
+ * @param[in] key				Specify optional key name which is pushed to queue.
+ * @param[in] val				Specify value which is pushed to queue.
+ * @param[in] is_fifo			Specify optional queue mode fifo or lifo.
  * @param[in] attrcheck			If this parameter is true, enable to check attributes which is presented by builtin.
- * @param[in] pass				Specify optional passphrase if excrypting the key
+ * @param[in] pass				Specify optional passphrase if encrypting the key
  * @param[in] expire			Specify optional timeout seconds if you need
  * @param[in] cbfunc			callback function.
  *
@@ -3028,10 +3028,10 @@ NAN_METHOD(K2hdkcNode::QueuePush)
  * @param[in] port				specify control port number for chmpx for onetime connection(optional)
  * @param[in] auto_rejoin		specify automatic rejoin flag value for onetime connection(optional)
  * @param[in] no_giveup_rejoin	specify never giveup for rejoin flag value for onetime connection(optional)
- * @param[in] prefix			Spesify prefix name for queue
- * @param[in] is_fifo			Spesify optional queu mode fifo or lifo.
- * @param[in] is_key_queue		Spesify optional queu type queue or keyqueue.
- * @param[in] pass				Specify optional passphrase if excrypting the key
+ * @param[in] prefix			Specify prefix name for queue
+ * @param[in] is_fifo			Specify optional queue mode fifo or lifo.
+ * @param[in] is_key_queue		Specify optional queue type queue or keyqueue.
+ * @param[in] pass				Specify optional passphrase if encrypting the key
  * @param[in] cbfunc			callback function.
  *
  * @return	Returns value when queue, returns array(key and value) when key queue.
@@ -3050,10 +3050,10 @@ NAN_METHOD(K2hdkcNode::QueuePush)
  *			If the callback function is specified, or on callback handles for this,
  * 			this method works asynchronization and calls callback function at finishing.
  *
- * @param[in] prefix			Spesify prefix name for queue
- * @param[in] is_fifo			Spesify optional queu mode fifo or lifo.
- * @param[in] is_key_queue		Spesify optional queu type queue or keyqueue.
- * @param[in] pass				Specify optional passphrase if excrypting the key
+ * @param[in] prefix			Specify prefix name for queue
+ * @param[in] is_fifo			Specify optional queue mode fifo or lifo.
+ * @param[in] is_key_queue		Specify optional queue type queue or keyqueue.
+ * @param[in] pass				Specify optional passphrase if encrypting the key
  * @param[in] cbfunc			callback function.
  *
  * @return	Returns value when queue, returns array(key and value) when key queue.
@@ -3246,11 +3246,11 @@ NAN_METHOD(K2hdkcNode::QueuePop)
  * @param[in] port				specify control port number for chmpx for onetime connection(optional)
  * @param[in] auto_rejoin		specify automatic rejoin flag value for onetime connection(optional)
  * @param[in] no_giveup_rejoin	specify never giveup for rejoin flag value for onetime connection(optional)
- * @param[in] prefix			Spesify prefix name for queue
- * @param[in] count				Spesify optional remove queue count
- * @param[in] is_fifo			Spesify optional queu mode fifo or lifo.
- * @param[in] is_key_queue		Spesify optional queu type queue or keyqueue.
- * @param[in] pass				Specify optional passphrase if excrypting the key
+ * @param[in] prefix			Specify prefix name for queue
+ * @param[in] count				Specify optional remove queue count
+ * @param[in] is_fifo			Specify optional queue mode fifo or lifo.
+ * @param[in] is_key_queue		Specify optional queue type queue or keyqueue.
+ * @param[in] pass				Specify optional passphrase if encrypting the key
  * @param[in] cbfunc			callback function.
  *
  * @return	Return true for success, false for failure
@@ -3269,11 +3269,11 @@ NAN_METHOD(K2hdkcNode::QueuePop)
  *			If the callback function is specified, or on callback handles for this,
  * 			this method works asynchronization and calls callback function at finishing.
  *
- * @param[in] prefix			Spesify prefix name for queue
- * @param[in] count				Spesify optional remove queue count
- * @param[in] is_fifo			Spesify optional queu mode fifo or lifo.
- * @param[in] is_key_queue		Spesify optional queu type queue or keyqueue.
- * @param[in] pass				Specify optional passphrase if excrypting the key
+ * @param[in] prefix			Specify prefix name for queue
+ * @param[in] count				Specify optional remove queue count
+ * @param[in] is_fifo			Specify optional queue mode fifo or lifo.
+ * @param[in] is_key_queue		Specify optional queue type queue or keyqueue.
+ * @param[in] pass				Specify optional passphrase if encrypting the key
  * @param[in] cbfunc			callback function.
  *
  * @return	Return true for success, false for failure
@@ -3498,7 +3498,7 @@ NAN_METHOD(K2hdkcNode::QueueRemove)
  *  , Callback	cbfunc=null\
  * )
  *
- * @brief	Initialize key anad value for CAS operation on onetime connection.
+ * @brief	Initialize key and value for CAS operation on onetime connection.
  *			If the callback function is specified, or on callback handles for this,
  * 			this method works asynchronization and calls callback function at finishing.
  *
@@ -3506,9 +3506,9 @@ NAN_METHOD(K2hdkcNode::QueueRemove)
  * @param[in] port				specify control port number for chmpx for onetime connection(optional)
  * @param[in] auto_rejoin		specify automatic rejoin flag value for onetime connection(optional)
  * @param[in] no_giveup_rejoin	specify never giveup for rejoin flag value for onetime connection(optional)
- * @param[in] key				Spesify the key name
+ * @param[in] key				Specify the key name
  * @param[in] value				Specify optional the value.
- * @param[in] pass				Specify optional passphrase if excrypting the key
+ * @param[in] pass				Specify optional passphrase if encrypting the key
  * @param[in] expire			Specify optional timeout seconds if you need
  * @param[in] cbfunc			callback function.
  *
@@ -3523,13 +3523,13 @@ NAN_METHOD(K2hdkcNode::QueueRemove)
  *  , Callback	cbfunc=null\
  * )
  *
- * @brief	Initialize key anad value for CAS operation on  permanent connection.
+ * @brief	Initialize key and value for CAS operation on  permanent connection.
  *			If the callback function is specified, or on callback handles for this,
  * 			this method works asynchronization and calls callback function at finishing.
  *
- * @param[in] key				Spesify the key name
+ * @param[in] key				Specify the key name
  * @param[in] value				Specify optional the value.
- * @param[in] pass				Specify optional passphrase if excrypting the key
+ * @param[in] pass				Specify optional passphrase if encrypting the key
  * @param[in] expire			Specify optional timeout seconds if you need
  * @param[in] cbfunc			callback function.
  *
@@ -3691,8 +3691,8 @@ NAN_METHOD(K2hdkcNode::CasInit)
  * @param[in] port				specify control port number for chmpx for onetime connection(optional)
  * @param[in] auto_rejoin		specify automatic rejoin flag value for onetime connection(optional)
  * @param[in] no_giveup_rejoin	specify never giveup for rejoin flag value for onetime connection(optional)
- * @param[in] key				Spesify the key name
- * @param[in] pass				Specify optional passphrase if excrypting the key
+ * @param[in] key				Specify the key name
+ * @param[in] pass				Specify optional passphrase if encrypting the key
  * @param[in] cbfunc			callback function.
  *
  * @return	Returns the value(uint32). If there is no key(subkey), returns undefined.
@@ -3708,8 +3708,8 @@ NAN_METHOD(K2hdkcNode::CasInit)
  *			If the callback function is specified, or on callback handles for this,
  * 			this method works asynchronization and calls callback function at finishing.
  *
- * @param[in] key				Spesify the key name
- * @param[in] pass				Specify optional passphrase if excrypting the key
+ * @param[in] key				Specify the key name
+ * @param[in] pass				Specify optional passphrase if encrypting the key
  * @param[in] cbfunc			callback function.
  *
  * @return	Returns the value(uint32). If there is no key(subkey), returns undefined.
@@ -3825,10 +3825,10 @@ NAN_METHOD(K2hdkcNode::CasGet)
  * @param[in] port				specify control port number for chmpx for onetime connection(optional)
  * @param[in] auto_rejoin		specify automatic rejoin flag value for onetime connection(optional)
  * @param[in] no_giveup_rejoin	specify never giveup for rejoin flag value for onetime connection(optional)
- * @param[in] key				Spesify the key name
+ * @param[in] key				Specify the key name
  * @param[in] oldval			Specify old value.
  * @param[in] newval			Specify new value.
- * @param[in] pass				Specify optional passphrase if excrypting the key
+ * @param[in] pass				Specify optional passphrase if encrypting the key
  * @param[in] expire			Specify optional timeout seconds if you need
  * @param[in] cbfunc			callback function.
  *
@@ -3848,10 +3848,10 @@ NAN_METHOD(K2hdkcNode::CasGet)
  *			If the callback function is specified, or on callback handles for this,
  * 			this method works asynchronization and calls callback function at finishing.
  *
- * @param[in] key				Spesify the key name
+ * @param[in] key				Specify the key name
  * @param[in] oldval			Specify old value.
  * @param[in] newval			Specify new value.
- * @param[in] pass				Specify optional passphrase if excrypting the key
+ * @param[in] pass				Specify optional passphrase if encrypting the key
  * @param[in] expire			Specify optional timeout seconds if you need
  * @param[in] cbfunc			callback function.
  *
@@ -3997,9 +3997,9 @@ NAN_METHOD(K2hdkcNode::CasSet)
  * @param[in] port				specify control port number for chmpx for onetime connection(optional)
  * @param[in] auto_rejoin		specify automatic rejoin flag value for onetime connection(optional)
  * @param[in] no_giveup_rejoin	specify never giveup for rejoin flag value for onetime connection(optional)
- * @param[in] key				Spesify the key name
- * @param[in] is_increment		Specify optional increment/decreemnt mode flag.
- * @param[in] pass				Specify optional passphrase if excrypting the key
+ * @param[in] key				Specify the key name
+ * @param[in] is_increment		Specify optional increment/decrement mode flag.
+ * @param[in] pass				Specify optional passphrase if encrypting the key
  * @param[in] expire			Specify optional timeout seconds if you need
  * @param[in] cbfunc			callback function.
  *
@@ -4018,9 +4018,9 @@ NAN_METHOD(K2hdkcNode::CasSet)
  *			If the callback function is specified, or on callback handles for this,
  * 			this method works asynchronization and calls callback function at finishing.
  *
- * @param[in] key				Spesify the key name
- * @param[in] is_increment		Specify optional increment/decreemnt mode flag.
- * @param[in] pass				Specify optional passphrase if excrypting the key
+ * @param[in] key				Specify the key name
+ * @param[in] is_increment		Specify optional increment/decrement mode flag.
+ * @param[in] pass				Specify optional passphrase if encrypting the key
  * @param[in] expire			Specify optional timeout seconds if you need
  * @param[in] cbfunc			callback function.
  *
@@ -4174,7 +4174,7 @@ NAN_METHOD(K2hdkcNode::CasIncDec)
  * )
  *
  * @brief	Print K2HDKC library version
- *			If fd is not specified, the status is put to atdout.
+ *			If fd is not specified, the status is put to stdout.
  *
  * @param[in] fd	Specify output stream
  *
@@ -4193,8 +4193,8 @@ NAN_METHOD(K2hdkcNode::PrintVersion)
 	k2hdkc_print_version(fp);
 
 	// [NOTE]
-	// Must flush at here, because nodejs's file discriptor is used for fd.
-	// Otherwise, calling flash on nodejs(javascript) is not effeted.
+	// Must flush at here, because nodejs's file descriptor is used for fd.
+	// Otherwise, calling flash on nodejs(javascript) is not effected.
 	fflush(fp);
 
 	info.GetReturnValue().Set(Nan::True());

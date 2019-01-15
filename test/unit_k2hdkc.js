@@ -28,7 +28,7 @@ var	startProcs		= subproc.start;						// eslint-disable-line no-unused-vars
 var	stopProcs		= subproc.stop;							// eslint-disable-line no-unused-vars
 
 //--------------------------------------------------------------
-// Main discribe section
+// Main describe section
 //--------------------------------------------------------------
 describe('K2HDKC', function(){								// eslint-disable-line no-undef
 	//
@@ -38,14 +38,14 @@ describe('K2HDKC', function(){								// eslint-disable-line no-undef
 	var	slvport	= 8031;
 
 	//
-	// Before in discribe section
+	// Before in describe section
 	//
 	before(function(){										// eslint-disable-line no-undef
 		// Nothing to do
 	});
 
 	//
-	// After in discribe section
+	// After in describe section
 	//
 	after(function(){										// eslint-disable-line no-undef
 		// Nothing to do
