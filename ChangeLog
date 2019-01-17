@@ -1,3 +1,9 @@
+k2hdkc_nodejs (0.9.5) unstable ; urgency=low
+
+  * Reflected the spelling check result for all sources - #2
+
+ -- Takeshi Nakatani <ggtakec@gmail.com>  Thu, 17 Jan 2019 15:00:11 +0900
+
 k2hdkc (0.9.4) unstable ; urgency=low
 
   * First published version
