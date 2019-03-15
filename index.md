@@ -16,7 +16,9 @@ arrow_link_environments: <a href="environments.html" class="link-title"><span cl
 # **K2HDKC Node.js**
 **K2HDKC Node.js** is addon library for Node.js of **K2HDKC** (K2Hash based Distributed Kvs Cluster) which is a proprietary distributed KVS with some features published by Yahoo! JAPAN.  
 **K2HDKC Node.js** is a Node.js addon library as a client of **K2HDKC**, and all functions provided by the **K2HDKC** library as clients can be used in Node.js in the server side JavaScript environment [Node.js](https://nodejs.org/).
-**K2HDKC Node.js** is one of [AntPickax](https://antpick.ax/)'s open source product by Yahoo! JAPAN.
+**K2HDKC Node.js** is one of [AntPickax](https://antpick.ax/)'s open source product by Yahoo! JAPAN.  
+
+![K2HDKC Node.js addon](images/top_k2hdkc_nodejs.png)
 
 ## {{ page.arrow_link_overview }}
 [Overview](home.html) about **K2HDKC Node.js** library.
