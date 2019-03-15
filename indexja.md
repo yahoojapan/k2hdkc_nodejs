@@ -16,7 +16,9 @@ arrow_link_environments: <a href="environmentsja.html" class="link-title"><span 
 # **K2HDKC Node.js**
 **K2HDKC Node.js**（addon library for Node.js）は、Yahoo! JAPANが公開しているいくつかの特徴を備えた独自 **分散KVS**（distributed key-value store）である **K2HDKC**（K2Hash based Distributed Kvs Cluster）のNode.jsアドオンライブラリです。  
 **K2HDKC Node.js** は、**K2HDKC** のクライアントとしての Node.jsアドオンライブラリであり、クライアントとして **K2HDKC** ライブラリが提供するすべての機能をサーバーサイドJavaScript環境の [Node.js](https://nodejs.org/ja/)で利用できます。  
-**K2HDKC Node.js** は、Yahoo! JAPANがオープンソースとして公開するプロダクト [AntPickax](https://antpick.ax/indexja.html) のひとつです。
+**K2HDKC Node.js** は、Yahoo! JAPANがオープンソースとして公開するプロダクト [AntPickax](https://antpick.ax/indexja.html) のひとつです。  
+
+![K2HDKC Node.js addon](images/top_k2hdkc_nodejs.png)
 
 ## {{ page.arrow_link_overview }}
 **K2HDKC Node.js** の[概要](homeja.html)について説明します。  
