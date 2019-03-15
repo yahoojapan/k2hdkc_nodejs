@@ -1,10 +1,16 @@
-k2hdkc_nodejs (0.9.5) unstable ; urgency=low
+k2hdkc (0.9.6) unstable; urgency=low
+
+  * Added k2hdkc nodejs addon overview image to README.md - #5
+
+ -- Takeshi Nakatani <ggtakec@gmail.com>  Fri, 15 Mar 2019 14:24:18 +0900
+
+k2hdkc (0.9.5) unstable; urgency=low
 
   * Reflected the spelling check result for all sources - #2
 
  -- Takeshi Nakatani <ggtakec@gmail.com>  Thu, 17 Jan 2019 15:00:11 +0900
 
-k2hdkc (0.9.4) unstable ; urgency=low
+k2hdkc (0.9.4) unstable; urgency=low
 
   * First published version
 
