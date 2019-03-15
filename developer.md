@@ -273,7 +273,7 @@ Always return **true**.
   ```
 
 ### <a name="K2HDKC-ISPERMANENT"> k2hdkc::IsPermanent()
-This methos checks whether the k2hdkc object is initialized as a Permanent Connection.
+This methods checks whether the k2hdkc object is initialized as a Permanent Connection.
 
 #### Format
 ```
@@ -328,7 +328,7 @@ This method gets the key and subkey values from the K2HDKC cluster.
   [bool/String] GetValue(String   conf,
                          int      port,
                          bool     auto_rejoin,
-                         bool     no_giveup_rejoine,
+                         bool     no_giveup_rejoin,
                          String   key,
                          String   subkey = "",
                          bool     attrcheck = true,
@@ -529,7 +529,7 @@ This method gets the list of subkeys tied to the key.
   [bool/Array] GetSubkeys(String   conf,
                           int      port,
                           bool     auto_rejoin,
-                          bool     no_giveup_rejoine,
+                          bool     no_giveup_rejoin,
                           String   key,
                           bool     attrcheck = true,
                           Callback cbfunc = null
@@ -699,7 +699,7 @@ This method gets a list of attribute names set in the key.
   [bool/Array] GetAttrs(String   conf,
                         int      port,
                         bool     auto_rejoin,
-                        bool     no_giveup_rejoine,
+                        bool     no_giveup_rejoin,
                         String   key,
                         Callback cbfunc = null
   )
@@ -870,7 +870,7 @@ This method sets values for keys or subkeys under key.
   bool SetValue(String   conf,
                 int      port,
                 bool     auto_rejoin,
-                bool     no_giveup_rejoine,
+                bool     no_giveup_rejoin,
                 String   key,
                 String   value ="",
                 String   subkey = "",
@@ -1069,7 +1069,7 @@ This method sets(overwrites) or clears the list of subkeys associated with the k
   bool SetSubkeys(String   conf,
                   int      port,
                   bool     auto_rejoin,
-                  bool     no_giveup_rejoine,
+                  bool     no_giveup_rejoin,
                   String   key,
                   Array    subkeys = null,
                   Callback cbfunc = null
@@ -1243,7 +1243,7 @@ This method sets the key value and subkey list at once.
   bool SetAll(String   conf,
               int      port,
               bool     auto_rejoin,
-              bool     no_giveup_rejoine,
+              bool     no_giveup_rejoin,
               String   key,
               String   value ="",
               Array    subkeys = null,
@@ -1424,7 +1424,7 @@ This method removes the key.
   bool Remove(String   conf,
               int      port,
               bool     auto_rejoin,
-              bool     no_giveup_rejoine,
+              bool     no_giveup_rejoin,
               String   key,
               bool     is_del_subkeys = false,
               Callback cbfunc = null
@@ -1599,7 +1599,7 @@ This method changes the key name.
   bool Rename(String   conf,
               int      port,
               bool     auto_rejoin,
-              bool     no_giveup_rejoine,
+              bool     no_giveup_rejoin,
               String   oldkey,
               String   newkey,
               String   parentkey = "",
@@ -1788,7 +1788,7 @@ This method pushes the data to K2HDKC queue.
   bool QueuePush(String   conf,
                  int      port,
                  bool     auto_rejoin,
-                 bool     no_giveup_rejoine,
+                 bool     no_giveup_rejoin,
                  String   prefix,
                  String   key = "",
                  String   val,
@@ -1995,7 +1995,7 @@ This method pops the data from K2HDKC queue.
   [bool/String/Array] QueuePop(String   conf,
                                int      port,
                                bool     auto_rejoin,
-                               bool     no_giveup_rejoine,
+                               bool     no_giveup_rejoin,
                                String   prefix,
                                bool     is_fifo = true,
                                bool     is_key_queue = false,
@@ -2194,7 +2194,7 @@ This method removes the data from K2HDKC queue without reading the value.
   bool QueueRemove(String   conf,
                    int      port,
                    bool     auto_rejoin,
-                   bool     no_giveup_rejoine,
+                   bool     no_giveup_rejoin,
                    String   prefix,
                    int      count = 0,
                    bool     is_fifo = true,
@@ -2220,7 +2220,7 @@ This method removes the data from K2HDKC queue without reading the value.
 - prefix  
   Specify the queue name prefix.
 - count  
-  Specify the counf of queue for removing.
+  Specify the count of queue for removing.
 - is_fifo  
   Specify the direction(FIFO or LIFO) to push to the queue.
 - is_key_queue  
@@ -2392,7 +2392,7 @@ This method initializes the key and value as CAS(Compare and Swap).
   bool CasInit(String   conf,
                int      port,
                bool     auto_rejoin,
-               bool     no_giveup_rejoine,
+               bool     no_giveup_rejoin,
                String   key,
                uint     value = 0,
                String   pass = "",
@@ -2570,7 +2570,7 @@ This method gets the value by key as CAS(Compare and Swap).
   int CasGet(String   conf,
              int      port,
              bool     auto_rejoin,
-             bool     no_giveup_rejoine,
+             bool     no_giveup_rejoin,
              String   key,
              String   pass = "",
              Callback cbfunc = null
@@ -2744,7 +2744,7 @@ This method sets the value to the key as CAS(Compare and Swap).
   bool CasSet(String   conf,
               int      port,
               bool     auto_rejoin,
-              bool     no_giveup_rejoine,
+              bool     no_giveup_rejoin,
               String   key,
               uint     oldval = 0,
               uint     newval = 0,
@@ -2927,7 +2927,7 @@ This method increments/decrements the value for the key as CAS(Compare and Swap)
   bool CasIncDec(String   conf,
                  int      port,
                  bool     auto_rejoin,
-                 bool     no_giveup_rejoine,
+                 bool     no_giveup_rejoin,
                  String   key,
                  bool     is_increment = true,
                  String   pass = "",
@@ -2952,7 +2952,7 @@ This method increments/decrements the value for the key as CAS(Compare and Swap)
 - key  
   Specify the key name for CAS.
 - is_increment  
-  Specify true when incrementing.
+  Specify true for increment.
 - pass  
   Specify passphrase when encrypting value.
 - expire  
