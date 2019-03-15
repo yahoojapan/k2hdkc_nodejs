@@ -15,7 +15,9 @@ K2HDKC is k2hash based distributed KVS cluster server program and client library
 This addon library is for using K2HASH on nodejs.
 
 By k2hdkc nodejs addon library, you can easily create K2HDKC slave client program in JavaScript language.
-For details on the features and functions of k2hdkc nodejs, refer to [k2hdkc documentation](https://k2hdkc.antpick.ax/).
+For details on the features and functions of k2hdkc nodejs, refer to [k2hdkc documentation](https://k2hdkc.antpick.ax/).  
+
+![K2HDKC Node.js addon](https://nodejs.k2hdkc.antpick.ax/images/top_k2hdkc_nodejs.png)
 
 ### Usage
 k2hdkc nodejs addon library is provided as an NPM package.  
