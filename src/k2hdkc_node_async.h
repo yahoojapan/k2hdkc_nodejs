@@ -96,7 +96,7 @@ class InitWorker : public Nan::AsyncWorker
 
 		bool			is_set_conf;
 		std::string		conf;
-		short			ctlport;
+		int16_t			ctlport;
 		bool			auto_rejoin;
 		bool			no_giveup_rejoin;
 };
@@ -237,7 +237,7 @@ class GetValueWorker : public Nan::AsyncWorker
 
 		bool			is_set_conf;
 		std::string		conf;
-		short			ctlport;
+		int16_t			ctlport;
 		bool			auto_rejoin;
 		bool			no_giveup_rejoin;
 
@@ -350,7 +350,7 @@ class GetSubkeysWorker : public Nan::AsyncWorker
 
 		bool			is_set_conf;
 		std::string		conf;
-		short			ctlport;
+		int16_t			ctlport;
 		bool			auto_rejoin;
 		bool			no_giveup_rejoin;
 		bool			is_key_set;
@@ -458,7 +458,7 @@ class GetAttrsWorker : public Nan::AsyncWorker
 
 		bool			is_set_conf;
 		std::string		conf;
-		short			ctlport;
+		int16_t			ctlport;
 		bool			auto_rejoin;
 		bool			no_giveup_rejoin;
 		bool			is_key_set;
@@ -567,7 +567,7 @@ class SetValueWorker : public Nan::AsyncWorker
 
 		bool			is_set_conf;
 		std::string		conf;
-		short			ctlport;
+		int16_t			ctlport;
 		bool			auto_rejoin;
 		bool			no_giveup_rejoin;
 
@@ -685,7 +685,7 @@ class SetSubkeysWorker : public Nan::AsyncWorker
 
 		bool			is_set_conf;
 		std::string		conf;
-		short			ctlport;
+		int16_t			ctlport;
 		bool			auto_rejoin;
 		bool			no_giveup_rejoin;
 
@@ -826,7 +826,7 @@ class SetAllWorker : public Nan::AsyncWorker
 
 		bool			is_set_conf;
 		std::string		conf;
-		short			ctlport;
+		int16_t			ctlport;
 		bool			auto_rejoin;
 		bool			no_giveup_rejoin;
 
@@ -924,7 +924,7 @@ class RemoveWorker : public Nan::AsyncWorker
 
 		bool			is_set_conf;
 		std::string		conf;
-		short			ctlport;
+		int16_t			ctlport;
 		bool			auto_rejoin;
 		bool			no_giveup_rejoin;
 
@@ -1016,7 +1016,7 @@ class RenameWorker : public Nan::AsyncWorker
 
 		bool			is_set_conf;
 		std::string		conf;
-		short			ctlport;
+		int16_t			ctlport;
 		bool			auto_rejoin;
 		bool			no_giveup_rejoin;
 
@@ -1122,7 +1122,7 @@ class QueuePushWorker : public Nan::AsyncWorker
 
 		bool			is_set_conf;
 		std::string		conf;
-		short			ctlport;
+		int16_t			ctlport;
 		bool			auto_rejoin;
 		bool			no_giveup_rejoin;
 
@@ -1266,7 +1266,7 @@ class QueuePopWorker : public Nan::AsyncWorker
 
 		bool			is_set_conf;
 		std::string		conf;
-		short			ctlport;
+		int16_t			ctlport;
 		bool			auto_rejoin;
 		bool			no_giveup_rejoin;
 
@@ -1373,7 +1373,7 @@ class QueueRemoveWorker : public Nan::AsyncWorker
 
 		bool			is_set_conf;
 		std::string		conf;
-		short			ctlport;
+		int16_t			ctlport;
 		bool			auto_rejoin;
 		bool			no_giveup_rejoin;
 
@@ -1467,7 +1467,7 @@ class CasInitWorker : public Nan::AsyncWorker
 
 		bool			is_set_conf;
 		std::string		conf;
-		short			ctlport;
+		int16_t			ctlport;
 		bool			auto_rejoin;
 		bool			no_giveup_rejoin;
 
@@ -1564,7 +1564,7 @@ class CasGetWorker : public Nan::AsyncWorker
 
 		bool			is_set_conf;
 		std::string		conf;
-		short			ctlport;
+		int16_t			ctlport;
 		bool			auto_rejoin;
 		bool			no_giveup_rejoin;
 
@@ -1657,7 +1657,7 @@ class CasSetWorker : public Nan::AsyncWorker
 
 		bool			is_set_conf;
 		std::string		conf;
-		short			ctlport;
+		int16_t			ctlport;
 		bool			auto_rejoin;
 		bool			no_giveup_rejoin;
 
@@ -1755,7 +1755,7 @@ class CasIncDecWorker : public Nan::AsyncWorker
 
 		bool			is_set_conf;
 		std::string		conf;
-		short			ctlport;
+		int16_t			ctlport;
 		bool			auto_rejoin;
 		bool			no_giveup_rejoin;
 
