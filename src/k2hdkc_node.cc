@@ -90,7 +90,7 @@ inline const char* GetNormalizationEmitter(const char* emitter)
 //
 #define	ParseArgumentsForOnetime(argpos) \
 		string	conf; \
-		short	ctlport			= CHM_INVALID_PORT; \
+		int16_t	ctlport			= CHM_INVALID_PORT; \
 		bool	auto_rejoin		= false; \
 		bool	no_giveup_rejoin= false; \
 		{ \
@@ -107,17 +107,17 @@ inline const char* GetNormalizationEmitter(const char* emitter)
 				conf							= std::string(*buf); \
 				if(argpos < info.Length()){ \
 					if(info[argpos]->IsNumber()){ \
-						ctlport					= info[argpos++]->NumberValue(); \
+						ctlport					= static_cast<int16_t>(Nan::To<int32_t>(info[argpos++]).FromJust()); \
 						if(argpos < info.Length() && info[argpos]->IsBoolean()){ \
-							auto_rejoin			= info[argpos++]->BooleanValue(); \
+							auto_rejoin			= Nan::To<bool>(info[argpos++]).FromJust(); \
 							if(argpos < info.Length() && info[argpos]->IsBoolean()){ \
-								no_giveup_rejoin= info[argpos++]->BooleanValue(); \
+								no_giveup_rejoin= Nan::To<bool>(info[argpos++]).FromJust(); \
 							} \
 						} \
 					}else if(info[argpos]->IsBoolean()){ \
-						auto_rejoin				= info[argpos++]->BooleanValue(); \
+						auto_rejoin				= Nan::To<bool>(info[argpos++]).FromJust(); \
 						if(argpos < info.Length() && info[argpos]->IsBoolean()){ \
-							no_giveup_rejoin	= info[argpos++]->BooleanValue(); \
+							no_giveup_rejoin	= Nan::To<bool>(info[argpos++]).FromJust(); \
 						} \
 					} \
 				} \
@@ -244,7 +244,7 @@ void K2hdkcNode::Init()
 	Nan::SetPrototypeMethod(tpl, "printVersion",	PrintVersion);
 
 	// Reset
-	constructor.Reset(tpl->GetFunction()); 
+	constructor.Reset(Nan::GetFunction(tpl).ToLocalChecked());
 }
 
 NAN_METHOD(K2hdkcNode::New)
@@ -262,7 +262,7 @@ NAN_METHOD(K2hdkcNode::New)
 			// create permanent connection at initializing
 			int				argpos			= 0;
 			std::string		conf("");
-			short			ctlport			= CHM_INVALID_PORT;
+			int16_t			ctlport			= CHM_INVALID_PORT;
 			bool			auto_rejoin		= false;
 			bool			no_giveup_rejoin= false;
 
@@ -274,28 +274,28 @@ NAN_METHOD(K2hdkcNode::New)
 				conf						= std::string(*buf);
 				if(argpos < info.Length() && info[argpos]->IsNumber()){
 					// 2'nd argument is port
-					ctlport					= info[argpos++]->NumberValue();
+					ctlport					= static_cast<int16_t>(Nan::To<int32_t>(info[argpos++]).FromJust());
 					if(argpos < info.Length() && info[argpos]->IsBoolean()){
 						// 3'rd argument is auto rejoin
-						auto_rejoin			= info[argpos++]->BooleanValue();
+						auto_rejoin			= Nan::To<bool>(info[argpos++]).FromJust();
 						if(argpos < info.Length() && info[argpos]->IsBoolean()){
 							// 4'th argument is no giveup rejoin
-							no_giveup_rejoin= info[argpos++]->BooleanValue();
+							no_giveup_rejoin= Nan::To<bool>(info[argpos++]).FromJust();
 						}
 					}else if(argpos < info.Length() && info[argpos]->IsBoolean()){
 						// 3'rd argument is no giveup rejoin
-						no_giveup_rejoin	= info[argpos++]->BooleanValue();
+						no_giveup_rejoin	= Nan::To<bool>(info[argpos++]).FromJust();
 					}
 				}else if(argpos < info.Length() && info[argpos]->IsBoolean()){
 					// 2'nd argument is auto rejoin
-					auto_rejoin				= info[argpos++]->BooleanValue();
+					auto_rejoin				= Nan::To<bool>(info[argpos++]).FromJust();
 					if(argpos < info.Length() && info[argpos]->IsBoolean()){
 						// 3'rd argument is no giveup rejoin
-						no_giveup_rejoin	= info[argpos++]->BooleanValue();
+						no_giveup_rejoin	= Nan::To<bool>(info[argpos++]).FromJust();
 					}
 				}else if(argpos < info.Length() && info[argpos]->IsBoolean()){
 					// 2'nd argument is no giveup rejoin
-					no_giveup_rejoin		= info[argpos++]->BooleanValue();
+					no_giveup_rejoin		= Nan::To<bool>(info[argpos++]).FromJust();
 				}
 
 				// check over arguments
@@ -990,7 +990,7 @@ NAN_METHOD(K2hdkcNode::Init)
 		Nan::Callback*	callback		= obj->_cbs.Find(stc_emitters[EMITTER_POS_INIT]);
 		int				argpos			= 0;
 		std::string		conf("");
-		short			ctlport			= CHM_INVALID_PORT;
+		int16_t			ctlport			= CHM_INVALID_PORT;
 		bool			auto_rejoin		= false;
 		bool			no_giveup_rejoin= false;
 
@@ -1001,15 +1001,15 @@ NAN_METHOD(K2hdkcNode::Init)
 
 			if(argpos < info.Length() && info[argpos]->IsNumber()){
 				// 2'nd argument is port
-				ctlport					= info[argpos++]->NumberValue();
+				ctlport					= static_cast<int16_t>(Nan::To<int32_t>(info[argpos++]).FromJust());
 
 				if(argpos < info.Length() && info[argpos]->IsBoolean()){
 					// 3'rd argument is auto rejoin
-					auto_rejoin			= info[argpos++]->BooleanValue();
+					auto_rejoin			= Nan::To<bool>(info[argpos++]).FromJust();
 
 					if(argpos < info.Length() && info[argpos]->IsBoolean()){
 						// 4'th argument is no giveup rejoin
-						no_giveup_rejoin= info[argpos++]->BooleanValue();
+						no_giveup_rejoin= Nan::To<bool>(info[argpos++]).FromJust();
 
 						if(argpos < info.Length() && info[argpos]->IsFunction()){
 							// 5'th argument is callback
@@ -1021,7 +1021,7 @@ NAN_METHOD(K2hdkcNode::Init)
 					}
 				}else if(argpos < info.Length() && info[argpos]->IsBoolean()){
 					// 3'rd argument is no giveup rejoin
-					no_giveup_rejoin	= info[argpos++]->BooleanValue();
+					no_giveup_rejoin	= Nan::To<bool>(info[argpos++]).FromJust();
 
 					if(argpos < info.Length() && info[argpos]->IsFunction()){
 						// 4'th argument is callback
@@ -1034,11 +1034,11 @@ NAN_METHOD(K2hdkcNode::Init)
 
 			}else if(argpos < info.Length() && info[argpos]->IsBoolean()){
 				// 2'nd argument is auto rejoin
-				auto_rejoin				= info[argpos++]->BooleanValue();
+				auto_rejoin				= Nan::To<bool>(info[argpos++]).FromJust();
 
 				if(argpos < info.Length() && info[argpos]->IsBoolean()){
 					// 3'rd argument is no giveup rejoin
-					no_giveup_rejoin	= info[argpos++]->BooleanValue();
+					no_giveup_rejoin	= Nan::To<bool>(info[argpos++]).FromJust();
 
 					if(argpos < info.Length() && info[argpos]->IsFunction()){
 						// 4'th argument is callback
@@ -1050,7 +1050,7 @@ NAN_METHOD(K2hdkcNode::Init)
 				}
 			}else if(argpos < info.Length() && info[argpos]->IsBoolean()){
 				// 2'nd argument is no giveup rejoin
-				no_giveup_rejoin		= info[argpos++]->BooleanValue();
+				no_giveup_rejoin		= Nan::To<bool>(info[argpos++]).FromJust();
 
 				if(argpos < info.Length() && info[argpos]->IsFunction()){
 					// 3'rd argument is callback
@@ -1236,7 +1236,7 @@ NAN_METHOD(K2hdkcNode::GetValue)
 
 		if(argpos < info.Length() && info[argpos]->IsBoolean()){
 			// target 3'rd parameter is attrchk
-			attrchk			= info[argpos++]->BooleanValue();
+			attrchk			= Nan::To<bool>(info[argpos++]).FromJust();
 
 			if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
 				// target 4'th parameter is pass
@@ -1282,7 +1282,7 @@ NAN_METHOD(K2hdkcNode::GetValue)
 
 	}else if(argpos < info.Length() && info[argpos]->IsBoolean()){
 		// target 2'nd parameter is attrchk
-		attrchk				= info[argpos++]->BooleanValue();
+		attrchk				= Nan::To<bool>(info[argpos++]).FromJust();
 
 		if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
 			// target 3'rd parameter is pass
@@ -1465,7 +1465,7 @@ NAN_METHOD(K2hdkcNode::GetSubkeys)
 	// other arguments for target
 	if(argpos < info.Length() && info[argpos]->IsBoolean()){
 		// target 2'nd parameter is attrchk
-		attrchk				= info[argpos++]->BooleanValue();
+		attrchk				= Nan::To<bool>(info[argpos++]).FromJust();
 
 		if(argpos < info.Length() && info[argpos]->IsFunction()){
 			// target 3'rd parameter is callback
@@ -1772,8 +1772,8 @@ NAN_METHOD(K2hdkcNode::SetValue)
 
 			if(argpos < info.Length() && info[argpos]->IsInt32()){
 				// target 4'th parameter is expire
-				int	nexpire	= info[argpos++]->Int32Value();
-				expire		= static_cast<time_t>(nexpire);
+				int32_t	nexpire	= Nan::To<int32_t>(info[argpos++]).FromJust();
+				expire			= static_cast<time_t>(nexpire);
 
 				if(argpos < info.Length() && info[argpos]->IsFunction()){
 					// target 5'th parameter is callback
@@ -1785,7 +1785,7 @@ NAN_METHOD(K2hdkcNode::SetValue)
 			}
 		}else if(argpos < info.Length() && info[argpos]->IsInt32()){
 			// target 3'rd parameter is expire
-			int	nexpire			= info[argpos++]->Int32Value();
+			int32_t	nexpire		= Nan::To<int32_t>(info[argpos++]).FromJust();
 			expire				= static_cast<time_t>(nexpire);
 
 			if(argpos < info.Length() && info[argpos]->IsFunction()){
@@ -1798,7 +1798,7 @@ NAN_METHOD(K2hdkcNode::SetValue)
 		}
 	}else if(argpos < info.Length() && info[argpos]->IsInt32()){
 		// target 2'nd parameter is expire
-		int	nexpire			= info[argpos++]->Int32Value();
+		int32_t	nexpire		= Nan::To<int32_t>(info[argpos++]).FromJust();
 		expire				= static_cast<time_t>(nexpire);
 
 		if(argpos < info.Length() && info[argpos]->IsFunction()){
@@ -2161,8 +2161,8 @@ NAN_METHOD(K2hdkcNode::SetAll)
 
 			if(argpos < info.Length() && info[argpos]->IsInt32()){
 				// target 4'th parameter is expire
-				int	nexpire	= info[argpos++]->Int32Value();
-				expire		= static_cast<time_t>(nexpire);
+				int32_t	nexpire	= Nan::To<int32_t>(info[argpos++]).FromJust();
+				expire			= static_cast<time_t>(nexpire);
 
 				if(argpos < info.Length() && info[argpos]->IsFunction()){
 					// target 5'th parameter is callback
@@ -2176,7 +2176,7 @@ NAN_METHOD(K2hdkcNode::SetAll)
 
 		}else if(argpos < info.Length() && info[argpos]->IsInt32()){
 			// target 3'rd parameter is expire
-			int	nexpire			= info[argpos++]->Int32Value();
+			int32_t	nexpire		= Nan::To<int32_t>(info[argpos++]).FromJust();
 			expire				= static_cast<time_t>(nexpire);
 
 			if(argpos < info.Length() && info[argpos]->IsFunction()){
@@ -2191,7 +2191,7 @@ NAN_METHOD(K2hdkcNode::SetAll)
 
 	}else if(argpos < info.Length() && info[argpos]->IsInt32()){
 		// target 2'nd parameter is expire
-		int	nexpire			= info[argpos++]->Int32Value();
+		int32_t	nexpire		= Nan::To<int32_t>(info[argpos++]).FromJust();
 		expire				= static_cast<time_t>(nexpire);
 
 		if(argpos < info.Length() && info[argpos]->IsFunction()){
@@ -2351,7 +2351,7 @@ NAN_METHOD(K2hdkcNode::Remove)
 	// other arguments for target
 	if(argpos < info.Length() && info[argpos]->IsBoolean()){
 		// target 2'nd parameter is subkey flag
-		is_subkeys				= info[argpos++]->BooleanValue();
+		is_subkeys				= Nan::To<bool>(info[argpos++]).FromJust();
 
 		if(argpos < info.Length() && info[argpos]->IsFunction()){
 			// target 3'rd parameter is callback
@@ -2512,7 +2512,7 @@ NAN_METHOD(K2hdkcNode::Rename)
 
 		if(argpos < info.Length() && info[argpos]->IsBoolean()){
 			// target 4'th parameter is attrchk
-			attrchk				= info[argpos++]->BooleanValue();
+			attrchk				= Nan::To<bool>(info[argpos++]).FromJust();
 
 			if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
 				// target 5'th parameter is pass
@@ -2527,7 +2527,7 @@ NAN_METHOD(K2hdkcNode::Rename)
 
 				if(argpos < info.Length() && info[argpos]->IsInt32()){
 					// target 6'th parameter is expire
-					int	nexpire			= info[argpos++]->Int32Value();
+					int32_t	nexpire		= Nan::To<int32_t>(info[argpos++]).FromJust();
 					expire				= static_cast<time_t>(nexpire);
 
 					if(argpos < info.Length() && info[argpos]->IsFunction()){
@@ -2540,7 +2540,7 @@ NAN_METHOD(K2hdkcNode::Rename)
 				}
 			}else if(argpos < info.Length() && info[argpos]->IsInt32()){
 				// target 5'th parameter is expire
-				int	nexpire			= info[argpos++]->Int32Value();
+				int32_t	nexpire		= Nan::To<int32_t>(info[argpos++]).FromJust();
 				expire				= static_cast<time_t>(nexpire);
 
 				if(argpos < info.Length() && info[argpos]->IsFunction()){
@@ -2564,7 +2564,7 @@ NAN_METHOD(K2hdkcNode::Rename)
 
 			if(argpos < info.Length() && info[argpos]->IsInt32()){
 				// target 5'th parameter is expire
-				int	nexpire			= info[argpos++]->Int32Value();
+				int32_t	nexpire		= Nan::To<int32_t>(info[argpos++]).FromJust();
 				expire				= static_cast<time_t>(nexpire);
 
 				if(argpos < info.Length() && info[argpos]->IsFunction()){
@@ -2577,7 +2577,7 @@ NAN_METHOD(K2hdkcNode::Rename)
 			}
 		}else if(argpos < info.Length() && info[argpos]->IsInt32()){
 			// target 4'th parameter is expire
-			int	nexpire			= info[argpos++]->Int32Value();
+			int32_t	nexpire		= Nan::To<int32_t>(info[argpos++]).FromJust();
 			expire				= static_cast<time_t>(nexpire);
 
 			if(argpos < info.Length() && info[argpos]->IsFunction()){
@@ -2590,7 +2590,7 @@ NAN_METHOD(K2hdkcNode::Rename)
 		}
 	}else if(argpos < info.Length() && info[argpos]->IsBoolean()){
 		// target 3'rd parameter is attrchk
-		attrchk			= info[argpos++]->BooleanValue();
+		attrchk			= Nan::To<bool>(info[argpos++]).FromJust();
 
 		if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
 			// target 4'th parameter is pass
@@ -2605,7 +2605,7 @@ NAN_METHOD(K2hdkcNode::Rename)
 
 			if(argpos < info.Length() && info[argpos]->IsInt32()){
 				// target 5'th parameter is expire
-				int	nexpire			= info[argpos++]->Int32Value();
+				int32_t	nexpire		= Nan::To<int32_t>(info[argpos++]).FromJust();
 				expire				= static_cast<time_t>(nexpire);
 
 				if(argpos < info.Length() && info[argpos]->IsFunction()){
@@ -2618,7 +2618,7 @@ NAN_METHOD(K2hdkcNode::Rename)
 			}
 		}else if(argpos < info.Length() && info[argpos]->IsInt32()){
 			// target 4'th parameter is expire
-			int	nexpire			= info[argpos++]->Int32Value();
+			int32_t	nexpire		= Nan::To<int32_t>(info[argpos++]).FromJust();
 			expire				= static_cast<time_t>(nexpire);
 
 			if(argpos < info.Length() && info[argpos]->IsFunction()){
@@ -2631,7 +2631,7 @@ NAN_METHOD(K2hdkcNode::Rename)
 		}
 	}else if(argpos < info.Length() && info[argpos]->IsInt32()){
 		// target 3'rd parameter is expire
-		int	nexpire			= info[argpos++]->Int32Value();
+		int32_t	nexpire		= Nan::To<int32_t>(info[argpos++]).FromJust();
 		expire				= static_cast<time_t>(nexpire);
 
 		if(argpos < info.Length() && info[argpos]->IsFunction()){
@@ -2809,11 +2809,11 @@ NAN_METHOD(K2hdkcNode::QueuePush)
 	// other arguments for target
 	if(argpos < info.Length() && info[argpos]->IsBoolean()){
 		// 3'rd argument is fifo/lifo mode
-		is_fifo					= info[argpos++]->BooleanValue();
+		is_fifo					= Nan::To<bool>(info[argpos++]).FromJust();
 
 		if(argpos < info.Length() && info[argpos]->IsBoolean()){
 			// 4'th argument is attrchk
-			attrchk				= info[argpos++]->BooleanValue();
+			attrchk				= Nan::To<bool>(info[argpos++]).FromJust();
 
 			if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
 				// 5'th argument is pass
@@ -2828,8 +2828,8 @@ NAN_METHOD(K2hdkcNode::QueuePush)
 
 				if(argpos < info.Length() && info[argpos]->IsInt32()){
 					// 6'th argument is expire
-					int	nexpire	= info[argpos++]->Int32Value();
-					expire		= static_cast<time_t>(nexpire);
+					int32_t	nexpire	= Nan::To<int32_t>(info[argpos++]).FromJust();
+					expire			= static_cast<time_t>(nexpire);
 
 					if(argpos < info.Length() && info[argpos]->IsFunction()){
 						// 7'th argument is callback
@@ -2841,8 +2841,8 @@ NAN_METHOD(K2hdkcNode::QueuePush)
 				}
 			}else if(argpos < info.Length() && info[argpos]->IsInt32()){
 				// 5'th argument is expire
-				int	nexpire	= info[argpos++]->Int32Value();
-				expire		= static_cast<time_t>(nexpire);
+				int32_t	nexpire	= Nan::To<int32_t>(info[argpos++]).FromJust();
+				expire			= static_cast<time_t>(nexpire);
 
 				if(argpos < info.Length() && info[argpos]->IsFunction()){
 					// 6'th argument is callback
@@ -2865,8 +2865,8 @@ NAN_METHOD(K2hdkcNode::QueuePush)
 
 			if(argpos < info.Length() && info[argpos]->IsInt32()){
 				// 5'th argument is expire
-				int	nexpire	= info[argpos++]->Int32Value();
-				expire		= static_cast<time_t>(nexpire);
+				int32_t	nexpire	= Nan::To<int32_t>(info[argpos++]).FromJust();
+				expire			= static_cast<time_t>(nexpire);
 
 				if(argpos < info.Length() && info[argpos]->IsFunction()){
 					// 6'th argument is callback
@@ -2878,8 +2878,8 @@ NAN_METHOD(K2hdkcNode::QueuePush)
 			}
 		}else if(argpos < info.Length() && info[argpos]->IsInt32()){
 			// 4'th argument is expire
-			int	nexpire	= info[argpos++]->Int32Value();
-			expire		= static_cast<time_t>(nexpire);
+			int32_t	nexpire	= Nan::To<int32_t>(info[argpos++]).FromJust();
+			expire			= static_cast<time_t>(nexpire);
 
 			if(argpos < info.Length() && info[argpos]->IsFunction()){
 				// 5'th argument is callback
@@ -2892,7 +2892,7 @@ NAN_METHOD(K2hdkcNode::QueuePush)
 
 	}else if(argpos < info.Length() && info[argpos]->IsBoolean()){
 		// 3'rd argument is attrchk
-		attrchk				= info[argpos++]->BooleanValue();
+		attrchk				= Nan::To<bool>(info[argpos++]).FromJust();
 
 		if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
 			// 4'th argument is pass
@@ -2907,8 +2907,8 @@ NAN_METHOD(K2hdkcNode::QueuePush)
 
 			if(argpos < info.Length() && info[argpos]->IsInt32()){
 				// 5'th argument is expire
-				int	nexpire	= info[argpos++]->Int32Value();
-				expire		= static_cast<time_t>(nexpire);
+				int32_t	nexpire	= Nan::To<int32_t>(info[argpos++]).FromJust();
+				expire			= static_cast<time_t>(nexpire);
 
 				if(argpos < info.Length() && info[argpos]->IsFunction()){
 					// 6'th argument is callback
@@ -2920,8 +2920,8 @@ NAN_METHOD(K2hdkcNode::QueuePush)
 			}
 		}else if(argpos < info.Length() && info[argpos]->IsInt32()){
 			// 4'th argument is expire
-			int	nexpire	= info[argpos++]->Int32Value();
-			expire		= static_cast<time_t>(nexpire);
+			int32_t	nexpire	= Nan::To<int32_t>(info[argpos++]).FromJust();
+			expire			= static_cast<time_t>(nexpire);
 
 			if(argpos < info.Length() && info[argpos]->IsFunction()){
 				// 5'th argument is callback
@@ -2944,8 +2944,8 @@ NAN_METHOD(K2hdkcNode::QueuePush)
 
 		if(argpos < info.Length() && info[argpos]->IsInt32()){
 			// 4'th argument is expire
-			int	nexpire	= info[argpos++]->Int32Value();
-			expire		= static_cast<time_t>(nexpire);
+			int32_t	nexpire	= Nan::To<int32_t>(info[argpos++]).FromJust();
+			expire			= static_cast<time_t>(nexpire);
 
 			if(argpos < info.Length() && info[argpos]->IsFunction()){
 				// 5'th argument is callback
@@ -2957,8 +2957,8 @@ NAN_METHOD(K2hdkcNode::QueuePush)
 		}
 	}else if(argpos < info.Length() && info[argpos]->IsInt32()){
 		// 3'rd argument is expire
-		int	nexpire	= info[argpos++]->Int32Value();
-		expire		= static_cast<time_t>(nexpire);
+		int32_t	nexpire	= Nan::To<int32_t>(info[argpos++]).FromJust();
+		expire			= static_cast<time_t>(nexpire);
 
 		if(argpos < info.Length() && info[argpos]->IsFunction()){
 			// 4'th argument is callback
@@ -3094,11 +3094,11 @@ NAN_METHOD(K2hdkcNode::QueuePop)
 	// other arguments for target
 	if(argpos < info.Length() && info[argpos]->IsBoolean()){
 		// 2'nd argument is fifo/lifo mode
-		is_fifo					= info[argpos++]->BooleanValue();
+		is_fifo					= Nan::To<bool>(info[argpos++]).FromJust();
 
 		if(argpos < info.Length() && info[argpos]->IsBoolean()){
 			// 3'rd argument is queue/keyqueue type
-			is_key_queue		= info[argpos++]->BooleanValue();
+			is_key_queue		= Nan::To<bool>(info[argpos++]).FromJust();
 
 			if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
 				// 4'th argument is pass
@@ -3314,15 +3314,15 @@ NAN_METHOD(K2hdkcNode::QueueRemove)
 	// other arguments for target
 	if(argpos < info.Length() && info[argpos]->IsInt32()){
 		// 2'nd argument is count
-		count					= info[argpos++]->Int32Value();
+		count					= Nan::To<int64_t>(info[argpos++]).FromJust();
 
 		if(argpos < info.Length() && info[argpos]->IsBoolean()){
 			// 3'rd argument is fifo/lifo mode
-			is_fifo				= info[argpos++]->BooleanValue();
+			is_fifo				= Nan::To<bool>(info[argpos++]).FromJust();
 
 			if(argpos < info.Length() && info[argpos]->IsBoolean()){
 				// 4'th argument is queue/keyqueue type
-				is_key_queue	= info[argpos++]->BooleanValue();
+				is_key_queue	= Nan::To<bool>(info[argpos++]).FromJust();
 
 				if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
 					// 5'th argument is pass
@@ -3383,11 +3383,11 @@ NAN_METHOD(K2hdkcNode::QueueRemove)
 		}
 	}else if(argpos < info.Length() && info[argpos]->IsBoolean()){
 		// 2'nd argument is fifo/lifo mode
-		is_fifo					= info[argpos++]->BooleanValue();
+		is_fifo					= Nan::To<bool>(info[argpos++]).FromJust();
 
 		if(argpos < info.Length() && info[argpos]->IsBoolean()){
 			// 3'rd argument is queue/keyqueue type
-			is_key_queue		= info[argpos++]->BooleanValue();
+			is_key_queue		= Nan::To<bool>(info[argpos++]).FromJust();
 
 			if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
 				// 4'th argument is pass
@@ -3570,7 +3570,7 @@ NAN_METHOD(K2hdkcNode::CasInit)
 	// other arguments for target
 	if(argpos < info.Length() && info[argpos]->IsUint32()){
 		// 2'nd argument is value
-		value			= info[argpos++]->Uint32Value();
+		value			= Nan::To<uint32_t>(info[argpos++]).FromJust();
 
 		if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
 			// 3'rd argument is pass
@@ -3585,8 +3585,8 @@ NAN_METHOD(K2hdkcNode::CasInit)
 
 			if(argpos < info.Length() && info[argpos]->IsInt32()){
 				// 4'th argument is expire
-				int	nexpire	= info[argpos++]->Int32Value();
-				expire		= static_cast<time_t>(nexpire);
+				int32_t	nexpire	= Nan::To<int32_t>(info[argpos++]).FromJust();
+				expire			= static_cast<time_t>(nexpire);
 
 				if(argpos < info.Length() && info[argpos]->IsFunction()){
 					// 5'th argument is callback
@@ -3600,7 +3600,7 @@ NAN_METHOD(K2hdkcNode::CasInit)
 
 		}else if(argpos < info.Length() && info[argpos]->IsInt32()){
 			// 3'rd argument is expire
-			int	nexpire			= info[argpos++]->Int32Value();
+			int32_t	nexpire		= Nan::To<int32_t>(info[argpos++]).FromJust();
 			expire				= static_cast<time_t>(nexpire);
 
 			if(argpos < info.Length() && info[argpos]->IsFunction()){
@@ -3625,8 +3625,8 @@ NAN_METHOD(K2hdkcNode::CasInit)
 
 		if(argpos < info.Length() && info[argpos]->IsInt32()){
 			// 3'rd argument is expire
-			int	nexpire	= info[argpos++]->Int32Value();
-			expire		= static_cast<time_t>(nexpire);
+			int32_t	nexpire	= Nan::To<int32_t>(info[argpos++]).FromJust();
+			expire			= static_cast<time_t>(nexpire);
 
 			if(argpos < info.Length() && info[argpos]->IsFunction()){
 				// 4'th argument is callback
@@ -3894,14 +3894,14 @@ NAN_METHOD(K2hdkcNode::CasSet)
 		Nan::ThrowSyntaxError("The old value must be uint");
 		return;
 	}else{
-		oldval				= info[argpos++]->Uint32Value();
+		oldval				= Nan::To<uint32_t>(info[argpos++]).FromJust();
 	}
 	// new value argument
 	if(!info[argpos]->IsUint32()){
 		Nan::ThrowSyntaxError("The new value must be uint");
 		return;
 	}else{
-		newval				= info[argpos++]->Uint32Value();
+		newval				= Nan::To<uint32_t>(info[argpos++]).FromJust();
 	}
 
 	// other arguments for target
@@ -3918,7 +3918,7 @@ NAN_METHOD(K2hdkcNode::CasSet)
 
 		if(argpos < info.Length() && info[argpos]->IsInt32()){
 			// 5'th argument is expire
-			int	nexpire		= info[argpos++]->Int32Value();
+			int32_t	nexpire	= Nan::To<int32_t>(info[argpos++]).FromJust();
 			expire			= static_cast<time_t>(nexpire);
 
 			if(argpos < info.Length() && info[argpos]->IsFunction()){
@@ -3933,7 +3933,7 @@ NAN_METHOD(K2hdkcNode::CasSet)
 
 	}else if(argpos < info.Length() && info[argpos]->IsInt32()){
 		// 4'th argument is expire
-		int	nexpire			= info[argpos++]->Int32Value();
+		int32_t	nexpire		= Nan::To<int32_t>(info[argpos++]).FromJust();
 		expire				= static_cast<time_t>(nexpire);
 
 		if(argpos < info.Length() && info[argpos]->IsFunction()){
@@ -4061,7 +4061,7 @@ NAN_METHOD(K2hdkcNode::CasIncDec)
 	// other arguments for target
 	if(argpos < info.Length() && info[argpos]->IsBoolean()){
 		// 2'nd argument is increment/decrement mode
-		is_increment		= info[argpos++]->BooleanValue();
+		is_increment		= Nan::To<bool>(info[argpos++]).FromJust();
 
 		if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
 			// 3'rd argument is pass
@@ -4076,7 +4076,7 @@ NAN_METHOD(K2hdkcNode::CasIncDec)
 
 			if(argpos < info.Length() && info[argpos]->IsInt32()){
 				// 4'th argument is expire
-				int	nexpire		= info[argpos++]->Int32Value();
+				int32_t	nexpire	= Nan::To<int32_t>(info[argpos++]).FromJust();
 				expire			= static_cast<time_t>(nexpire);
 
 				if(argpos < info.Length() && info[argpos]->IsFunction()){
@@ -4089,7 +4089,7 @@ NAN_METHOD(K2hdkcNode::CasIncDec)
 			}
 		}else if(argpos < info.Length() && info[argpos]->IsInt32()){
 			// 3'rd argument is expire
-			int	nexpire			= info[argpos++]->Int32Value();
+			int32_t	nexpire		= Nan::To<int32_t>(info[argpos++]).FromJust();
 			expire				= static_cast<time_t>(nexpire);
 
 			if(argpos < info.Length() && info[argpos]->IsFunction()){
@@ -4113,7 +4113,7 @@ NAN_METHOD(K2hdkcNode::CasIncDec)
 
 		if(argpos < info.Length() && info[argpos]->IsInt32()){
 			// 3'rd argument is expire
-			int	nexpire		= info[argpos++]->Int32Value();
+			int32_t	nexpire	= Nan::To<int32_t>(info[argpos++]).FromJust();
 			expire			= static_cast<time_t>(nexpire);
 
 			if(argpos < info.Length() && info[argpos]->IsFunction()){
@@ -4126,7 +4126,7 @@ NAN_METHOD(K2hdkcNode::CasIncDec)
 		}
 	}else if(argpos < info.Length() && info[argpos]->IsInt32()){
 		// 2'nd argument is expire
-		int	nexpire			= info[argpos++]->Int32Value();
+		int32_t	nexpire		= Nan::To<int32_t>(info[argpos++]).FromJust();
 		expire				= static_cast<time_t>(nexpire);
 
 		if(argpos < info.Length() && info[argpos]->IsFunction()){
@@ -4184,7 +4184,7 @@ NAN_METHOD(K2hdkcNode::CasIncDec)
 
 NAN_METHOD(K2hdkcNode::PrintVersion)
 {
-	int			fd	= (0 < info.Length() && info[0]->IsInt32()) ? info[0]->Int32Value() : -1;
+	int			fd	= (0 < info.Length() && info[0]->IsInt32()) ? Nan::To<int32_t>(info[0]).FromJust() : -1;
 	FILE*		fp	= (-1 == fd ? stdout : fdopen(fd, "a"));
 	if(!fp){
 		Nan::ThrowError("could not open output stream.");

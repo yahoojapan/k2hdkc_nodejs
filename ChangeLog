@@ -1,3 +1,9 @@
+k2hdkc (0.9.7) unstable; urgency=low
+
+  * Support nodejs 12 and discard nodejs 6
+
+ -- Takeshi Nakatani <ggtakec@gmail.com>  Thu, 10 Oct 2019 17:44:26 +0900
+
 k2hdkc (0.9.6) unstable; urgency=low
 
   * Added k2hdkc nodejs addon overview image to README.md - #5

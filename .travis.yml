@@ -28,11 +28,6 @@ env:
   matrix:
     - OS=ubuntu 
       TAG=18.04 
-      NODE_MAJOR_VERSION=6
-      PUBLISHER=false
-      INSTPKG="k2hdkc-dev"
-    - OS=ubuntu 
-      TAG=18.04 
       NODE_MAJOR_VERSION=8
       PUBLISHER=false
       INSTPKG="k2hdkc-dev"
@@ -41,6 +36,11 @@ env:
       NODE_MAJOR_VERSION=10
       PUBLISHER=true
       INSTPKG="k2hdkc-dev"
+    - OS=ubuntu 
+      TAG=18.04 
+      NODE_MAJOR_VERSION=12
+      PUBLISHER=false
+      INSTPKG="k2hdkc-dev"
 
 cache: apt
 
@@ -48,7 +48,6 @@ services:
   - docker
 
 before_install:
-  - sudo apt-get update -qq
   - echo 'DOCKER_OPTS="-H tcp://127.0.0.1:2375 -H unix:///var/run/docker.sock -s devicemapper"' | sudo tee /etc/default/docker > /dev/null
   - sudo service docker restart
   - sleep 5
