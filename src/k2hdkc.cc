@@ -30,7 +30,7 @@ NAN_METHOD(CreateObject)
 void InitAll(Local<Object> exports, Local<Object> module)
 {
 	K2hdkcNode::Init();
-	module->Set(Nan::New("exports").ToLocalChecked(), Nan::New<FunctionTemplate>(CreateObject)->GetFunction()); 
+	Nan::SetMethod(module, "exports", CreateObject);
 }
 
 NODE_MODULE(k2hdkc , InitAll)
