@@ -108,35 +108,36 @@ inline const char* GetNormalizationEmitter(const char* emitter)
 				Nan::Utf8String	buf(info[argpos++]); \
 				conf							= std::string(*buf); \
 				if(argpos < info.Length()){ \
-					if(info[argpos]->IsString()){ \
-						Nan::Utf8String	buf(info[argpos++]); \
-						cuk						= std::string(*buf); \
-						if(argpos < info.Length() && info[argpos]->IsNumber()){ \
-							ctlport					= static_cast<int16_t>(Nan::To<int32_t>(info[argpos++]).FromJust()); \
+					if(info[argpos]->IsNumber()){ \
+						ctlport				= static_cast<int16_t>(Nan::To<int32_t>(info[argpos++]).FromJust()); \
+						if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){ \
+							Nan::Utf8String	buf(info[argpos++]); \
+							cuk						= std::string(*buf); \
 							if(argpos < info.Length() && info[argpos]->IsBoolean()){ \
-								auto_rejoin			= Nan::To<bool>(info[argpos++]).FromJust(); \
+								auto_rejoin		= Nan::To<bool>(info[argpos++]).FromJust(); \
 								if(argpos < info.Length() && info[argpos]->IsBoolean()){ \
 									no_giveup_rejoin= Nan::To<bool>(info[argpos++]).FromJust(); \
 								} \
 							} \
 						}else if(argpos < info.Length() && info[argpos]->IsBoolean()){ \
-							auto_rejoin				= Nan::To<bool>(info[argpos++]).FromJust(); \
-							if(argpos < info.Length() && info[argpos]->IsBoolean()){ \
-								no_giveup_rejoin	= Nan::To<bool>(info[argpos++]).FromJust(); \
-							} \
-						} \
-					}else if(info[argpos]->IsNumber()){ \
-						ctlport					= static_cast<int16_t>(Nan::To<int32_t>(info[argpos++]).FromJust()); \
-						if(argpos < info.Length() && info[argpos]->IsBoolean()){ \
 							auto_rejoin			= Nan::To<bool>(info[argpos++]).FromJust(); \
 							if(argpos < info.Length() && info[argpos]->IsBoolean()){ \
 								no_giveup_rejoin= Nan::To<bool>(info[argpos++]).FromJust(); \
 							} \
 						} \
-					}else if(info[argpos]->IsBoolean()){ \
-						auto_rejoin				= Nan::To<bool>(info[argpos++]).FromJust(); \
+					}else if(info[argpos]->IsString() || info[argpos]->IsNull()){ \
+						Nan::Utf8String	buf(info[argpos++]); \
+						cuk						= std::string(*buf); \
 						if(argpos < info.Length() && info[argpos]->IsBoolean()){ \
-							no_giveup_rejoin	= Nan::To<bool>(info[argpos++]).FromJust(); \
+							auto_rejoin		= Nan::To<bool>(info[argpos++]).FromJust(); \
+							if(argpos < info.Length() && info[argpos]->IsBoolean()){ \
+								no_giveup_rejoin= Nan::To<bool>(info[argpos++]).FromJust(); \
+							} \
+						} \
+					}else if(argpos < info.Length() && info[argpos]->IsBoolean()){ \
+						auto_rejoin			= Nan::To<bool>(info[argpos++]).FromJust(); \
+						if(argpos < info.Length() && info[argpos]->IsBoolean()){ \
+							no_giveup_rejoin= Nan::To<bool>(info[argpos++]).FromJust(); \
 						} \
 					} \
 				} \
@@ -295,7 +296,7 @@ NAN_METHOD(K2hdkcNode::New)
 				if(argpos < info.Length() && info[argpos]->IsNumber()){
 					// 2'nd argument is port
 					ctlport					= static_cast<int16_t>(Nan::To<int32_t>(info[argpos++]).FromJust());
-					if(argpos < info.Length() && info[argpos]->IsString()){
+					if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
 						// 3'rd argument is cuk
 						Nan::Utf8String	buf(info[argpos++]);
 						cuk				= std::string(*buf);
@@ -322,7 +323,7 @@ NAN_METHOD(K2hdkcNode::New)
 						no_giveup_rejoin	= Nan::To<bool>(info[argpos++]).FromJust();
 					}
 
-				}else if(argpos < info.Length() && info[argpos]->IsString()){
+				}else if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
 					// 2'nd argument is cuk
 					Nan::Utf8String	buf(info[argpos++]);
 					cuk				= std::string(*buf);
@@ -1057,7 +1058,7 @@ NAN_METHOD(K2hdkcNode::Init)
 				// 2'nd argument is port
 				ctlport					= static_cast<int16_t>(Nan::To<int32_t>(info[argpos++]).FromJust());
 
-				if(argpos < info.Length() && info[argpos]->IsString()){
+				if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
 					// 3'rd argument is cuk
 					Nan::Utf8String	buf(info[argpos++]);
 					cuk					= std::string(*buf);
@@ -1091,6 +1092,39 @@ NAN_METHOD(K2hdkcNode::Init)
 					}
 
 				}else if(argpos < info.Length() && info[argpos]->IsBoolean()){
+					// 3'rd argument is auto rejoin
+					auto_rejoin			= Nan::To<bool>(info[argpos++]).FromJust();
+
+					if(argpos < info.Length() && info[argpos]->IsBoolean()){
+						// 4'th argument is no giveup rejoin
+						no_giveup_rejoin= Nan::To<bool>(info[argpos++]).FromJust();
+
+						if(argpos < info.Length() && info[argpos]->IsFunction()){
+							// 5'th argument is callback
+							callback	= new Nan::Callback(info[argpos++].As<v8::Function>());
+						}
+					}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+						// 4'th argument is callback
+						callback		= new Nan::Callback(info[argpos++].As<v8::Function>());
+					}
+				}else if(argpos < info.Length() && info[argpos]->IsBoolean()){
+					// 3'rd argument is no giveup rejoin
+					no_giveup_rejoin	= Nan::To<bool>(info[argpos++]).FromJust();
+
+					if(argpos < info.Length() && info[argpos]->IsFunction()){
+						// 4'th argument is callback
+						callback		= new Nan::Callback(info[argpos++].As<v8::Function>());
+					}
+				}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+					// 3'rd argument is callback
+					callback			= new Nan::Callback(info[argpos++].As<v8::Function>());
+				}
+
+			}else if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
+				// 2'nd argument is cuk
+				Nan::Utf8String	buf(info[argpos++]);
+				cuk					= std::string(*buf);
+				if(argpos < info.Length() && info[argpos]->IsBoolean()){
 					// 3'rd argument is auto rejoin
 					auto_rejoin			= Nan::To<bool>(info[argpos++]).FromJust();
 
