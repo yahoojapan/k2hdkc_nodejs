@@ -83,6 +83,7 @@ inline const char* GetNormalizationEmitter(const char* emitter)
 // info Arguments are following:
 //	String	conf				configuration(must)
 //	int		port				control port number for chmpx(optional, default CHM_INVALID_PORT)
+//	String	cuk					configuration(optional, default empty)
 //	bool	auto_rejoin			automatic rejoin flag value(optional, default false)
 //	bool	no_giveup_rejoin	never giveup rejoin flag value(optional, default false)
 //
@@ -91,6 +92,7 @@ inline const char* GetNormalizationEmitter(const char* emitter)
 #define	ParseArgumentsForOnetime(argpos) \
 		string	conf; \
 		int16_t	ctlport			= CHM_INVALID_PORT; \
+		string	cuk; \
 		bool	auto_rejoin		= false; \
 		bool	no_giveup_rejoin= false; \
 		{ \
@@ -106,7 +108,24 @@ inline const char* GetNormalizationEmitter(const char* emitter)
 				Nan::Utf8String	buf(info[argpos++]); \
 				conf							= std::string(*buf); \
 				if(argpos < info.Length()){ \
-					if(info[argpos]->IsNumber()){ \
+					if(info[argpos]->IsString()){ \
+						Nan::Utf8String	buf(info[argpos++]); \
+						cuk						= std::string(*buf); \
+						if(argpos < info.Length() && info[argpos]->IsNumber()){ \
+							ctlport					= static_cast<int16_t>(Nan::To<int32_t>(info[argpos++]).FromJust()); \
+							if(argpos < info.Length() && info[argpos]->IsBoolean()){ \
+								auto_rejoin			= Nan::To<bool>(info[argpos++]).FromJust(); \
+								if(argpos < info.Length() && info[argpos]->IsBoolean()){ \
+									no_giveup_rejoin= Nan::To<bool>(info[argpos++]).FromJust(); \
+								} \
+							} \
+						}else if(argpos < info.Length() && info[argpos]->IsBoolean()){ \
+							auto_rejoin				= Nan::To<bool>(info[argpos++]).FromJust(); \
+							if(argpos < info.Length() && info[argpos]->IsBoolean()){ \
+								no_giveup_rejoin	= Nan::To<bool>(info[argpos++]).FromJust(); \
+							} \
+						} \
+					}else if(info[argpos]->IsNumber()){ \
 						ctlport					= static_cast<int16_t>(Nan::To<int32_t>(info[argpos++]).FromJust()); \
 						if(argpos < info.Length() && info[argpos]->IsBoolean()){ \
 							auto_rejoin			= Nan::To<bool>(info[argpos++]).FromJust(); \
@@ -263,6 +282,7 @@ NAN_METHOD(K2hdkcNode::New)
 			int				argpos			= 0;
 			std::string		conf("");
 			int16_t			ctlport			= CHM_INVALID_PORT;
+			std::string		cuk("");
 			bool			auto_rejoin		= false;
 			bool			no_giveup_rejoin= false;
 
@@ -275,6 +295,37 @@ NAN_METHOD(K2hdkcNode::New)
 				if(argpos < info.Length() && info[argpos]->IsNumber()){
 					// 2'nd argument is port
 					ctlport					= static_cast<int16_t>(Nan::To<int32_t>(info[argpos++]).FromJust());
+					if(argpos < info.Length() && info[argpos]->IsString()){
+						// 3'rd argument is cuk
+						Nan::Utf8String	buf(info[argpos++]);
+						cuk				= std::string(*buf);
+						if(argpos < info.Length() && info[argpos]->IsBoolean()){
+							// 4'th argument is auto rejoin
+							auto_rejoin			= Nan::To<bool>(info[argpos++]).FromJust();
+							if(argpos < info.Length() && info[argpos]->IsBoolean()){
+								// 5'th argument is no giveup rejoin
+								no_giveup_rejoin= Nan::To<bool>(info[argpos++]).FromJust();
+							}
+						}else if(argpos < info.Length() && info[argpos]->IsBoolean()){
+							// 4'th argument is no giveup rejoin
+							no_giveup_rejoin	= Nan::To<bool>(info[argpos++]).FromJust();
+						}
+					}else if(argpos < info.Length() && info[argpos]->IsBoolean()){
+						// 3'rd argument is auto rejoin
+						auto_rejoin			= Nan::To<bool>(info[argpos++]).FromJust();
+						if(argpos < info.Length() && info[argpos]->IsBoolean()){
+							// 4'th argument is no giveup rejoin
+							no_giveup_rejoin= Nan::To<bool>(info[argpos++]).FromJust();
+						}
+					}else if(argpos < info.Length() && info[argpos]->IsBoolean()){
+						// 3'rd argument is no giveup rejoin
+						no_giveup_rejoin	= Nan::To<bool>(info[argpos++]).FromJust();
+					}
+
+				}else if(argpos < info.Length() && info[argpos]->IsString()){
+					// 2'nd argument is cuk
+					Nan::Utf8String	buf(info[argpos++]);
+					cuk				= std::string(*buf);
 					if(argpos < info.Length() && info[argpos]->IsBoolean()){
 						// 3'rd argument is auto rejoin
 						auto_rejoin			= Nan::To<bool>(info[argpos++]).FromJust();
@@ -286,6 +337,7 @@ NAN_METHOD(K2hdkcNode::New)
 						// 3'rd argument is no giveup rejoin
 						no_giveup_rejoin	= Nan::To<bool>(info[argpos++]).FromJust();
 					}
+
 				}else if(argpos < info.Length() && info[argpos]->IsBoolean()){
 					// 2'nd argument is auto rejoin
 					auto_rejoin				= Nan::To<bool>(info[argpos++]).FromJust();
@@ -304,7 +356,7 @@ NAN_METHOD(K2hdkcNode::New)
 				}else{
 					// build permanent connection object
 					obj->_k2hdkcslave = new K2hdkcSlave();
-					if(!obj->_k2hdkcslave->Initialize(conf.c_str(), ctlport, auto_rejoin)){
+					if(!obj->_k2hdkcslave->Initialize(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin)){
 						obj->Clean();
 						Nan::ThrowError("Could not initialize k2hdkc slave object");
 					}else{
@@ -957,6 +1009,7 @@ NAN_METHOD(K2hdkcNode::OffCasIncDec)
  *
  * @param[in] conf				If permanent connection mode, specify configuration
  * @param[in] port				If permanent connection mode, specify control port number for chmpx(optional)
+ * @param[in] cuk				If permanent connection mode, specify cuk for chmpx(optional)
  * @param[in] auto_rejoin		If permanent connection mode, specify automatic rejoin flag value(optional)
  * @param[in] no_giveup_rejoin	If permanent connection mode, specify never giveup for rejoin flag value(optional)
  * @param[in] cbfunc			callback function.
@@ -981,7 +1034,7 @@ NAN_METHOD(K2hdkcNode::Init)
 			// If callback is set, it calls worker. But it returns error,
 			// because no configuration is specified.
 			//
-			Nan::AsyncQueueWorker(new InitWorker(callback, obj->_k2hdkcslave, NULL, 0, false, false));
+			Nan::AsyncQueueWorker(new InitWorker(callback, obj->_k2hdkcslave, NULL, 0, NULL, false, false));
 		}
 		// onetime connection type : nothing to do
 		info.GetReturnValue().Set(Nan::True());
@@ -991,6 +1044,7 @@ NAN_METHOD(K2hdkcNode::Init)
 		int				argpos			= 0;
 		std::string		conf("");
 		int16_t			ctlport			= CHM_INVALID_PORT;
+		std::string		cuk("");
 		bool			auto_rejoin		= false;
 		bool			no_giveup_rejoin= false;
 
@@ -1003,7 +1057,40 @@ NAN_METHOD(K2hdkcNode::Init)
 				// 2'nd argument is port
 				ctlport					= static_cast<int16_t>(Nan::To<int32_t>(info[argpos++]).FromJust());
 
-				if(argpos < info.Length() && info[argpos]->IsBoolean()){
+				if(argpos < info.Length() && info[argpos]->IsString()){
+					// 3'rd argument is cuk
+					Nan::Utf8String	buf(info[argpos++]);
+					cuk					= std::string(*buf);
+					if(argpos < info.Length() && info[argpos]->IsBoolean()){
+						// 4'th argument is auto rejoin
+						auto_rejoin			= Nan::To<bool>(info[argpos++]).FromJust();
+
+						if(argpos < info.Length() && info[argpos]->IsBoolean()){
+							// 5'th argument is no giveup rejoin
+							no_giveup_rejoin= Nan::To<bool>(info[argpos++]).FromJust();
+
+							if(argpos < info.Length() && info[argpos]->IsFunction()){
+								// 6'th argument is callback
+								callback	= new Nan::Callback(info[argpos++].As<v8::Function>());
+							}
+						}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+							// 5'th argument is callback
+							callback		= new Nan::Callback(info[argpos++].As<v8::Function>());
+						}
+					}else if(argpos < info.Length() && info[argpos]->IsBoolean()){
+						// 4'th argument is no giveup rejoin
+						no_giveup_rejoin	= Nan::To<bool>(info[argpos++]).FromJust();
+
+						if(argpos < info.Length() && info[argpos]->IsFunction()){
+							// 5'th argument is callback
+							callback		= new Nan::Callback(info[argpos++].As<v8::Function>());
+						}
+					}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+						// 4'th argument is callback
+						callback			= new Nan::Callback(info[argpos++].As<v8::Function>());
+					}
+
+				}else if(argpos < info.Length() && info[argpos]->IsBoolean()){
 					// 3'rd argument is auto rejoin
 					auto_rejoin			= Nan::To<bool>(info[argpos++]).FromJust();
 
@@ -1074,10 +1161,10 @@ NAN_METHOD(K2hdkcNode::Init)
 		// work
 		obj->_k2hdkcslave	= new K2hdkcSlave();
 		if(callback){
-			Nan::AsyncQueueWorker(new InitWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin));
+			Nan::AsyncQueueWorker(new InitWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, cuk.c_str(), auto_rejoin, no_giveup_rejoin));
 		}else{
 			// build permanent connection object
-			if(!obj->_k2hdkcslave->Initialize(conf.c_str(), ctlport, auto_rejoin)){
+			if(!obj->_k2hdkcslave->Initialize(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin)){
 				obj->Clean();
 				info.GetReturnValue().Set(Nan::False());
 				return;
@@ -1159,6 +1246,7 @@ NAN_METHOD(K2hdkcNode::IsPermanent)
  *
  * @param[in] conf				specify configuration for onetime connection
  * @param[in] port				specify control port number for chmpx for onetime connection(optional)
+ * @param[in] cuk				specify cuk for chmpx for onetime connection(optional)
  * @param[in] auto_rejoin		specify automatic rejoin flag value for onetime connection(optional)
  * @param[in] no_giveup_rejoin	specify never giveup for rejoin flag value for onetime connection(optional)
  * @param[in] key				Specify the key name.
@@ -1318,7 +1406,7 @@ NAN_METHOD(K2hdkcNode::GetValue)
 
 	// work
 	if(callback){
-		Nan::AsyncQueueWorker(new GetValueWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin, strkey.c_str(), (is_subkey_set ? strsubkey.c_str() : NULL), attrchk, (is_pass_set ? strpass.c_str() : NULL)));
+		Nan::AsyncQueueWorker(new GetValueWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, cuk.c_str(), auto_rejoin, no_giveup_rejoin, strkey.c_str(), (is_subkey_set ? strsubkey.c_str() : NULL), attrchk, (is_pass_set ? strpass.c_str() : NULL)));
 		info.GetReturnValue().Set(Nan::True());
 	}else{
 		dkcres_type_t	rescode = DKC_NORESTYPE;
@@ -1326,7 +1414,7 @@ NAN_METHOD(K2hdkcNode::GetValue)
 			// subkey is specified, thus need to check the key has it.
 			K2hdkcComGetSubkeys*	pSubComObj;
 			if(!obj->_k2hdkcslave){
-				pSubComObj = GetOtSlaveK2hdkcComGetSubkeys(conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin);
+				pSubComObj = GetOtSlaveK2hdkcComGetSubkeys(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 			}else{
 				pSubComObj = GetPmSlaveK2hdkcComGetSubkeys(obj->_k2hdkcslave);
 			}
@@ -1369,7 +1457,7 @@ NAN_METHOD(K2hdkcNode::GetValue)
 		// get value
 		K2hdkcComGet*	pComObj;
 		if(!obj->_k2hdkcslave){
-			pComObj = GetOtSlaveK2hdkcComGet(conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin);
+			pComObj = GetOtSlaveK2hdkcComGet(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 		}else{
 			pComObj = GetPmSlaveK2hdkcComGet(obj->_k2hdkcslave);
 		}
@@ -1409,6 +1497,7 @@ NAN_METHOD(K2hdkcNode::GetValue)
  *
  * @param[in] conf				specify configuration for onetime connection
  * @param[in] port				specify control port number for chmpx for onetime connection(optional)
+ * @param[in] cuk				specify cuk for chmpx for onetime connection(optional)
  * @param[in] auto_rejoin		specify automatic rejoin flag value for onetime connection(optional)
  * @param[in] no_giveup_rejoin	specify never giveup for rejoin flag value for onetime connection(optional)
  * @param[in] key				Specify the key name.
@@ -1484,12 +1573,12 @@ NAN_METHOD(K2hdkcNode::GetSubkeys)
 
 	// work
 	if(callback){
-		Nan::AsyncQueueWorker(new GetSubkeysWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin, strkey.c_str(), attrchk));
+		Nan::AsyncQueueWorker(new GetSubkeysWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, cuk.c_str(), auto_rejoin, no_giveup_rejoin, strkey.c_str(), attrchk));
 		info.GetReturnValue().Set(Nan::True());
 	}else{
 		K2hdkcComGetSubkeys*	pComObj;
 		if(!obj->_k2hdkcslave){
-			pComObj = GetOtSlaveK2hdkcComGetSubkeys(conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin);
+			pComObj = GetOtSlaveK2hdkcComGetSubkeys(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 		}else{
 			pComObj = GetPmSlaveK2hdkcComGetSubkeys(obj->_k2hdkcslave);
 		}
@@ -1538,6 +1627,7 @@ NAN_METHOD(K2hdkcNode::GetSubkeys)
  *
  * @param[in] conf				specify configuration for onetime connection
  * @param[in] port				specify control port number for chmpx for onetime connection(optional)
+ * @param[in] cuk				specify cuk for chmpx for onetime connection(optional)
  * @param[in] auto_rejoin		specify automatic rejoin flag value for onetime connection(optional)
  * @param[in] no_giveup_rejoin	specify never giveup for rejoin flag value for onetime connection(optional)
  * @param[in] key				Specify the key name.
@@ -1600,12 +1690,12 @@ NAN_METHOD(K2hdkcNode::GetAttrs)
 
 	// work
 	if(callback){
-		Nan::AsyncQueueWorker(new GetAttrsWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin, strkey.c_str()));
+		Nan::AsyncQueueWorker(new GetAttrsWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, cuk.c_str(), auto_rejoin, no_giveup_rejoin, strkey.c_str()));
 		info.GetReturnValue().Set(Nan::True());
 	}else{
 		K2hdkcComGetAttrs*	pComObj;
 		if(!obj->_k2hdkcslave){
-			pComObj = GetOtSlaveK2hdkcComGetAttrs(conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin);
+			pComObj = GetOtSlaveK2hdkcComGetAttrs(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 		}else{
 			pComObj = GetPmSlaveK2hdkcComGetAttrs(obj->_k2hdkcslave);
 		}
@@ -1664,6 +1754,7 @@ NAN_METHOD(K2hdkcNode::GetAttrs)
  *
  * @param[in] conf				specify configuration for onetime connection
  * @param[in] port				specify control port number for chmpx for onetime connection(optional)
+ * @param[in] cuk				specify cuk for chmpx for onetime connection(optional)
  * @param[in] auto_rejoin		specify automatic rejoin flag value for onetime connection(optional)
  * @param[in] no_giveup_rejoin	specify never giveup for rejoin flag value for onetime connection(optional)
  * @param[in] key				Specify the key name
@@ -1818,7 +1909,7 @@ NAN_METHOD(K2hdkcNode::SetValue)
 
 	// work
 	if(callback){
-		Nan::AsyncQueueWorker(new SetValueWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin, strkey.c_str(), (is_val_set ? strval.c_str() : NULL), (is_subkey_set ? strsubkey.c_str() : NULL), (is_pass_set ? strpass.c_str() : NULL), (expire > 0 ? &expire : NULL)));
+		Nan::AsyncQueueWorker(new SetValueWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, cuk.c_str(), auto_rejoin, no_giveup_rejoin, strkey.c_str(), (is_val_set ? strval.c_str() : NULL), (is_subkey_set ? strsubkey.c_str() : NULL), (is_pass_set ? strpass.c_str() : NULL), (expire > 0 ? &expire : NULL)));
 		info.GetReturnValue().Set(Nan::True());
 	}else{
 		dkcres_type_t	rescode = DKC_NORESTYPE;
@@ -1827,7 +1918,7 @@ NAN_METHOD(K2hdkcNode::SetValue)
 			// subkey is specified, set value into subkey
 			K2hdkcComAddSubkey*	pComObj;
 			if(!obj->_k2hdkcslave){
-				pComObj = GetOtSlaveK2hdkcComAddSubkey(conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin);
+				pComObj = GetOtSlaveK2hdkcComAddSubkey(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 			}else{
 				pComObj = GetPmSlaveK2hdkcComAddSubkey(obj->_k2hdkcslave);
 			}
@@ -1841,7 +1932,7 @@ NAN_METHOD(K2hdkcNode::SetValue)
 			// set value to key
 			K2hdkcComSet*	pComObj;
 			if(!obj->_k2hdkcslave){
-				pComObj = GetOtSlaveK2hdkcComSet(conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin);
+				pComObj = GetOtSlaveK2hdkcComSet(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 			}else{
 				pComObj = GetPmSlaveK2hdkcComSet(obj->_k2hdkcslave);
 			}
@@ -1875,6 +1966,7 @@ NAN_METHOD(K2hdkcNode::SetValue)
  *
  * @param[in] conf				specify configuration for onetime connection
  * @param[in] port				specify control port number for chmpx for onetime connection(optional)
+ * @param[in] cuk				specify cuk for chmpx for onetime connection(optional)
  * @param[in] auto_rejoin		specify automatic rejoin flag value for onetime connection(optional)
  * @param[in] no_giveup_rejoin	specify never giveup for rejoin flag value for onetime connection(optional)
  * @param[in] key				Specify the key name
@@ -1979,12 +2071,12 @@ NAN_METHOD(K2hdkcNode::SetSubkeys)
 
 	// work
 	if(callback){
-		Nan::AsyncQueueWorker(new SetSubkeysWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin, strkey.c_str(), bysubkeys, skeylen));
+		Nan::AsyncQueueWorker(new SetSubkeysWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, cuk.c_str(), auto_rejoin, no_giveup_rejoin, strkey.c_str(), bysubkeys, skeylen));
 		info.GetReturnValue().Set(Nan::True());
 	}else{
 		K2hdkcComSetSubkeys*	pComObj;
 		if(!obj->_k2hdkcslave){
-			pComObj = GetOtSlaveK2hdkcComSetSubkeys(conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin);
+			pComObj = GetOtSlaveK2hdkcComSetSubkeys(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 		}else{
 			pComObj = GetPmSlaveK2hdkcComSetSubkeys(obj->_k2hdkcslave);
 		}
@@ -2034,6 +2126,7 @@ NAN_METHOD(K2hdkcNode::SetSubkeys)
  *
  * @param[in] conf				specify configuration for onetime connection
  * @param[in] port				specify control port number for chmpx for onetime connection(optional)
+ * @param[in] cuk				specify cuk for chmpx for onetime connection(optional)
  * @param[in] auto_rejoin		specify automatic rejoin flag value for onetime connection(optional)
  * @param[in] no_giveup_rejoin	specify never giveup for rejoin flag value for onetime connection(optional)
  * @param[in] key				Specify the key name
@@ -2212,7 +2305,7 @@ NAN_METHOD(K2hdkcNode::SetAll)
 
 	// work
 	if(callback){
-		Nan::AsyncQueueWorker(new SetAllWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin, strkey.c_str(), (is_val_set ? strval.c_str() : NULL), bysubkeys, skeylen, (is_pass_set ? strpass.c_str() : NULL), (expire > 0 ? &expire : NULL)));
+		Nan::AsyncQueueWorker(new SetAllWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, cuk.c_str(), auto_rejoin, no_giveup_rejoin, strkey.c_str(), (is_val_set ? strval.c_str() : NULL), bysubkeys, skeylen, (is_pass_set ? strpass.c_str() : NULL), (expire > 0 ? &expire : NULL)));
 		info.GetReturnValue().Set(Nan::True());
 	}else{
 		bool			result	= false;
@@ -2221,7 +2314,7 @@ NAN_METHOD(K2hdkcNode::SetAll)
 			// set value with passphrase and expire, then the operation is separated.
 			K2hdkcComSet*	pComObj;
 			if(!obj->_k2hdkcslave){
-				pComObj = GetOtSlaveK2hdkcComSet(conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin);
+				pComObj = GetOtSlaveK2hdkcComSet(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 			}else{
 				pComObj = GetPmSlaveK2hdkcComSet(obj->_k2hdkcslave);
 			}
@@ -2239,7 +2332,7 @@ NAN_METHOD(K2hdkcNode::SetAll)
 
 				K2hdkcComSetSubkeys*	pSubComObj;
 				if(!obj->_k2hdkcslave){
-					pSubComObj = GetOtSlaveK2hdkcComSetSubkeys(conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin);
+					pSubComObj = GetOtSlaveK2hdkcComSetSubkeys(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 				}else{
 					pSubComObj = GetPmSlaveK2hdkcComSetSubkeys(obj->_k2hdkcslave);
 				}
@@ -2257,7 +2350,7 @@ NAN_METHOD(K2hdkcNode::SetAll)
 			// no passphrase and no expire, then one action
 			K2hdkcComSetAll*	pComObj;
 			if(!obj->_k2hdkcslave){
-				pComObj = GetOtSlaveK2hdkcComSetAll(conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin);
+				pComObj = GetOtSlaveK2hdkcComSetAll(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 			}else{
 				pComObj = GetPmSlaveK2hdkcComSetAll(obj->_k2hdkcslave);
 			}
@@ -2293,6 +2386,7 @@ NAN_METHOD(K2hdkcNode::SetAll)
  *
  * @param[in] conf				specify configuration for onetime connection
  * @param[in] port				specify control port number for chmpx for onetime connection(optional)
+ * @param[in] cuk				specify cuk for chmpx for onetime connection(optional)
  * @param[in] auto_rejoin		specify automatic rejoin flag value for onetime connection(optional)
  * @param[in] no_giveup_rejoin	specify never giveup for rejoin flag value for onetime connection(optional)
  * @param[in] key				Specify the key name
@@ -2370,12 +2464,12 @@ NAN_METHOD(K2hdkcNode::Remove)
 
 	// work
 	if(callback){
-		Nan::AsyncQueueWorker(new RemoveWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin, strkey.c_str(), is_subkeys));
+		Nan::AsyncQueueWorker(new RemoveWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, cuk.c_str(), auto_rejoin, no_giveup_rejoin, strkey.c_str(), is_subkeys));
 		info.GetReturnValue().Set(Nan::True());
 	}else{
 		K2hdkcComDel*	pComObj;
 		if(!obj->_k2hdkcslave){
-			pComObj = GetOtSlaveK2hdkcComDel(conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin);
+			pComObj = GetOtSlaveK2hdkcComDel(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 		}else{
 			pComObj = GetPmSlaveK2hdkcComDel(obj->_k2hdkcslave);
 		}
@@ -2417,6 +2511,7 @@ NAN_METHOD(K2hdkcNode::Remove)
  *
  * @param[in] conf				specify configuration for onetime connection
  * @param[in] port				specify control port number for chmpx for onetime connection(optional)
+ * @param[in] cuk				specify cuk for chmpx for onetime connection(optional)
  * @param[in] auto_rejoin		specify automatic rejoin flag value for onetime connection(optional)
  * @param[in] no_giveup_rejoin	specify never giveup for rejoin flag value for onetime connection(optional)
  * @param[in] oldkey			Specify the source(old) key name
@@ -2651,12 +2746,12 @@ NAN_METHOD(K2hdkcNode::Rename)
 
 	// work
 	if(callback){
-		Nan::AsyncQueueWorker(new RenameWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin, strold.c_str(), strnew.c_str(), (is_parent_set ? strparent.c_str() : NULL), attrchk, (is_pass_set ? strpass.c_str() : NULL), (expire > 0 ? &expire : NULL)));
+		Nan::AsyncQueueWorker(new RenameWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, cuk.c_str(), auto_rejoin, no_giveup_rejoin, strold.c_str(), strnew.c_str(), (is_parent_set ? strparent.c_str() : NULL), attrchk, (is_pass_set ? strpass.c_str() : NULL), (expire > 0 ? &expire : NULL)));
 		info.GetReturnValue().Set(Nan::True());
 	}else{
 		K2hdkcComRen*	pComObj;
 		if(!obj->_k2hdkcslave){
-			pComObj = GetOtSlaveK2hdkcComRen(conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin);
+			pComObj = GetOtSlaveK2hdkcComRen(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 		}else{
 			pComObj = GetPmSlaveK2hdkcComRen(obj->_k2hdkcslave);
 		}
@@ -2698,6 +2793,7 @@ NAN_METHOD(K2hdkcNode::Rename)
  *
  * @param[in] conf				specify configuration for onetime connection
  * @param[in] port				specify control port number for chmpx for onetime connection(optional)
+ * @param[in] cuk				specify cuk for chmpx for onetime connection(optional)
  * @param[in] auto_rejoin		specify automatic rejoin flag value for onetime connection(optional)
  * @param[in] no_giveup_rejoin	specify never giveup for rejoin flag value for onetime connection(optional)
  * @param[in] prefix			Specify prefix name for queue
@@ -2977,12 +3073,12 @@ NAN_METHOD(K2hdkcNode::QueuePush)
 
 	// work
 	if(callback){
-		Nan::AsyncQueueWorker(new QueuePushWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin, strprefix.c_str(), (is_key_set ? strkey.c_str() : NULL), strval.c_str(),  is_fifo, attrchk, (is_pass_set ? strpass.c_str() : NULL), (expire > 0 ? &expire : NULL)));
+		Nan::AsyncQueueWorker(new QueuePushWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, cuk.c_str(), auto_rejoin, no_giveup_rejoin, strprefix.c_str(), (is_key_set ? strkey.c_str() : NULL), strval.c_str(),  is_fifo, attrchk, (is_pass_set ? strpass.c_str() : NULL), (expire > 0 ? &expire : NULL)));
 		info.GetReturnValue().Set(Nan::True());
 	}else{
 		K2hdkcComQPush*	pComObj;
 		if(!obj->_k2hdkcslave){
-			pComObj = GetOtSlaveK2hdkcComQPush(conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin);
+			pComObj = GetOtSlaveK2hdkcComQPush(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 		}else{
 			pComObj = GetPmSlaveK2hdkcComQPush(obj->_k2hdkcslave);
 		}
@@ -3026,6 +3122,7 @@ NAN_METHOD(K2hdkcNode::QueuePush)
  *
  * @param[in] conf				specify configuration for onetime connection
  * @param[in] port				specify control port number for chmpx for onetime connection(optional)
+ * @param[in] cuk				specify cuk for chmpx for onetime connection(optional)
  * @param[in] auto_rejoin		specify automatic rejoin flag value for onetime connection(optional)
  * @param[in] no_giveup_rejoin	specify never giveup for rejoin flag value for onetime connection(optional)
  * @param[in] prefix			Specify prefix name for queue
@@ -3166,12 +3263,12 @@ NAN_METHOD(K2hdkcNode::QueuePop)
 
 	// work
 	if(callback){
-		Nan::AsyncQueueWorker(new QueuePopWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin, strprefix.c_str(), is_fifo, is_key_queue, (is_pass_set ? strpass.c_str() : NULL)));
+		Nan::AsyncQueueWorker(new QueuePopWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, cuk.c_str(), auto_rejoin, no_giveup_rejoin, strprefix.c_str(), is_fifo, is_key_queue, (is_pass_set ? strpass.c_str() : NULL)));
 		info.GetReturnValue().Set(Nan::True());
 	}else{
 		K2hdkcComQPop*	pComObj;
 		if(!obj->_k2hdkcslave){
-			pComObj = GetOtSlaveK2hdkcComQPop(conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin);
+			pComObj = GetOtSlaveK2hdkcComQPop(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 		}else{
 			pComObj = GetPmSlaveK2hdkcComQPop(obj->_k2hdkcslave);
 		}
@@ -3244,6 +3341,7 @@ NAN_METHOD(K2hdkcNode::QueuePop)
  *
  * @param[in] conf				specify configuration for onetime connection
  * @param[in] port				specify control port number for chmpx for onetime connection(optional)
+ * @param[in] cuk				specify cuk for chmpx for onetime connection(optional)
  * @param[in] auto_rejoin		specify automatic rejoin flag value for onetime connection(optional)
  * @param[in] no_giveup_rejoin	specify never giveup for rejoin flag value for onetime connection(optional)
  * @param[in] prefix			Specify prefix name for queue
@@ -3455,12 +3553,12 @@ NAN_METHOD(K2hdkcNode::QueueRemove)
 
 	// work
 	if(callback){
-		Nan::AsyncQueueWorker(new QueueRemoveWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin, strprefix.c_str(), count, is_fifo, is_key_queue, (is_pass_set ? strpass.c_str() : NULL)));
+		Nan::AsyncQueueWorker(new QueueRemoveWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, cuk.c_str(), auto_rejoin, no_giveup_rejoin, strprefix.c_str(), count, is_fifo, is_key_queue, (is_pass_set ? strpass.c_str() : NULL)));
 		info.GetReturnValue().Set(Nan::True());
 	}else{
 		K2hdkcComQDel*	pComObj;
 		if(!obj->_k2hdkcslave){
-			pComObj = GetOtSlaveK2hdkcComQDel(conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin);
+			pComObj = GetOtSlaveK2hdkcComQDel(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 		}else{
 			pComObj = GetPmSlaveK2hdkcComQDel(obj->_k2hdkcslave);
 		}
@@ -3504,6 +3602,7 @@ NAN_METHOD(K2hdkcNode::QueueRemove)
  *
  * @param[in] conf				specify configuration for onetime connection
  * @param[in] port				specify control port number for chmpx for onetime connection(optional)
+ * @param[in] cuk				specify cuk for chmpx for onetime connection(optional)
  * @param[in] auto_rejoin		specify automatic rejoin flag value for onetime connection(optional)
  * @param[in] no_giveup_rejoin	specify never giveup for rejoin flag value for onetime connection(optional)
  * @param[in] key				Specify the key name
@@ -3651,12 +3750,12 @@ NAN_METHOD(K2hdkcNode::CasInit)
 
 	// work
 	if(callback){
-		Nan::AsyncQueueWorker(new CasInitWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin, strkey.c_str(), value, (is_pass_set ? strpass.c_str() : NULL), (expire > 0 ? &expire : NULL)));
+		Nan::AsyncQueueWorker(new CasInitWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, cuk.c_str(), auto_rejoin, no_giveup_rejoin, strkey.c_str(), value, (is_pass_set ? strpass.c_str() : NULL), (expire > 0 ? &expire : NULL)));
 		info.GetReturnValue().Set(Nan::True());
 	}else{
 		K2hdkcComCasInit*	pComObj;
 		if(!obj->_k2hdkcslave){
-			pComObj = GetOtSlaveK2hdkcComCasInit(conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin);
+			pComObj = GetOtSlaveK2hdkcComCasInit(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 		}else{
 			pComObj = GetPmSlaveK2hdkcComCasInit(obj->_k2hdkcslave);
 		}
@@ -3689,6 +3788,7 @@ NAN_METHOD(K2hdkcNode::CasInit)
  *
  * @param[in] conf				specify configuration for onetime connection
  * @param[in] port				specify control port number for chmpx for onetime connection(optional)
+ * @param[in] cuk				specify cuk for chmpx for onetime connection(optional)
  * @param[in] auto_rejoin		specify automatic rejoin flag value for onetime connection(optional)
  * @param[in] no_giveup_rejoin	specify never giveup for rejoin flag value for onetime connection(optional)
  * @param[in] key				Specify the key name
@@ -3773,12 +3873,12 @@ NAN_METHOD(K2hdkcNode::CasGet)
 
 	// work
 	if(callback){
-		Nan::AsyncQueueWorker(new CasGetWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin, strkey.c_str(), (is_pass_set ? strpass.c_str() : NULL)));
+		Nan::AsyncQueueWorker(new CasGetWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, cuk.c_str(), auto_rejoin, no_giveup_rejoin, strkey.c_str(), (is_pass_set ? strpass.c_str() : NULL)));
 		info.GetReturnValue().Set(Nan::True());
 	}else{
 		K2hdkcComCasGet*	pComObj;
 		if(!obj->_k2hdkcslave){
-			pComObj = GetOtSlaveK2hdkcComCasGet(conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin);
+			pComObj = GetOtSlaveK2hdkcComCasGet(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 		}else{
 			pComObj = GetPmSlaveK2hdkcComCasGet(obj->_k2hdkcslave);
 		}
@@ -3823,6 +3923,7 @@ NAN_METHOD(K2hdkcNode::CasGet)
  *
  * @param[in] conf				specify configuration for onetime connection
  * @param[in] port				specify control port number for chmpx for onetime connection(optional)
+ * @param[in] cuk				specify cuk for chmpx for onetime connection(optional)
  * @param[in] auto_rejoin		specify automatic rejoin flag value for onetime connection(optional)
  * @param[in] no_giveup_rejoin	specify never giveup for rejoin flag value for onetime connection(optional)
  * @param[in] key				Specify the key name
@@ -3954,12 +4055,12 @@ NAN_METHOD(K2hdkcNode::CasSet)
 
 	// work
 	if(callback){
-		Nan::AsyncQueueWorker(new CasSetWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin, strkey.c_str(), oldval, newval, (is_pass_set ? strpass.c_str() : NULL), (expire > 0 ? &expire : NULL)));
+		Nan::AsyncQueueWorker(new CasSetWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, cuk.c_str(), auto_rejoin, no_giveup_rejoin, strkey.c_str(), oldval, newval, (is_pass_set ? strpass.c_str() : NULL), (expire > 0 ? &expire : NULL)));
 		info.GetReturnValue().Set(Nan::True());
 	}else{
 		K2hdkcComCasSet*	pComObj;
 		if(!obj->_k2hdkcslave){
-			pComObj = GetOtSlaveK2hdkcComCasSet(conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin);
+			pComObj = GetOtSlaveK2hdkcComCasSet(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 		}else{
 			pComObj = GetPmSlaveK2hdkcComCasSet(obj->_k2hdkcslave);
 		}
@@ -3995,6 +4096,7 @@ NAN_METHOD(K2hdkcNode::CasSet)
  *
  * @param[in] conf				specify configuration for onetime connection
  * @param[in] port				specify control port number for chmpx for onetime connection(optional)
+ * @param[in] cuk				specify cuk for chmpx for onetime connection(optional)
  * @param[in] auto_rejoin		specify automatic rejoin flag value for onetime connection(optional)
  * @param[in] no_giveup_rejoin	specify never giveup for rejoin flag value for onetime connection(optional)
  * @param[in] key				Specify the key name
@@ -4146,12 +4248,12 @@ NAN_METHOD(K2hdkcNode::CasIncDec)
 
 	// work
 	if(callback){
-		Nan::AsyncQueueWorker(new CasIncDecWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin, strkey.c_str(), is_increment, (is_pass_set ? strpass.c_str() : NULL), (expire > 0 ? &expire : NULL)));
+		Nan::AsyncQueueWorker(new CasIncDecWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, cuk.c_str(), auto_rejoin, no_giveup_rejoin, strkey.c_str(), is_increment, (is_pass_set ? strpass.c_str() : NULL), (expire > 0 ? &expire : NULL)));
 		info.GetReturnValue().Set(Nan::True());
 	}else{
 		K2hdkcComCasIncDec*	pComObj;
 		if(!obj->_k2hdkcslave){
-			pComObj = GetOtSlaveK2hdkcComCasIncDec(conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin);
+			pComObj = GetOtSlaveK2hdkcComCasIncDec(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 		}else{
 			pComObj = GetPmSlaveK2hdkcComCasIncDec(obj->_k2hdkcslave);
 		}
