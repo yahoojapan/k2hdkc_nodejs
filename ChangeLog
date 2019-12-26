@@ -1,3 +1,9 @@
+k2hdkc (0.9.9) unstable; urgency=low
+
+  * Fixed a bug in k2hdkc_node.cc - #11
+
+ -- Takeshi Nakatani <ggtakec@gmail.com>  Thu, 26 Dec 2019 16:00:23 +0900
+
 k2hdkc (0.9.8) unstable; urgency=low
 
   * updated dependency and codes for k2hdkc/chmpx update - #9
