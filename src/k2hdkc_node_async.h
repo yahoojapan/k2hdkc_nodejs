@@ -34,9 +34,9 @@
 class InitWorker : public Nan::AsyncWorker
 {
 	public:
-		InitWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin) :
+		InitWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, const char* inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin) :
 			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin)
+			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), cuk(inputcuk ? inputcuk : ""), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin)
 		{}
 		~InitWorker() {}
 
@@ -52,7 +52,7 @@ class InitWorker : public Nan::AsyncWorker
 			}
 
 			// build permanent connection object
-			if(pslaveobj->Initialize(conf.c_str(), ctlport, auto_rejoin)){
+			if(pslaveobj->Initialize(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin)){
 				if(!pslaveobj->Open(no_giveup_rejoin)){
 					// set error
 					this->SetErrorMessage("Failed to open(join to) chmpx slave.");
@@ -97,6 +97,7 @@ class InitWorker : public Nan::AsyncWorker
 		bool			is_set_conf;
 		std::string		conf;
 		int16_t			ctlport;
+		std::string		cuk;
 		bool			auto_rejoin;
 		bool			no_giveup_rejoin;
 };
@@ -111,9 +112,9 @@ class InitWorker : public Nan::AsyncWorker
 class GetValueWorker : public Nan::AsyncWorker
 {
 	public:
-		GetValueWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, const char* psubkey, bool is_check_attr, const char* ppass) :
+		GetValueWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, const char* inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, const char* psubkey, bool is_check_attr, const char* ppass) :
 			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
+			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), cuk(inputcuk ? inputcuk : ""), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
 			is_key_set(NULL != pkey), strkey(pkey ? pkey : ""), is_subkey_set(NULL != psubkey), strsubkey(psubkey ? psubkey : ""), attrchk(is_check_attr), is_pass_set(NULL != ppass), strpass(ppass ? ppass : ""), is_result_set(false), strresult("")
 		{}
 		~GetValueWorker() {}
@@ -136,7 +137,7 @@ class GetValueWorker : public Nan::AsyncWorker
 				// subkey is specified, thus need to check the key has it.
 				K2hdkcComGetSubkeys*	pSubComObj;
 				if(!pslaveobj){
-					pSubComObj = GetOtSlaveK2hdkcComGetSubkeys(conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin);
+					pSubComObj = GetOtSlaveK2hdkcComGetSubkeys(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 				}else{
 					pSubComObj = GetPmSlaveK2hdkcComGetSubkeys(pslaveobj);
 				}
@@ -179,7 +180,7 @@ class GetValueWorker : public Nan::AsyncWorker
 			// get value
 			K2hdkcComGet*	pComObj;
 			if(!pslaveobj){
-				pComObj = GetOtSlaveK2hdkcComGet(conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin);
+				pComObj = GetOtSlaveK2hdkcComGet(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 			}else{
 				pComObj = GetPmSlaveK2hdkcComGet(pslaveobj);
 			}
@@ -238,6 +239,7 @@ class GetValueWorker : public Nan::AsyncWorker
 		bool			is_set_conf;
 		std::string		conf;
 		int16_t			ctlport;
+		std::string		cuk;
 		bool			auto_rejoin;
 		bool			no_giveup_rejoin;
 
@@ -263,9 +265,9 @@ class GetValueWorker : public Nan::AsyncWorker
 class GetSubkeysWorker : public Nan::AsyncWorker
 {
 	public:
-		GetSubkeysWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, bool is_check_attr) :
+		GetSubkeysWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, const char* inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, bool is_check_attr) :
 			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin), is_key_set(NULL != pkey), strkey(pkey ? pkey : ""), attrchk(is_check_attr)
+			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), cuk(inputcuk ? inputcuk : ""), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin), is_key_set(NULL != pkey), strkey(pkey ? pkey : ""), attrchk(is_check_attr)
 		{}
 		~GetSubkeysWorker() {}
 
@@ -284,7 +286,7 @@ class GetSubkeysWorker : public Nan::AsyncWorker
 			// get command object
 			K2hdkcComGetSubkeys*	pComObj;
 			if(!pslaveobj){
-				pComObj = GetOtSlaveK2hdkcComGetSubkeys(conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin);
+				pComObj = GetOtSlaveK2hdkcComGetSubkeys(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 			}else{
 				pComObj = GetPmSlaveK2hdkcComGetSubkeys(pslaveobj);
 			}
@@ -351,6 +353,7 @@ class GetSubkeysWorker : public Nan::AsyncWorker
 		bool			is_set_conf;
 		std::string		conf;
 		int16_t			ctlport;
+		std::string		cuk;
 		bool			auto_rejoin;
 		bool			no_giveup_rejoin;
 		bool			is_key_set;
@@ -371,9 +374,9 @@ class GetSubkeysWorker : public Nan::AsyncWorker
 class GetAttrsWorker : public Nan::AsyncWorker
 {
 	public:
-		GetAttrsWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey) :
+		GetAttrsWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, const char* inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey) :
 			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin), is_key_set(NULL != pkey), strkey(pkey ? pkey : "")
+			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), cuk(inputcuk ? inputcuk : ""), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin), is_key_set(NULL != pkey), strkey(pkey ? pkey : "")
 		{}
 		~GetAttrsWorker() {}
 
@@ -392,7 +395,7 @@ class GetAttrsWorker : public Nan::AsyncWorker
 			// get command object
 			K2hdkcComGetAttrs*	pComObj;
 			if(!pslaveobj){
-				pComObj = GetOtSlaveK2hdkcComGetAttrs(conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin);
+				pComObj = GetOtSlaveK2hdkcComGetAttrs(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 			}else{
 				pComObj = GetPmSlaveK2hdkcComGetAttrs(pslaveobj);
 			}
@@ -459,6 +462,7 @@ class GetAttrsWorker : public Nan::AsyncWorker
 		bool			is_set_conf;
 		std::string		conf;
 		int16_t			ctlport;
+		std::string		cuk;
 		bool			auto_rejoin;
 		bool			no_giveup_rejoin;
 		bool			is_key_set;
@@ -478,9 +482,9 @@ class GetAttrsWorker : public Nan::AsyncWorker
 class SetValueWorker : public Nan::AsyncWorker
 {
 	public:
-		SetValueWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, const char* pval, const char* psubkey, const char* ppass, const time_t* pexpire) :
+		SetValueWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, const char* inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, const char* pval, const char* psubkey, const char* ppass, const time_t* pexpire) :
 			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
+			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), cuk(inputcuk ? inputcuk : ""), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
 			is_key_set(NULL != pkey), strkey(pkey ? pkey : ""), is_val_set(NULL != pval), strval(pval ? pval : ""), is_subkey_set(NULL != psubkey), strsubkey(psubkey ? psubkey : ""), is_pass_set(NULL != ppass), strpass(ppass ? ppass : ""), expire(pexpire ? *pexpire : 0)
 		{}
 		~SetValueWorker() {}
@@ -503,7 +507,7 @@ class SetValueWorker : public Nan::AsyncWorker
 				// subkey is specified, set value into subkey
 				K2hdkcComAddSubkey*	pComObj;
 				if(!pslaveobj){
-					pComObj = GetOtSlaveK2hdkcComAddSubkey(conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin);
+					pComObj = GetOtSlaveK2hdkcComAddSubkey(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 				}else{
 					pComObj = GetPmSlaveK2hdkcComAddSubkey(pslaveobj);
 				}
@@ -519,7 +523,7 @@ class SetValueWorker : public Nan::AsyncWorker
 				// set value to key
 				K2hdkcComSet*	pComObj;
 				if(!pslaveobj){
-					pComObj = GetOtSlaveK2hdkcComSet(conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin);
+					pComObj = GetOtSlaveK2hdkcComSet(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 				}else{
 					pComObj = GetPmSlaveK2hdkcComSet(pslaveobj);
 				}
@@ -568,6 +572,7 @@ class SetValueWorker : public Nan::AsyncWorker
 		bool			is_set_conf;
 		std::string		conf;
 		int16_t			ctlport;
+		std::string		cuk;
 		bool			auto_rejoin;
 		bool			no_giveup_rejoin;
 
@@ -592,9 +597,9 @@ class SetValueWorker : public Nan::AsyncWorker
 class SetSubkeysWorker : public Nan::AsyncWorker
 {
 	public:
-		SetSubkeysWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, unsigned char* psubkeys, size_t subkeylength) :
+		SetSubkeysWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, const char* inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, unsigned char* psubkeys, size_t subkeylength) :
 			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
+			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), cuk(inputcuk ? inputcuk : ""), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
 			is_key_set(NULL != pkey), strkey(pkey ? pkey : ""), bysubkeys(NULL), skeylen(0)
 		{
 			if(psubkeys && 0UL < subkeylength){
@@ -623,7 +628,7 @@ class SetSubkeysWorker : public Nan::AsyncWorker
 			// work
 			K2hdkcComSetSubkeys*	pComObj;
 			if(!pslaveobj){
-				pComObj = GetOtSlaveK2hdkcComSetSubkeys(conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin);
+				pComObj = GetOtSlaveK2hdkcComSetSubkeys(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 			}else{
 				pComObj = GetPmSlaveK2hdkcComSetSubkeys(pslaveobj);
 			}
@@ -686,6 +691,7 @@ class SetSubkeysWorker : public Nan::AsyncWorker
 		bool			is_set_conf;
 		std::string		conf;
 		int16_t			ctlport;
+		std::string		cuk;
 		bool			auto_rejoin;
 		bool			no_giveup_rejoin;
 
@@ -705,9 +711,9 @@ class SetSubkeysWorker : public Nan::AsyncWorker
 class SetAllWorker : public Nan::AsyncWorker
 {
 	public:
-		SetAllWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, const char* pval, unsigned char* psubkeys, size_t subkeylength, const char* ppass, const time_t* pexpire) :
+		SetAllWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, const char* inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, const char* pval, unsigned char* psubkeys, size_t subkeylength, const char* ppass, const time_t* pexpire) :
 			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
+			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), cuk(inputcuk ? inputcuk : ""), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
 			is_key_set(NULL != pkey), strkey(pkey ? pkey : ""), is_val_set(NULL != pval), strval(pval ? pval : ""), bysubkeys(NULL), skeylen(0), is_pass_set(NULL != ppass), strpass(ppass ? ppass : ""), expire(pexpire ? *pexpire : 0)
 		{
 			if(psubkeys && 0UL < subkeylength){
@@ -740,7 +746,7 @@ class SetAllWorker : public Nan::AsyncWorker
 				// set value with passphrase and expire, then the operation is separated.
 				K2hdkcComSet*	pComObj;
 				if(!pslaveobj){
-					pComObj = GetOtSlaveK2hdkcComSet(conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin);
+					pComObj = GetOtSlaveK2hdkcComSet(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 				}else{
 					pComObj = GetPmSlaveK2hdkcComSet(pslaveobj);
 				}
@@ -758,7 +764,7 @@ class SetAllWorker : public Nan::AsyncWorker
 
 					K2hdkcComSetSubkeys*	pSubComObj;
 					if(!pslaveobj){
-						pSubComObj = GetOtSlaveK2hdkcComSetSubkeys(conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin);
+						pSubComObj = GetOtSlaveK2hdkcComSetSubkeys(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 					}else{
 						pSubComObj = GetPmSlaveK2hdkcComSetSubkeys(pslaveobj);
 					}
@@ -776,7 +782,7 @@ class SetAllWorker : public Nan::AsyncWorker
 				// no passphrase and no expire, then one action
 				K2hdkcComSetAll*	pComObj;
 				if(!pslaveobj){
-					pComObj = GetOtSlaveK2hdkcComSetAll(conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin);
+					pComObj = GetOtSlaveK2hdkcComSetAll(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 				}else{
 					pComObj = GetPmSlaveK2hdkcComSetAll(pslaveobj);
 				}
@@ -827,6 +833,7 @@ class SetAllWorker : public Nan::AsyncWorker
 		bool			is_set_conf;
 		std::string		conf;
 		int16_t			ctlport;
+		std::string		cuk;
 		bool			auto_rejoin;
 		bool			no_giveup_rejoin;
 
@@ -851,9 +858,9 @@ class SetAllWorker : public Nan::AsyncWorker
 class RemoveWorker : public Nan::AsyncWorker
 {
 	public:
-		RemoveWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, bool is_del_subkeys) :
+		RemoveWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, const char* inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, bool is_del_subkeys) :
 			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
+			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), cuk(inputcuk ? inputcuk : ""), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
 			is_key_set(NULL != pkey), strkey(pkey ? pkey : ""), is_subkeys(is_del_subkeys)
 		{}
 
@@ -874,7 +881,7 @@ class RemoveWorker : public Nan::AsyncWorker
 			// work
 			K2hdkcComDel*	pComObj;
 			if(!pslaveobj){
-				pComObj = GetOtSlaveK2hdkcComDel(conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin);
+				pComObj = GetOtSlaveK2hdkcComDel(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 			}else{
 				pComObj = GetPmSlaveK2hdkcComDel(pslaveobj);
 			}
@@ -925,6 +932,7 @@ class RemoveWorker : public Nan::AsyncWorker
 		bool			is_set_conf;
 		std::string		conf;
 		int16_t			ctlport;
+		std::string		cuk;
 		bool			auto_rejoin;
 		bool			no_giveup_rejoin;
 
@@ -943,9 +951,9 @@ class RemoveWorker : public Nan::AsyncWorker
 class RenameWorker : public Nan::AsyncWorker
 {
 	public:
-		RenameWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* poldkey, const char* pnewkey, const char* pparentkey, bool is_check_attr, const char* ppass, const time_t* pexpire) :
+		RenameWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, const char* inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* poldkey, const char* pnewkey, const char* pparentkey, bool is_check_attr, const char* ppass, const time_t* pexpire) :
 			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
+			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), cuk(inputcuk ? inputcuk : ""), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
 			is_old_set(NULL != poldkey), strold(poldkey ? poldkey : ""), is_new_set(NULL != pnewkey), strnew(pnewkey ? pnewkey : ""), is_parent_set(NULL != pparentkey), strparent(pparentkey ? pparentkey : ""), attrchk(is_check_attr), is_pass_set(NULL != ppass), strpass(ppass ? ppass : ""), expire(pexpire ? *pexpire : 0)
 		{}
 
@@ -966,7 +974,7 @@ class RenameWorker : public Nan::AsyncWorker
 			// work
 			K2hdkcComRen*	pComObj;
 			if(!pslaveobj){
-				pComObj = GetOtSlaveK2hdkcComRen(conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin);
+				pComObj = GetOtSlaveK2hdkcComRen(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 			}else{
 				pComObj = GetPmSlaveK2hdkcComRen(pslaveobj);
 			}
@@ -1017,6 +1025,7 @@ class RenameWorker : public Nan::AsyncWorker
 		bool			is_set_conf;
 		std::string		conf;
 		int16_t			ctlport;
+		std::string		cuk;
 		bool			auto_rejoin;
 		bool			no_giveup_rejoin;
 
@@ -1042,9 +1051,9 @@ class RenameWorker : public Nan::AsyncWorker
 class QueuePushWorker : public Nan::AsyncWorker
 {
 	public:
-		QueuePushWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pprefix, const char* pkey, const char* pval, bool is_fifo_type, bool is_check_attr, const char* ppass, const time_t* pexpire) :
+		QueuePushWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, const char* inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pprefix, const char* pkey, const char* pval, bool is_fifo_type, bool is_check_attr, const char* ppass, const time_t* pexpire) :
 			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
+			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), cuk(inputcuk ? inputcuk : ""), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
 			is_prefix_set(NULL != pprefix), strprefix(pprefix ? pprefix : ""), is_key_set(NULL != pkey), strkey(pkey ? pkey : ""), is_val_set(NULL != pval), strval(pval ? pval : ""), is_fifo(is_fifo_type), attrchk(is_check_attr), is_pass_set(NULL != ppass), strpass(ppass ? ppass : ""), expire(pexpire ? *pexpire : 0)
 		{}
 
@@ -1065,7 +1074,7 @@ class QueuePushWorker : public Nan::AsyncWorker
 			// work
 			K2hdkcComQPush*	pComObj;
 			if(!pslaveobj){
-				pComObj = GetOtSlaveK2hdkcComQPush(conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin);
+				pComObj = GetOtSlaveK2hdkcComQPush(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 			}else{
 				pComObj = GetPmSlaveK2hdkcComQPush(pslaveobj);
 			}
@@ -1123,6 +1132,7 @@ class QueuePushWorker : public Nan::AsyncWorker
 		bool			is_set_conf;
 		std::string		conf;
 		int16_t			ctlport;
+		std::string		cuk;
 		bool			auto_rejoin;
 		bool			no_giveup_rejoin;
 
@@ -1149,9 +1159,9 @@ class QueuePushWorker : public Nan::AsyncWorker
 class QueuePopWorker : public Nan::AsyncWorker
 {
 	public:
-		QueuePopWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pprefix, bool is_fifo_type, bool is_key_queue_type, const char* ppass) :
+		QueuePopWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, const char* inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pprefix, bool is_fifo_type, bool is_key_queue_type, const char* ppass) :
 			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
+			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), cuk(inputcuk ? inputcuk : ""), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
 			is_prefix_set(NULL != pprefix), strprefix(pprefix ? pprefix : ""), is_fifo(is_fifo_type), is_key_queue(is_key_queue_type), is_pass_set(NULL != ppass), strpass(ppass ? ppass : ""),
 			is_res_key_set(false), strreskey(""), is_res_val_set(false), strresval("")
 		{}
@@ -1173,7 +1183,7 @@ class QueuePopWorker : public Nan::AsyncWorker
 			// work
 			K2hdkcComQPop*	pComObj;
 			if(!pslaveobj){
-				pComObj = GetOtSlaveK2hdkcComQPop(conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin);
+				pComObj = GetOtSlaveK2hdkcComQPop(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 			}else{
 				pComObj = GetPmSlaveK2hdkcComQPop(pslaveobj);
 			}
@@ -1267,6 +1277,7 @@ class QueuePopWorker : public Nan::AsyncWorker
 		bool			is_set_conf;
 		std::string		conf;
 		int16_t			ctlport;
+		std::string		cuk;
 		bool			auto_rejoin;
 		bool			no_giveup_rejoin;
 
@@ -1293,9 +1304,9 @@ class QueuePopWorker : public Nan::AsyncWorker
 class QueueRemoveWorker : public Nan::AsyncWorker
 {
 	public:
-		QueueRemoveWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pprefix, int remove_count, bool is_fifo_type, bool is_key_queue_type, const char* ppass) :
+		QueueRemoveWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, const char* inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pprefix, int remove_count, bool is_fifo_type, bool is_key_queue_type, const char* ppass) :
 			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
+			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), cuk(inputcuk ? inputcuk : ""), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
 			is_prefix_set(NULL != pprefix), strprefix(pprefix ? pprefix : ""), count(remove_count), is_fifo(is_fifo_type), is_key_queue(is_key_queue_type), is_pass_set(NULL != ppass), strpass(ppass ? ppass : "")
 		{}
 
@@ -1316,7 +1327,7 @@ class QueueRemoveWorker : public Nan::AsyncWorker
 			// work
 			K2hdkcComQDel*	pComObj;
 			if(!pslaveobj){
-				pComObj = GetOtSlaveK2hdkcComQDel(conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin);
+				pComObj = GetOtSlaveK2hdkcComQDel(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 			}else{
 				pComObj = GetPmSlaveK2hdkcComQDel(pslaveobj);
 			}
@@ -1374,6 +1385,7 @@ class QueueRemoveWorker : public Nan::AsyncWorker
 		bool			is_set_conf;
 		std::string		conf;
 		int16_t			ctlport;
+		std::string		cuk;
 		bool			auto_rejoin;
 		bool			no_giveup_rejoin;
 
@@ -1396,9 +1408,9 @@ class QueueRemoveWorker : public Nan::AsyncWorker
 class CasInitWorker : public Nan::AsyncWorker
 {
 	public:
-		CasInitWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, uint32_t val, const char* ppass, const time_t* pexpire) :
+		CasInitWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, const char* inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, uint32_t val, const char* ppass, const time_t* pexpire) :
 			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
+			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), cuk(inputcuk ? inputcuk : ""), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
 			is_key_set(NULL != pkey), strkey(pkey ? pkey : ""), value(val), is_pass_set(NULL != ppass), strpass(ppass ? ppass : ""), expire(pexpire ? *pexpire : 0)
 		{}
 		~CasInitWorker() {}
@@ -1418,7 +1430,7 @@ class CasInitWorker : public Nan::AsyncWorker
 			// work
 			K2hdkcComCasInit*	pComObj;
 			if(!pslaveobj){
-				pComObj = GetOtSlaveK2hdkcComCasInit(conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin);
+				pComObj = GetOtSlaveK2hdkcComCasInit(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 			}else{
 				pComObj = GetPmSlaveK2hdkcComCasInit(pslaveobj);
 			}
@@ -1468,6 +1480,7 @@ class CasInitWorker : public Nan::AsyncWorker
 		bool			is_set_conf;
 		std::string		conf;
 		int16_t			ctlport;
+		std::string		cuk;
 		bool			auto_rejoin;
 		bool			no_giveup_rejoin;
 
@@ -1489,9 +1502,9 @@ class CasInitWorker : public Nan::AsyncWorker
 class CasGetWorker : public Nan::AsyncWorker
 {
 	public:
-		CasGetWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, const char* ppass) :
+		CasGetWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, const char* inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, const char* ppass) :
 			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
+			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), cuk(inputcuk ? inputcuk : ""), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
 			is_key_set(NULL != pkey), strkey(pkey ? pkey : ""), is_pass_set(NULL != ppass), strpass(ppass ? ppass : ""), resvalue(0)
 		{}
 		~CasGetWorker() {}
@@ -1511,7 +1524,7 @@ class CasGetWorker : public Nan::AsyncWorker
 			// work
 			K2hdkcComCasGet*	pComObj;
 			if(!pslaveobj){
-				pComObj = GetOtSlaveK2hdkcComCasGet(conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin);
+				pComObj = GetOtSlaveK2hdkcComCasGet(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 			}else{
 				pComObj = GetPmSlaveK2hdkcComCasGet(pslaveobj);
 			}
@@ -1565,6 +1578,7 @@ class CasGetWorker : public Nan::AsyncWorker
 		bool			is_set_conf;
 		std::string		conf;
 		int16_t			ctlport;
+		std::string		cuk;
 		bool			auto_rejoin;
 		bool			no_giveup_rejoin;
 
@@ -1586,9 +1600,9 @@ class CasGetWorker : public Nan::AsyncWorker
 class CasSetWorker : public Nan::AsyncWorker
 {
 	public:
-		CasSetWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, uint32_t oldvalue, uint32_t newvalue, const char* ppass, const time_t* pexpire) :
+		CasSetWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, const char* inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, uint32_t oldvalue, uint32_t newvalue, const char* ppass, const time_t* pexpire) :
 			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
+			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), cuk(inputcuk ? inputcuk : ""), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
 			is_key_set(NULL != pkey), strkey(pkey ? pkey : ""), oldval(oldvalue), newval(newvalue), is_pass_set(NULL != ppass), strpass(ppass ? ppass : ""), expire(pexpire ? *pexpire : 0)
 		{}
 		~CasSetWorker() {}
@@ -1608,7 +1622,7 @@ class CasSetWorker : public Nan::AsyncWorker
 			// work
 			K2hdkcComCasSet*	pComObj;
 			if(!pslaveobj){
-				pComObj = GetOtSlaveK2hdkcComCasSet(conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin);
+				pComObj = GetOtSlaveK2hdkcComCasSet(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 			}else{
 				pComObj = GetPmSlaveK2hdkcComCasSet(pslaveobj);
 			}
@@ -1658,6 +1672,7 @@ class CasSetWorker : public Nan::AsyncWorker
 		bool			is_set_conf;
 		std::string		conf;
 		int16_t			ctlport;
+		std::string		cuk;
 		bool			auto_rejoin;
 		bool			no_giveup_rejoin;
 
@@ -1680,9 +1695,9 @@ class CasSetWorker : public Nan::AsyncWorker
 class CasIncDecWorker : public Nan::AsyncWorker
 {
 	public:
-		CasIncDecWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, bool is_increment_type, const char* ppass, const time_t* pexpire) :
+		CasIncDecWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, const char* inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, bool is_increment_type, const char* ppass, const time_t* pexpire) :
 			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
+			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), cuk(inputcuk ? inputcuk : ""), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
 			is_key_set(NULL != pkey), strkey(pkey ? pkey : ""), is_increment(is_increment_type), is_pass_set(NULL != ppass), strpass(ppass ? ppass : ""), expire(pexpire ? *pexpire : 0)
 		{}
 		~CasIncDecWorker() {}
@@ -1702,7 +1717,7 @@ class CasIncDecWorker : public Nan::AsyncWorker
 			// work
 			K2hdkcComCasIncDec*	pComObj;
 			if(!pslaveobj){
-				pComObj = GetOtSlaveK2hdkcComCasIncDec(conf.c_str(), ctlport, auto_rejoin, no_giveup_rejoin);
+				pComObj = GetOtSlaveK2hdkcComCasIncDec(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 			}else{
 				pComObj = GetPmSlaveK2hdkcComCasIncDec(pslaveobj);
 			}
@@ -1756,6 +1771,7 @@ class CasIncDecWorker : public Nan::AsyncWorker
 		bool			is_set_conf;
 		std::string		conf;
 		int16_t			ctlport;
+		std::string		cuk;
 		bool			auto_rejoin;
 		bool			no_giveup_rejoin;
 
