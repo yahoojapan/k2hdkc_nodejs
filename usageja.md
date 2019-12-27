@@ -65,15 +65,15 @@ $ test/run_process_helper.sh stop_all
 ## 3. サンプル
 以下のようなファイルを作成し、ファイル作成、キーと値の書き込み、読み出しができるか確認してみてください。  
 ```
-var k2hdkc = require('k2hdkc');                                 // import k2hdkc nodejs addon library
-var	dkcobj = new k2hdkc('test_slave.ini', 8031, true, false);   // initialize for permanent connecting
+var k2hdkc = require('k2hdkc');                                     // import k2hdkc nodejs addon library
+var	dkcobj = new k2hdkc('test_slave.ini', 8031, null, true, false); // initialize for permanent connecting
 
-dkcobj.setValue('key', 'value', 'subkey', null, 0);             // test for writing
+dkcobj.setValue('key', 'value', 'subkey', null, 0);                 // test for writing
 
-dkcobj.getValue('subkey', null, true, null);                    // test for reading by subkey directly
-dkcobj.getValue('key', 'subkey', true, null);                   // test for reading with key and subkey
+dkcobj.getValue('subkey', null, true, null);                        // test for reading by subkey directly
+dkcobj.getValue('key', 'subkey', true, null);                       // test for reading with key and subkey
 
-dkcobj.clean();                                                 // cleanup
+dkcobj.clean();                                                     // cleanup
 ```
 
 ## 4. ロード・実行

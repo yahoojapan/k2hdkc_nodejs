@@ -71,15 +71,15 @@ For details on these, please check the **run_process_helper.sh** script and conf
 ## 3. Examples
 Please create the following file and check whether file creation, key and value writing and reading are possible.  
 ```
-var k2hdkc = require('k2hdkc');                                 // import k2hdkc nodejs addon library
-var	dkcobj = new k2hdkc('test_slave.ini', 8031, true, false);   // initialize for permanent connecting
+var k2hdkc = require('k2hdkc');                                     // import k2hdkc nodejs addon library
+var	dkcobj = new k2hdkc('test_slave.ini', 8031, null, true, false); // initialize for permanent connecting
 
-dkcobj.setValue('key', 'value', 'subkey', null, 0);             // test for writing
+dkcobj.setValue('key', 'value', 'subkey', null, 0);                 // test for writing
 
-dkcobj.getValue('subkey', null, true, null);                    // test for reading by subkey directly
-dkcobj.getValue('key', 'subkey', true, null);                   // test for reading with key and subkey
+dkcobj.getValue('subkey', null, true, null);                        // test for reading by subkey directly
+dkcobj.getValue('key', 'subkey', true, null);                       // test for reading with key and subkey
 
-dkcobj.clean();                                                 // cleanup
+dkcobj.clean();                                                     // cleanup
 ```
 
 ## 4. Importing and Executing

@@ -84,7 +84,7 @@ You can use this class to connect to [K2HDKC](https://k2hdkc.antpick.ax/) cluste
 A sample to create this class object is shown below.
 - Permanent Connection  
   ```
-  var dkcobj = new require('k2hdkc')('slave.ini', 8031, true, false);
+  var dkcobj = new require('k2hdkc')('slave.ini', 8031, null, true, false);
   ```
 - Onetime Connection  
   ```
@@ -100,6 +100,7 @@ This method initializes the **k2hdkc** object for Permanent Connection or Onetim
 ```
 bool Init(String   conf = null,
           int      port = -1,
+          String   cuk  = null,
           bool     auto_rejoin = false,
           bool     no_giveup_rejoin = false,
           Callback cbfunc = null
@@ -113,6 +114,9 @@ bool Init(String   conf = null,
 - port  
   To initialize for Permanent Connection, specify the setting control port number for CHMPX slave node.  
   To initialize for Onetime Connection, -1 or unspecified.
+- cuk  
+  To initialize for Permanent Connection, specify the setting CUK string for CHMPX slave node.  
+  To initialize for Onetime Connection, null or unspecified.
 - auto_rejoin  
   To initialize for Permanent Connection, specify boolean value.  
   If this value is set to true, if the connection with the CHMPX slave node is disconnected, reconnection is automatically executed.  
@@ -140,7 +144,7 @@ When callback function is specified, **true** value is always returned.
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.clean();
   ```
@@ -158,7 +162,7 @@ When callback function is specified, **true** value is always returned.
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false, function(error){
+  dkcobj.init('slave.ini', 8031, null, true, false, function(error){
       if(null !== error){
           console_log('failed initializing');
       }
@@ -193,7 +197,7 @@ Asynchronous processing can be described by the following two type(four case) im
       dkcobj.clean();
   });
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   ```
 - on('', Callback cbfunc) - Onetime Connection  
   ```
@@ -221,7 +225,7 @@ Asynchronous processing can be described by the following two type(four case) im
       dkcobj.clean();
   });
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   ```
 - onInit(Callback cbfunc) - Onetime Connection  
   ```
@@ -258,7 +262,7 @@ Always return **true**.
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.clean();
   ```
@@ -292,7 +296,7 @@ If the k2hdkc object is initialized as a Permanent Connection, it returns **true
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.IsPermanent();
   
@@ -327,6 +331,7 @@ This method gets the key and subkey values from the K2HDKC cluster.
   ```
   [bool/String] GetValue(String   conf,
                          int      port,
+                         String   cuk,
                          bool     auto_rejoin,
                          bool     no_giveup_rejoin,
                          String   key,
@@ -342,6 +347,8 @@ This method gets the key and subkey values from the K2HDKC cluster.
   To initialize for Onetime Connection, specify the setting file(*.ini etc) specified when starting CHMPX slave node.
 - port  
   To initialize for Onetime Connection, specify the setting control port number for CHMPX slave node.  
+- cuk  
+  To initialize for Onetime Connection, specify the setting CUK string for CHMPX slave node.  
 - auto_rejoin  
   To initialize for Onetime Connection, specify boolean value.  
   If this value is set to true, if the connection with the CHMPX slave node is disconnected, reconnection is automatically executed.  
@@ -377,7 +384,7 @@ When callback function is specified, **true** value is always returned.
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   var parentval = dkcobj.GetValue('key', null, true, null);
   var subkeyval = dkcobj.GetValue('key', 'subkey', true, null);
@@ -391,8 +398,8 @@ When callback function is specified, **true** value is always returned.
   
   dkcobj.init();
   
-  var parentval = dkcobj.GetValue('slave.ini', 8031, true, false, 'key', null, true, null);
-  var subkeyval = dkcobj.GetValue('slave.ini', 8031, true, false, 'key', 'subkey', true, null);
+  var parentval = dkcobj.GetValue('slave.ini', 8031, null, true, false, 'key', null, true, null);
+  var subkeyval = dkcobj.GetValue('slave.ini', 8031, null, true, false, 'key', 'subkey', true, null);
   
   dkcobj.clean();
   ```
@@ -401,7 +408,7 @@ When callback function is specified, **true** value is always returned.
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.GetValue('key', null, true, null, function(error, value){
       if(null !== error){
@@ -424,12 +431,12 @@ When callback function is specified, **true** value is always returned.
   
   dkcobj.init();
   
-  dkcobj.GetValue('slave.ini', 8031, true, false, 'key', null, true, null, function(error, value){
+  dkcobj.GetValue('slave.ini', 8031, null, true, false, 'key', null, true, null, function(error, value){
       if(null !== error){
           console_log('failed getting value');
           dkcobj.clean();
       }else{
-          dkcobj.GetValue('slave.ini', 8031, true, false, 'key', 'subkey', true, null, function(error, value){
+          dkcobj.GetValue('slave.ini', 8031, null, true, false, 'key', 'subkey', true, null, function(error, value){
               if(null !== error){
                   console_log('failed getting value');
               }
@@ -447,7 +454,7 @@ Asynchronous processing can be described by the following two type(four case) im
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.on('get', function(error, value){
       if(null !== error){
@@ -472,14 +479,14 @@ Asynchronous processing can be described by the following two type(four case) im
       dkcobj.clean();
   });
   
-  dkcobj.GetValue('slave.ini', 8031, true, false, 'key', 'subkey', true, null);
+  dkcobj.GetValue('slave.ini', 8031, null, true, false, 'key', 'subkey', true, null);
   ```
 - onGet(Callback cbfunc) - Permanent Connection  
   ```
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.onGet(function(error, value){
       if(null !== error){
@@ -504,7 +511,7 @@ Asynchronous processing can be described by the following two type(four case) im
       dkcobj.clean();
   });
   
-  dkcobj.GetValue('slave.ini', 8031, true, false, 'key', 'subkey', true, null);
+  dkcobj.GetValue('slave.ini', 8031, null, true, false, 'key', 'subkey', true, null);
   ```
 
 #### Notes
@@ -528,6 +535,7 @@ This method gets the list of subkeys tied to the key.
   ```
   [bool/Array] GetSubkeys(String   conf,
                           int      port,
+                          String   cuk,
                           bool     auto_rejoin,
                           bool     no_giveup_rejoin,
                           String   key,
@@ -540,7 +548,9 @@ This method gets the list of subkeys tied to the key.
 - conf  
   To initialize for Permanent Connection, specify the setting file(*.ini etc) specified when starting CHMPX slave node.
 - port  
-  To initialize for Onetime Connection, specify the setting control port number for CHMPX slave node.  
+  To initialize for Onetime Connection, specify the setting control port number for CHMPX slave node.*
+- cuk  
+  To initialize for Onetime Connection, specify the setting CUK string for CHMPX slave node.
 - auto_rejoin  
   To initialize for Onetime Connection, specify boolean value.  
   If this value is set to true, if the connection with the CHMPX slave node is disconnected, reconnection is automatically executed.  
@@ -570,7 +580,7 @@ When callback function is specified, **true** value is always returned.
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   var subkeys = dkcobj.GetSubkeys('key', true);
   
@@ -583,7 +593,7 @@ When callback function is specified, **true** value is always returned.
   
   dkcobj.init();
   
-  var subkeys = dkcobj.GetSubkeys('slave.ini', 8031, true, false, 'key', true);
+  var subkeys = dkcobj.GetSubkeys('slave.ini', 8031, null, true, false, 'key', true);
   
   dkcobj.clean();
   ```
@@ -592,7 +602,7 @@ When callback function is specified, **true** value is always returned.
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.GetSubkeys('key', true, function(error, subkeys){
       if(null !== error){
@@ -608,7 +618,7 @@ When callback function is specified, **true** value is always returned.
   
   dkcobj.init();
   
-  dkcobj.GetSubkeys('slave.ini', 8031, true, false, 'key', true, function(error, subkeys){
+  dkcobj.GetSubkeys('slave.ini', 8031, null, true, false, 'key', true, function(error, subkeys){
       if(null !== error){
           console_log('failed getting subkey list');
       }
@@ -624,7 +634,7 @@ Asynchronous processing can be described by the following two type(four case) im
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.on('getSubkeys', function(error, subkeys){
       if(null !== error){
@@ -649,14 +659,14 @@ Asynchronous processing can be described by the following two type(four case) im
       dkcobj.clean();
   });
   
-  dkcobj.GetSubkeys('slave.ini', 8031, true, false, 'key', true);
+  dkcobj.GetSubkeys('slave.ini', 8031, null, true, false, 'key', true);
   ```
 - onGetSubkeys(Callback cbfunc) - Permanent Connection  
   ```
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.onGetSubkeys(function(error, subkeys){
       if(null !== error){
@@ -681,7 +691,7 @@ Asynchronous processing can be described by the following two type(four case) im
       dkcobj.clean();
   });
   
-  dkcobj.GetSubkeys('slave.ini', 8031, true, false, 'key', true);
+  dkcobj.GetSubkeys('slave.ini', 8031, null, true, false, 'key', true);
   ```
 
 ### <a name="K2HDKC-GETSUBKEYS"> k2hdkc::GetAttrs()
@@ -698,6 +708,7 @@ This method gets a list of attribute names set in the key.
   ```
   [bool/Array] GetAttrs(String   conf,
                         int      port,
+                        String   cuk,
                         bool     auto_rejoin,
                         bool     no_giveup_rejoin,
                         String   key,
@@ -709,7 +720,9 @@ This method gets a list of attribute names set in the key.
 - conf  
   To initialize for Permanent Connection, specify the setting file(*.ini etc) specified when starting CHMPX slave node.
 - port  
-  To initialize for Onetime Connection, specify the setting control port number for CHMPX slave node.  
+  To initialize for Onetime Connection, specify the setting control port number for CHMPX slave node.*
+- cuk  
+  To initialize for Onetime Connection, specify the setting CUK string for CHMPX slave node.
 - auto_rejoin  
   To initialize for Onetime Connection, specify boolean value.  
   If this value is set to true, if the connection with the CHMPX slave node is disconnected, reconnection is automatically executed.  
@@ -737,7 +750,7 @@ When callback function is specified, **true** value is always returned.
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   var attrs = dkcobj.GetAttrs('key');
   
@@ -750,7 +763,7 @@ When callback function is specified, **true** value is always returned.
   
   dkcobj.init();
   
-  var attrs = dkcobj.GetAttrs('slave.ini', 8031, true, false, 'key');
+  var attrs = dkcobj.GetAttrs('slave.ini', 8031, null, true, false, 'key');
   
   dkcobj.clean();
   ```
@@ -759,7 +772,7 @@ When callback function is specified, **true** value is always returned.
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.GetAttrs('key', function(error, attrs){
       if(null !== error){
@@ -775,7 +788,7 @@ When callback function is specified, **true** value is always returned.
   
   dkcobj.init();
   
-  dkcobj.GetAttrs('slave.ini', 8031, true, false, 'key', function(error, attrs){
+  dkcobj.GetAttrs('slave.ini', 8031, null, true, false, 'key', function(error, attrs){
       if(null !== error){
           console_log('failed getting attribute name list');
       }
@@ -791,7 +804,7 @@ Asynchronous processing can be described by the following two type(four case) im
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.on('getAttrs', function(error, attrs){
       if(null !== error){
@@ -816,14 +829,14 @@ Asynchronous processing can be described by the following two type(four case) im
       dkcobj.clean();
   });
   
-  dkcobj.GetAttrs('slave.ini', 8031, true, false, 'key');
+  dkcobj.GetAttrs('slave.ini', 8031, null, true, false, 'key');
   ```
 - onGetAttrs(Callback cbfunc) - Permanent Connection  
   ```
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.onGetAttrs(function(error, attrs){
       if(null !== error){
@@ -848,7 +861,7 @@ Asynchronous processing can be described by the following two type(four case) im
       dkcobj.clean();
   });
   
-  dkcobj.GetAttrs('slave.ini', 8031, true, false, 'key');
+  dkcobj.GetAttrs('slave.ini', 8031, null, true, false, 'key');
   ```
 
 ### <a name="K2HDKC-SETVALUE"> k2hdkc::SetValue()
@@ -869,6 +882,7 @@ This method sets values for keys or subkeys under key.
   ```
   bool SetValue(String   conf,
                 int      port,
+                String   cuk,
                 bool     auto_rejoin,
                 bool     no_giveup_rejoin,
                 String   key,
@@ -884,7 +898,9 @@ This method sets values for keys or subkeys under key.
 - conf  
   To initialize for Permanent Connection, specify the setting file(*.ini etc) specified when starting CHMPX slave node.
 - port  
-  To initialize for Onetime Connection, specify the setting control port number for CHMPX slave node.  
+  To initialize for Onetime Connection, specify the setting control port number for CHMPX slave node.*
+- cuk  
+  To initialize for Onetime Connection, specify the setting CUK string for CHMPX slave node.
 - auto_rejoin  
   To initialize for Onetime Connection, specify boolean value.  
   If this value is set to true, if the connection with the CHMPX slave node is disconnected, reconnection is automatically executed.  
@@ -923,7 +939,7 @@ When callback function is specified, **true** value is always returned.
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.SetValue('key', 'val', null, null, 0);
   dkcobj.SetValue('key', 'val', 'subkey', null, 0);
@@ -937,8 +953,8 @@ When callback function is specified, **true** value is always returned.
   
   dkcobj.init();
   
-  dkcobj.SetValue('slave.ini', 8031, true, false, 'key', 'val', null, null, 0);
-  dkcobj.SetValue('slave.ini', 8031, true, false, 'key', 'val', 'subkey', null, 0);
+  dkcobj.SetValue('slave.ini', 8031, null, true, false, 'key', 'val', null, null, 0);
+  dkcobj.SetValue('slave.ini', 8031, null, true, false, 'key', 'val', 'subkey', null, 0);
   
   dkcobj.clean();
   ```
@@ -947,7 +963,7 @@ When callback function is specified, **true** value is always returned.
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.SetValue('key', 'val', null, null, 0, function(error){
       if(null !== error){
@@ -970,12 +986,12 @@ When callback function is specified, **true** value is always returned.
   
   dkcobj.init();
   
-  dkcobj.SetValue('slave.ini', 8031, true, false, 'key', 'val', null, null, 0, function(error){
+  dkcobj.SetValue('slave.ini', 8031, null, true, false, 'key', 'val', null, null, 0, function(error){
       if(null !== error){
           console_log('failed setting value');
           dkcobj.clean();
       }else{
-          dkcobj.SetValue('slave.ini', 8031, true, false, 'key', 'val', 'subkey', null, 0, function(error){
+          dkcobj.SetValue('slave.ini', 8031, null, true, false, 'key', 'val', 'subkey', null, 0, function(error){
               if(null !== error){
                   console_log('failed setting value');
               }
@@ -993,7 +1009,7 @@ Asynchronous processing can be described by the following two type(four case) im
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.on('set', function(error){
       if(null !== error){
@@ -1018,14 +1034,14 @@ Asynchronous processing can be described by the following two type(four case) im
       dkcobj.clean();
   });
   
-  dkcobj.SetValue('slave.ini', 8031, true, false, 'key', 'val', 'subkey', null, 0);
+  dkcobj.SetValue('slave.ini', 8031, null, true, false, 'key', 'val', 'subkey', null, 0);
   ```
 - onSet(Callback cbfunc) - Permanent Connection  
   ```
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.onSet(function(error){
       if(null !== error){
@@ -1050,7 +1066,7 @@ Asynchronous processing can be described by the following two type(four case) im
       dkcobj.clean();
   });
   
-  dkcobj.SetValue('slave.ini', 8031, true, false, 'key', 'val', 'subkey', null, 0);
+  dkcobj.SetValue('slave.ini', 8031, null, true, false, 'key', 'val', 'subkey', null, 0);
   ```
 
 ### <a name="K2HDKC-SETSUBKEYS"> k2hdkc::SetSubkeys()
@@ -1068,6 +1084,7 @@ This method sets(overwrites) or clears the list of subkeys associated with the k
   ```
   bool SetSubkeys(String   conf,
                   int      port,
+                  String   cuk,
                   bool     auto_rejoin,
                   bool     no_giveup_rejoin,
                   String   key,
@@ -1080,7 +1097,9 @@ This method sets(overwrites) or clears the list of subkeys associated with the k
 - conf  
   To initialize for Permanent Connection, specify the setting file(*.ini etc) specified when starting CHMPX slave node.
 - port  
-  To initialize for Onetime Connection, specify the setting control port number for CHMPX slave node.  
+  To initialize for Onetime Connection, specify the setting control port number for CHMPX slave node.*
+- cuk  
+  To initialize for Onetime Connection, specify the setting CUK string for CHMPX slave node.
 - auto_rejoin  
   To initialize for Onetime Connection, specify boolean value.  
   If this value is set to true, if the connection with the CHMPX slave node is disconnected, reconnection is automatically executed.  
@@ -1110,7 +1129,7 @@ When callback function is specified, **true** value is always returned.
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.SetSubkeys('key', ['subkey1', 'subkey2']);
   
@@ -1123,7 +1142,7 @@ When callback function is specified, **true** value is always returned.
   
   dkcobj.init();
   
-  dkcobj.SetSubkeys('slave.ini', 8031, true, false, 'key', ['subkey1', 'subkey2']);
+  dkcobj.SetSubkeys('slave.ini', 8031, null, true, false, 'key', ['subkey1', 'subkey2']);
   
   dkcobj.clean();
   ```
@@ -1132,7 +1151,7 @@ When callback function is specified, **true** value is always returned.
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.SetSubkeys('key', ['subkey1', 'subkey2'], function(error){
       if(null !== error){
@@ -1148,7 +1167,7 @@ When callback function is specified, **true** value is always returned.
   
   dkcobj.init();
   
-  dkcobj.SetSubkeys('slave.ini', 8031, true, false, 'key', ['subkey1', 'subkey2'], function(error){
+  dkcobj.SetSubkeys('slave.ini', 8031, null, true, false, 'key', ['subkey1', 'subkey2'], function(error){
       if(null !== error){
           console_log('failed setting subkey list');
       }
@@ -1164,7 +1183,7 @@ Asynchronous processing can be described by the following two type(four case) im
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.on('setSubkeys', function(error){
       if(null !== error){
@@ -1189,14 +1208,14 @@ Asynchronous processing can be described by the following two type(four case) im
       dkcobj.clean();
   });
   
-  dkcobj.SetSubkeys('slave.ini', 8031, true, false, 'key', ['subkey1', 'subkey2']);
+  dkcobj.SetSubkeys('slave.ini', 8031, null, true, false, 'key', ['subkey1', 'subkey2']);
   ```
 - onSetSubkeys(Callback cbfunc) - Permanent Connection  
   ```
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.onSetSubkeys(function(error){
       if(null !== error){
@@ -1221,7 +1240,7 @@ Asynchronous processing can be described by the following two type(four case) im
       dkcobj.clean();
   });
   
-  dkcobj.SetSubkeys('slave.ini', 8031, true, false, 'key', ['subkey1', 'subkey2']);
+  dkcobj.SetSubkeys('slave.ini', 8031, null, true, false, 'key', ['subkey1', 'subkey2']);
   ```
 
 ### <a name="K2HDKC-SETALL"> k2hdkc::SetAll()
@@ -1242,6 +1261,7 @@ This method sets the key value and subkey list at once.
   ```
   bool SetAll(String   conf,
               int      port,
+              String   cuk,
               bool     auto_rejoin,
               bool     no_giveup_rejoin,
               String   key,
@@ -1257,7 +1277,9 @@ This method sets the key value and subkey list at once.
 - conf  
   To initialize for Permanent Connection, specify the setting file(*.ini etc) specified when starting CHMPX slave node.
 - port  
-  To initialize for Onetime Connection, specify the setting control port number for CHMPX slave node.  
+  To initialize for Onetime Connection, specify the setting control port number for CHMPX slave node.*
+- cuk  
+  To initialize for Onetime Connection, specify the setting CUK string for CHMPX slave node.
 - auto_rejoin  
   To initialize for Onetime Connection, specify boolean value.  
   If this value is set to true, if the connection with the CHMPX slave node is disconnected, reconnection is automatically executed.  
@@ -1294,7 +1316,7 @@ When callback function is specified, **true** value is always returned.
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.SetAll('key', 'val', ['subkey1', 'subkey2'], null, 0);
   
@@ -1307,7 +1329,7 @@ When callback function is specified, **true** value is always returned.
   
   dkcobj.init();
   
-  dkcobj.SetAll('slave.ini', 8031, true, false, 'key', 'val', ['subkey1', 'subkey2'], null, 0);
+  dkcobj.SetAll('slave.ini', 8031, null, true, false, 'key', 'val', ['subkey1', 'subkey2'], null, 0);
   
   dkcobj.clean();
   ```
@@ -1316,7 +1338,7 @@ When callback function is specified, **true** value is always returned.
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.SetAll('key', 'val', ['subkey1', 'subkey2'], null, 0, function(error){
       if(null !== error){
@@ -1332,7 +1354,7 @@ When callback function is specified, **true** value is always returned.
   
   dkcobj.init();
   
-  dkcobj.SetAll('slave.ini', 8031, true, false, 'key', 'val', ['subkey1', 'subkey2'], null, 0, function(error){
+  dkcobj.SetAll('slave.ini', 8031, null, true, false, 'key', 'val', ['subkey1', 'subkey2'], null, 0, function(error){
       if(null !== error){
           console_log('failed setting all');
       }
@@ -1348,7 +1370,7 @@ Asynchronous processing can be described by the following two type(four case) im
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.on('setAll', function(error){
       if(null !== error){
@@ -1373,14 +1395,14 @@ Asynchronous processing can be described by the following two type(four case) im
       dkcobj.clean();
   });
   
-  dkcobj.SetAll('slave.ini', 8031, true, false, 'key', 'val', ['subkey1', 'subkey2'], null, 0);
+  dkcobj.SetAll('slave.ini', 8031, null, true, false, 'key', 'val', ['subkey1', 'subkey2'], null, 0);
   ```
 - onSetAll(Callback cbfunc) - Permanent Connection  
   ```
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.onSetAll(function(error){
       if(null !== error){
@@ -1405,7 +1427,7 @@ Asynchronous processing can be described by the following two type(four case) im
       dkcobj.clean();
   });
   
-  dkcobj.SetAll('slave.ini', 8031, true, false, 'key', 'val', ['subkey1', 'subkey2'], null, 0);
+  dkcobj.SetAll('slave.ini', 8031, null, true, false, 'key', 'val', ['subkey1', 'subkey2'], null, 0);
   ```
 
 ### <a name="K2HDKC-REMOVE"> k2hdkc::Remove()
@@ -1423,6 +1445,7 @@ This method removes the key.
   ```
   bool Remove(String   conf,
               int      port,
+              String   cuk,
               bool     auto_rejoin,
               bool     no_giveup_rejoin,
               String   key,
@@ -1435,7 +1458,9 @@ This method removes the key.
 - conf  
   To initialize for Permanent Connection, specify the setting file(*.ini etc) specified when starting CHMPX slave node.
 - port  
-  To initialize for Onetime Connection, specify the setting control port number for CHMPX slave node.  
+  To initialize for Onetime Connection, specify the setting control port number for CHMPX slave node.*
+- cuk  
+  To initialize for Onetime Connection, specify the setting CUK string for CHMPX slave node.
 - auto_rejoin  
   To initialize for Onetime Connection, specify boolean value.  
   If this value is set to true, if the connection with the CHMPX slave node is disconnected, reconnection is automatically executed.  
@@ -1465,7 +1490,7 @@ When callback function is specified, **true** value is always returned.
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.Remove('key', true);
   
@@ -1478,7 +1503,7 @@ When callback function is specified, **true** value is always returned.
   
   dkcobj.init();
   
-  dkcobj.Remove('slave.ini', 8031, true, false, 'key', true);
+  dkcobj.Remove('slave.ini', 8031, null, true, false, 'key', true);
   
   dkcobj.clean();
   ```
@@ -1487,7 +1512,7 @@ When callback function is specified, **true** value is always returned.
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.Remove('key', true, function(error){
       if(null !== error){
@@ -1503,7 +1528,7 @@ When callback function is specified, **true** value is always returned.
   
   dkcobj.init();
   
-  dkcobj.Remove('slave.ini', 8031, true, false, 'key', true, function(error){
+  dkcobj.Remove('slave.ini', 8031, null, true, false, 'key', true, function(error){
       if(null !== error){
           console_log('failed removing');
       }
@@ -1519,7 +1544,7 @@ Asynchronous processing can be described by the following two type(four case) im
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.on('remove', function(error){
       if(null !== error){
@@ -1544,14 +1569,14 @@ Asynchronous processing can be described by the following two type(four case) im
       dkcobj.clean();
   });
   
-  dkcobj.Remove('slave.ini', 8031, true, false, 'key', true);
+  dkcobj.Remove('slave.ini', 8031, null, true, false, 'key', true);
   ```
 - onRemove(Callback cbfunc) - Permanent Connection  
   ```
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.onRemove(function(error){
       if(null !== error){
@@ -1576,7 +1601,7 @@ Asynchronous processing can be described by the following two type(four case) im
       dkcobj.clean();
   });
   
-  dkcobj.Remove('slave.ini', 8031, true, false, 'key', true);
+  dkcobj.Remove('slave.ini', 8031, null, true, false, 'key', true);
   ```
 
 ### <a name="K2HDKC-RENAME"> k2hdkc::Rename()
@@ -1598,6 +1623,7 @@ This method changes the key name.
   ```
   bool Rename(String   conf,
               int      port,
+              String   cuk,
               bool     auto_rejoin,
               bool     no_giveup_rejoin,
               String   oldkey,
@@ -1614,7 +1640,9 @@ This method changes the key name.
 - conf  
   To initialize for Permanent Connection, specify the setting file(*.ini etc) specified when starting CHMPX slave node.
 - port  
-  To initialize for Onetime Connection, specify the setting control port number for CHMPX slave node.  
+  To initialize for Onetime Connection, specify the setting control port number for CHMPX slave node.*
+- cuk  
+  To initialize for Onetime Connection, specify the setting CUK string for CHMPX slave node.
 - auto_rejoin  
   To initialize for Onetime Connection, specify boolean value.  
   If this value is set to true, if the connection with the CHMPX slave node is disconnected, reconnection is automatically executed.  
@@ -1653,7 +1681,7 @@ When callback function is specified, **true** value is always returned.
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.Rename('oldkey', 'newkey', 'parentkey', true, 'passphrase', 1000);
   
@@ -1666,7 +1694,7 @@ When callback function is specified, **true** value is always returned.
   
   dkcobj.init();
   
-  dkcobj.Rename('slave.ini', 8031, true, false, 'oldkey', 'newkey', 'parentkey', true, 'passphrase', 1000);
+  dkcobj.Rename('slave.ini', 8031, null, true, false, 'oldkey', 'newkey', 'parentkey', true, 'passphrase', 1000);
   
   dkcobj.clean();
   ```
@@ -1675,7 +1703,7 @@ When callback function is specified, **true** value is always returned.
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.Rename('oldkey', 'newkey', 'parentkey', true, 'passphrase', 1000, function(error){
       if(null !== error){
@@ -1691,7 +1719,7 @@ When callback function is specified, **true** value is always returned.
   
   dkcobj.init();
   
-  dkcobj.Rename('slave.ini', 8031, true, false, 'oldkey', 'newkey', 'parentkey', true, 'passphrase', 1000, function(error){
+  dkcobj.Rename('slave.ini', 8031, null, true, false, 'oldkey', 'newkey', 'parentkey', true, 'passphrase', 1000, function(error){
       if(null !== error){
           console_log('failed renaming');
       }
@@ -1707,7 +1735,7 @@ Asynchronous processing can be described by the following two type(four case) im
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.on('rename', function(error){
       if(null !== error){
@@ -1732,14 +1760,14 @@ Asynchronous processing can be described by the following two type(four case) im
       dkcobj.clean();
   });
   
-  dkcobj.Rename('slave.ini', 8031, true, false, 'oldkey', 'newkey', 'parentkey', true, 'passphrase', 1000);
+  dkcobj.Rename('slave.ini', 8031, null, true, false, 'oldkey', 'newkey', 'parentkey', true, 'passphrase', 1000);
   ```
 - onRename(Callback cbfunc) - Permanent Connection  
   ```
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.onRename(function(error){
       if(null !== error){
@@ -1764,7 +1792,7 @@ Asynchronous processing can be described by the following two type(four case) im
       dkcobj.clean();
   });
   
-  dkcobj.Rename('slave.ini', 8031, true, false, 'oldkey', 'newkey', 'parentkey', true, 'passphrase', 1000);
+  dkcobj.Rename('slave.ini', 8031, null, true, false, 'oldkey', 'newkey', 'parentkey', true, 'passphrase', 1000);
   ```
 
 ### <a name="K2HDKC-QUEUEPUSH"> k2hdkc::QueuePush()
@@ -1787,6 +1815,7 @@ This method pushes the data to K2HDKC queue.
   ```
   bool QueuePush(String   conf,
                  int      port,
+                 String   cuk,
                  bool     auto_rejoin,
                  bool     no_giveup_rejoin,
                  String   prefix,
@@ -1804,7 +1833,9 @@ This method pushes the data to K2HDKC queue.
 - conf  
   To initialize for Permanent Connection, specify the setting file(*.ini etc) specified when starting CHMPX slave node.
 - port  
-  To initialize for Onetime Connection, specify the setting control port number for CHMPX slave node.  
+  To initialize for Onetime Connection, specify the setting control port number for CHMPX slave node.*
+- cuk  
+  To initialize for Onetime Connection, specify the setting CUK string for CHMPX slave node.
 - auto_rejoin  
   To initialize for Onetime Connection, specify boolean value.  
   If this value is set to true, if the connection with the CHMPX slave node is disconnected, reconnection is automatically executed.  
@@ -1847,7 +1878,7 @@ When callback function is specified, **true** value is always returned.
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.QueuePush('queue_', null,'data', true, true, 'mypass', 1000);
   dkcobj.QueuePush('keyqueue_', 'key', 'data', false, true, null, 0);
@@ -1861,8 +1892,8 @@ When callback function is specified, **true** value is always returned.
   
   dkcobj.init();
   
-  dkcobj.QueuePush('slave.ini', 8031, true, false, 'queue_', null,'data', true, true, 'mypass', 1000);
-  dkcobj.QueuePush('slave.ini', 8031, true, false, 'keyqueue_', 'key', 'data', false, true, null, 0);
+  dkcobj.QueuePush('slave.ini', 8031, null, true, false, 'queue_', null,'data', true, true, 'mypass', 1000);
+  dkcobj.QueuePush('slave.ini', 8031, null, true, false, 'keyqueue_', 'key', 'data', false, true, null, 0);
   
   dkcobj.clean();
   ```
@@ -1871,7 +1902,7 @@ When callback function is specified, **true** value is always returned.
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.QueuePush('queue_', null,'data', true, true, 'mypass', 1000, function(error){
       if(null !== error){
@@ -1894,12 +1925,12 @@ When callback function is specified, **true** value is always returned.
   
   dkcobj.init();
   
-  dkcobj.QueuePush('slave.ini', 8031, true, false, 'queue_', null,'data', true, true, 'mypass', 1000, function(error){
+  dkcobj.QueuePush('slave.ini', 8031, null, true, false, 'queue_', null,'data', true, true, 'mypass', 1000, function(error){
       if(null !== error){
           console_log('failed queue pushing');
           dkcobj.clean();
       }else{
-          dkcobj.QueuePush('slave.ini', 8031, true, false, 'keyqueue_', 'key', 'data', false, true, null, 0, function(error){
+          dkcobj.QueuePush('slave.ini', 8031, null, true, false, 'keyqueue_', 'key', 'data', false, true, null, 0, function(error){
               if(null !== error){
                   console_log('failed queue pushing');
               }
@@ -1917,7 +1948,7 @@ Asynchronous processing can be described by the following two type(four case) im
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.on('queuePush', function(error){
       if(null !== error){
@@ -1942,14 +1973,14 @@ Asynchronous processing can be described by the following two type(four case) im
       dkcobj.clean();
   });
   
-  dkcobj.QueuePush('slave.ini', 8031, true, false, 'queue_', null,'data', true, true, 'mypass', 1000);
+  dkcobj.QueuePush('slave.ini', 8031, null, true, false, 'queue_', null,'data', true, true, 'mypass', 1000);
   ```
 - onQueuePush(Callback cbfunc) - Permanent Connection  
   ```
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.onQueuePush(function(error){
       if(null !== error){
@@ -1974,7 +2005,7 @@ Asynchronous processing can be described by the following two type(four case) im
       dkcobj.clean();
   });
   
-  dkcobj.QueuePush('slave.ini', 8031, true, false, 'queue_', null,'data', true, true, 'mypass', 1000);
+  dkcobj.QueuePush('slave.ini', 8031, null, true, false, 'queue_', null,'data', true, true, 'mypass', 1000);
   ```
 
 ### <a name="K2HDKC-QUEUEPOP"> k2hdkc::QueuePop()
@@ -1994,6 +2025,7 @@ This method pops the data from K2HDKC queue.
   ```
   [bool/String/Array] QueuePop(String   conf,
                                int      port,
+                               String   cuk,
                                bool     auto_rejoin,
                                bool     no_giveup_rejoin,
                                String   prefix,
@@ -2008,7 +2040,9 @@ This method pops the data from K2HDKC queue.
 - conf  
   To initialize for Permanent Connection, specify the setting file(*.ini etc) specified when starting CHMPX slave node.
 - port  
-  To initialize for Onetime Connection, specify the setting control port number for CHMPX slave node.  
+  To initialize for Onetime Connection, specify the setting control port number for CHMPX slave node.*
+- cuk  
+  To initialize for Onetime Connection, specify the setting CUK string for CHMPX slave node.
 - auto_rejoin  
   To initialize for Onetime Connection, specify boolean value.  
   If this value is set to true, if the connection with the CHMPX slave node is disconnected, reconnection is automatically executed.  
@@ -2045,7 +2079,7 @@ When callback function is specified, **true** value is always returned.
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   var value    = dkcobj.QueuePop('queue_', true, false, 'mypass');
   var valarray = dkcobj.QueuePop('keyqueue_', false, true, null);
@@ -2059,8 +2093,8 @@ When callback function is specified, **true** value is always returned.
   
   dkcobj.init();
   
-  var value    = dkcobj.QueuePop('slave.ini', 8031, true, false, 'queue_', true, false, 'mypass');
-  var valarray = dkcobj.QueuePop('slave.ini', 8031, true, false, 'keyqueue_', false, true, null);
+  var value    = dkcobj.QueuePop('slave.ini', 8031, null, true, false, 'queue_', true, false, 'mypass');
+  var valarray = dkcobj.QueuePop('slave.ini', 8031, null, true, false, 'keyqueue_', false, true, null);
   
   dkcobj.clean();
   ```
@@ -2069,7 +2103,7 @@ When callback function is specified, **true** value is always returned.
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.QueuePop('queue_', true, false, 'mypass', function(error, value){
       if(null !== error){
@@ -2092,12 +2126,12 @@ When callback function is specified, **true** value is always returned.
   
   dkcobj.init();
   
-  dkcobj.QueuePop('slave.ini', 8031, true, false, 'queue_', true, false, 'mypass', function(error, value){
+  dkcobj.QueuePop('slave.ini', 8031, null, true, false, 'queue_', true, false, 'mypass', function(error, value){
       if(null !== error){
           console_log('failed queue popping');
           dkcobj.clean();
       }else{
-          dkcobj.QueuePop('slave.ini', 8031, true, false, 'keyqueue_', false, true, null, function(error, key, value){
+          dkcobj.QueuePop('slave.ini', 8031, null, true, false, 'keyqueue_', false, true, null, function(error, key, value){
               if(null !== error){
                   console_log('failed queue popping');
               }
@@ -2115,7 +2149,7 @@ Asynchronous processing can be described by the following two type(four case) im
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.on('queuePop', function(error, key, value){
       if(null !== error){
@@ -2140,14 +2174,14 @@ Asynchronous processing can be described by the following two type(four case) im
       dkcobj.clean();
   });
   
-  dkcobj.QueuePop('slave.ini', 8031, true, false, 'keyqueue_', false, true, null);
+  dkcobj.QueuePop('slave.ini', 8031, null, true, false, 'keyqueue_', false, true, null);
   ```
 - onQueuePop(Callback cbfunc) - Permanent Connection  
   ```
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.onQueuePop(function(error, key, value){
       if(null !== error){
@@ -2172,7 +2206,7 @@ Asynchronous processing can be described by the following two type(four case) im
       dkcobj.clean();
   });
   
-  dkcobj.QueuePop('slave.ini', 8031, true, false, 'keyqueue_', false, true, null);
+  dkcobj.QueuePop('slave.ini', 8031, null, true, false, 'keyqueue_', false, true, null);
   ```
 
 ### <a name="K2HDKC-QUEUEREMOVE"> k2hdkc::QueueRemove()
@@ -2193,6 +2227,7 @@ This method removes the data from K2HDKC queue without reading the value.
   ```
   bool QueueRemove(String   conf,
                    int      port,
+                   String   cuk,
                    bool     auto_rejoin,
                    bool     no_giveup_rejoin,
                    String   prefix,
@@ -2208,7 +2243,9 @@ This method removes the data from K2HDKC queue without reading the value.
 - conf  
   To initialize for Permanent Connection, specify the setting file(*.ini etc) specified when starting CHMPX slave node.
 - port  
-  To initialize for Onetime Connection, specify the setting control port number for CHMPX slave node.  
+  To initialize for Onetime Connection, specify the setting control port number for CHMPX slave node.*
+- cuk  
+  To initialize for Onetime Connection, specify the setting CUK string for CHMPX slave node.
 - auto_rejoin  
   To initialize for Onetime Connection, specify boolean value.  
   If this value is set to true, if the connection with the CHMPX slave node is disconnected, reconnection is automatically executed.  
@@ -2244,7 +2281,7 @@ When callback function is specified, **true** value is always returned.
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.QueueRemove('queue_', 1, true, false, 'mypass');
   dkcobj.QueueRemove('keyqueue_', 1, false, true, null);
@@ -2258,8 +2295,8 @@ When callback function is specified, **true** value is always returned.
   
   dkcobj.init();
   
-  dkcobj.QueueRemove('slave.ini', 8031, true, false, 'queue_', 1, true, false, 'mypass');
-  dkcobj.QueueRemove('slave.ini', 8031, true, false, 'keyqueue_', 1, false, true, null);
+  dkcobj.QueueRemove('slave.ini', 8031, null, true, false, 'queue_', 1, true, false, 'mypass');
+  dkcobj.QueueRemove('slave.ini', 8031, null, true, false, 'keyqueue_', 1, false, true, null);
   
   dkcobj.clean();
   ```
@@ -2268,7 +2305,7 @@ When callback function is specified, **true** value is always returned.
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.QueueRemove('queue_', 1, true, false, 'mypass', function(error){
       if(null !== error){
@@ -2291,12 +2328,12 @@ When callback function is specified, **true** value is always returned.
   
   dkcobj.init();
   
-  dkcobj.QueueRemove('slave.ini', 8031, true, false, 'queue_', 1, true, false, 'mypass', function(error){
+  dkcobj.QueueRemove('slave.ini', 8031, null, true, false, 'queue_', 1, true, false, 'mypass', function(error){
       if(null !== error){
           console_log('failed queue removing');
           dkcobj.clean();
       }else{
-          dkcobj.QueueRemove('slave.ini', 8031, true, false, 'keyqueue_', 1, false, true, null, function(error){
+          dkcobj.QueueRemove('slave.ini', 8031, null, true, false, 'keyqueue_', 1, false, true, null, function(error){
               if(null !== error){
                   console_log('failed queue removing');
               }
@@ -2314,7 +2351,7 @@ Asynchronous processing can be described by the following two type(four case) im
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.on('queueRemove', function(error){
       if(null !== error){
@@ -2339,14 +2376,14 @@ Asynchronous processing can be described by the following two type(four case) im
       dkcobj.clean();
   });
   
-  dkcobj.QueueRemove('slave.ini', 8031, true, false, 'keyqueue_', 1, false, true, null);
+  dkcobj.QueueRemove('slave.ini', 8031, null, true, false, 'keyqueue_', 1, false, true, null);
   ```
 - onQueueRemove(Callback cbfunc) - Permanent Connection  
   ```
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.onQueueRemove(function(error){
       if(null !== error){
@@ -2371,7 +2408,7 @@ Asynchronous processing can be described by the following two type(four case) im
       dkcobj.clean();
   });
   
-  dkcobj.QueueRemove('slave.ini', 8031, true, false, 'keyqueue_', 1, false, true, null);
+  dkcobj.QueueRemove('slave.ini', 8031, null, true, false, 'keyqueue_', 1, false, true, null);
   ```
 
 ### <a name="K2HDKC-CASINIT"> k2hdkc::CasInit()
@@ -2391,6 +2428,7 @@ This method initializes the key and value as CAS(Compare and Swap).
   ```
   bool CasInit(String   conf,
                int      port,
+               String   cuk,
                bool     auto_rejoin,
                bool     no_giveup_rejoin,
                String   key,
@@ -2405,7 +2443,9 @@ This method initializes the key and value as CAS(Compare and Swap).
 - conf  
   To initialize for Permanent Connection, specify the setting file(*.ini etc) specified when starting CHMPX slave node.
 - port  
-  To initialize for Onetime Connection, specify the setting control port number for CHMPX slave node.  
+  To initialize for Onetime Connection, specify the setting control port number for CHMPX slave node.*
+- cuk  
+  To initialize for Onetime Connection, specify the setting CUK string for CHMPX slave node.
 - auto_rejoin  
   To initialize for Onetime Connection, specify boolean value.  
   If this value is set to true, if the connection with the CHMPX slave node is disconnected, reconnection is automatically executed.  
@@ -2440,7 +2480,7 @@ When callback function is specified, **true** value is always returned.
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.CasInit('caskey', 1, 'mypass', 1000);
   
@@ -2453,7 +2493,7 @@ When callback function is specified, **true** value is always returned.
   
   dkcobj.init();
   
-  dkcobj.CasInit('slave.ini', 8031, true, false, 'caskey', 1, 'mypass', 1000);
+  dkcobj.CasInit('slave.ini', 8031, null, true, false, 'caskey', 1, 'mypass', 1000);
   
   dkcobj.clean();
   ```
@@ -2462,7 +2502,7 @@ When callback function is specified, **true** value is always returned.
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.CasInit('caskey', 1, 'mypass', 1000, function(error){
       if(null !== error){
@@ -2478,7 +2518,7 @@ When callback function is specified, **true** value is always returned.
   
   dkcobj.init();
   
-  dkcobj.CasInit('slave.ini', 8031, true, false, 'caskey', 1, 'mypass', 1000, function(error){
+  dkcobj.CasInit('slave.ini', 8031, null, true, false, 'caskey', 1, 'mypass', 1000, function(error){
       if(null !== error){
           console_log('failed initializing CAS');
       }
@@ -2494,7 +2534,7 @@ Asynchronous processing can be described by the following two type(four case) im
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.on('casInit', function(error){
       if(null !== error){
@@ -2519,14 +2559,14 @@ Asynchronous processing can be described by the following two type(four case) im
       dkcobj.clean();
   });
   
-  dkcobj.CasInit('slave.ini', 8031, true, false, 'caskey', 1, 'mypass', 1000);
+  dkcobj.CasInit('slave.ini', 8031, null, true, false, 'caskey', 1, 'mypass', 1000);
   ```
 - onCasInit(Callback cbfunc) - Permanent Connection  
   ```
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.onCasInit(function(error){
       if(null !== error){
@@ -2551,7 +2591,7 @@ Asynchronous processing can be described by the following two type(four case) im
       dkcobj.clean();
   });
   
-  dkcobj.CasInit('slave.ini', 8031, true, false, 'caskey', 1, 'mypass', 1000);
+  dkcobj.CasInit('slave.ini', 8031, null, true, false, 'caskey', 1, 'mypass', 1000);
   ```
 
 ### <a name="K2HDKC-CASGET"> k2hdkc::CasGet()
@@ -2569,6 +2609,7 @@ This method gets the value by key as CAS(Compare and Swap).
   ```
   int CasGet(String   conf,
              int      port,
+             String   cuk,
              bool     auto_rejoin,
              bool     no_giveup_rejoin,
              String   key,
@@ -2581,7 +2622,9 @@ This method gets the value by key as CAS(Compare and Swap).
 - conf  
   To initialize for Permanent Connection, specify the setting file(*.ini etc) specified when starting CHMPX slave node.
 - port  
-  To initialize for Onetime Connection, specify the setting control port number for CHMPX slave node.  
+  To initialize for Onetime Connection, specify the setting control port number for CHMPX slave node.*
+- cuk  
+  To initialize for Onetime Connection, specify the setting CUK string for CHMPX slave node.
 - auto_rejoin  
   To initialize for Onetime Connection, specify boolean value.  
   If this value is set to true, if the connection with the CHMPX slave node is disconnected, reconnection is automatically executed.  
@@ -2611,7 +2654,7 @@ When callback function is specified, **true** value is always returned.
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   var value = dkcobj.CasGet('caskey', 'mypass');
   
@@ -2624,7 +2667,7 @@ When callback function is specified, **true** value is always returned.
   
   dkcobj.init();
   
-  var value = dkcobj.CasGet('slave.ini', 8031, true, false, 'caskey', 'mypass');
+  var value = dkcobj.CasGet('slave.ini', 8031, null, true, false, 'caskey', 'mypass');
   
   dkcobj.clean();
   ```
@@ -2633,7 +2676,7 @@ When callback function is specified, **true** value is always returned.
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.CasGet('caskey', 'mypass', function(error, value){
       if(null !== error){
@@ -2649,7 +2692,7 @@ When callback function is specified, **true** value is always returned.
   
   dkcobj.init();
   
-  dkcobj.CasGet('slave.ini', 8031, true, false, 'caskey', 'mypass', function(error, value){
+  dkcobj.CasGet('slave.ini', 8031, null, true, false, 'caskey', 'mypass', function(error, value){
       if(null !== error){
           console_log('failed getting CAS value');
       }
@@ -2665,7 +2708,7 @@ Asynchronous processing can be described by the following two type(four case) im
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.on('casGet', function(error, value){
       if(null !== error){
@@ -2690,14 +2733,14 @@ Asynchronous processing can be described by the following two type(four case) im
       dkcobj.clean();
   });
   
-  dkcobj.CasGet('slave.ini', 8031, true, false, 'caskey', 'mypass');
+  dkcobj.CasGet('slave.ini', 8031, null, true, false, 'caskey', 'mypass');
   ```
 - onCasGet(Callback cbfunc) - Permanent Connection  
   ```
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.onCasGet(function(error, value){
       if(null !== error){
@@ -2722,7 +2765,7 @@ Asynchronous processing can be described by the following two type(four case) im
       dkcobj.clean();
   });
   
-  dkcobj.CasGet('slave.ini', 8031, true, false, 'caskey', 'mypass');
+  dkcobj.CasGet('slave.ini', 8031, null, true, false, 'caskey', 'mypass');
   ```
 
 ### <a name="K2HDKC-CASSET"> k2hdkc::CasSet()
@@ -2743,6 +2786,7 @@ This method sets the value to the key as CAS(Compare and Swap).
   ```
   bool CasSet(String   conf,
               int      port,
+              String   cuk,
               bool     auto_rejoin,
               bool     no_giveup_rejoin,
               String   key,
@@ -2758,7 +2802,9 @@ This method sets the value to the key as CAS(Compare and Swap).
 - conf  
   To initialize for Permanent Connection, specify the setting file(*.ini etc) specified when starting CHMPX slave node.
 - port  
-  To initialize for Onetime Connection, specify the setting control port number for CHMPX slave node.  
+  To initialize for Onetime Connection, specify the setting control port number for CHMPX slave node.*
+- cuk  
+  To initialize for Onetime Connection, specify the setting CUK string for CHMPX slave node.
 - auto_rejoin  
   To initialize for Onetime Connection, specify boolean value.  
   If this value is set to true, if the connection with the CHMPX slave node is disconnected, reconnection is automatically executed.  
@@ -2795,7 +2841,7 @@ When callback function is specified, **true** value is always returned.
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.CasSet('caskey', 1, 5, 'mypass', 1000);
   
@@ -2808,7 +2854,7 @@ When callback function is specified, **true** value is always returned.
   
   dkcobj.init();
   
-  dkcobj.CasSet('slave.ini', 8031, true, false, 'caskey', 1, 5, 'mypass', 1000);
+  dkcobj.CasSet('slave.ini', 8031, null, true, false, 'caskey', 1, 5, 'mypass', 1000);
   
   dkcobj.clean();
   ```
@@ -2817,7 +2863,7 @@ When callback function is specified, **true** value is always returned.
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.CasSet('caskey', 1, 5, 'mypass', 1000, function(error){
       if(null !== error){
@@ -2833,7 +2879,7 @@ When callback function is specified, **true** value is always returned.
   
   dkcobj.init();
   
-  dkcobj.CasSet('slave.ini', 8031, true, false, 'caskey', 1, 5, 'mypass', 1000, function(error){
+  dkcobj.CasSet('slave.ini', 8031, null, true, false, 'caskey', 1, 5, 'mypass', 1000, function(error){
       if(null !== error){
           console_log('failed setting CAS value');
       }
@@ -2849,7 +2895,7 @@ Asynchronous processing can be described by the following two type(four case) im
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.on('casSet', function(error){
       if(null !== error){
@@ -2874,14 +2920,14 @@ Asynchronous processing can be described by the following two type(four case) im
       dkcobj.clean();
   });
   
-  dkcobj.CasSet('slave.ini', 8031, true, false, 'caskey', 1, 5, 'mypass', 1000);
+  dkcobj.CasSet('slave.ini', 8031, null, true, false, 'caskey', 1, 5, 'mypass', 1000);
   ```
 - onCasSet(Callback cbfunc) - Permanent Connection  
   ```
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.onCasSet(function(error){
       if(null !== error){
@@ -2906,7 +2952,7 @@ Asynchronous processing can be described by the following two type(four case) im
       dkcobj.clean();
   });
   
-  dkcobj.CasSet('slave.ini', 8031, true, false, 'caskey', 1, 5, 'mypass', 1000);
+  dkcobj.CasSet('slave.ini', 8031, null, true, false, 'caskey', 1, 5, 'mypass', 1000);
   ```
 
 ### <a name="K2HDKC-CASINCDEC"> k2hdkc::CasIncDec()
@@ -2926,6 +2972,7 @@ This method increments/decrements the value for the key as CAS(Compare and Swap)
   ```
   bool CasIncDec(String   conf,
                  int      port,
+                 String   cuk,
                  bool     auto_rejoin,
                  bool     no_giveup_rejoin,
                  String   key,
@@ -2941,6 +2988,8 @@ This method increments/decrements the value for the key as CAS(Compare and Swap)
   To initialize for Permanent Connection, specify the setting file(*.ini etc) specified when starting CHMPX slave node.
 - port  
   To initialize for Onetime Connection, specify the setting control port number for CHMPX slave node.  
+- cuk  
+  To initialize for Onetime Connection, specify the setting CUK string for CHMPX slave node.
 - auto_rejoin  
   To initialize for Onetime Connection, specify boolean value.  
   If this value is set to true, if the connection with the CHMPX slave node is disconnected, reconnection is automatically executed.  
@@ -2975,7 +3024,7 @@ When callback function is specified, **true** value is always returned.
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.CasIncDec('caskey', true, 'mypass', 1000);
   
@@ -2988,7 +3037,7 @@ When callback function is specified, **true** value is always returned.
   
   dkcobj.init();
   
-  dkcobj.CasIncDec('slave.ini', 8031, true, false, 'caskey', true, 'mypass', 1000);
+  dkcobj.CasIncDec('slave.ini', 8031, null, true, false, 'caskey', true, 'mypass', 1000);
   
   dkcobj.clean();
   ```
@@ -2997,7 +3046,7 @@ When callback function is specified, **true** value is always returned.
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.CasIncDec('caskey', true, 'mypass', 1000, function(error){
       if(null !== error){
@@ -3013,7 +3062,7 @@ When callback function is specified, **true** value is always returned.
   
   dkcobj.init();
   
-  dkcobj.CasIncDec('slave.ini', 8031, true, false, 'caskey', true, 'mypass', 1000, function(error){
+  dkcobj.CasIncDec('slave.ini', 8031, null, true, false, 'caskey', true, 'mypass', 1000, function(error){
       if(null !== error){
           console_log('failed increment/decrement CAS value');
       }
@@ -3029,7 +3078,7 @@ Asynchronous processing can be described by the following two type(four case) im
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.on('casIncDec', function(error){
       if(null !== error){
@@ -3054,14 +3103,14 @@ Asynchronous processing can be described by the following two type(four case) im
       dkcobj.clean();
   });
   
-  dkcobj.CasIncDec('slave.ini', 8031, true, false, 'caskey', true, 'mypass', 1000);
+  dkcobj.CasIncDec('slave.ini', 8031, null, true, false, 'caskey', true, 'mypass', 1000);
   ```
 - onCasIncDec(Callback cbfunc) - Permanent Connection  
   ```
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.onCasIncDec(function(error){
       if(null !== error){
@@ -3086,7 +3135,7 @@ Asynchronous processing can be described by the following two type(four case) im
       dkcobj.clean();
   });
   
-  dkcobj.CasIncDec('slave.ini', 8031, true, false, 'caskey', true, 'mypass', 1000);
+  dkcobj.CasIncDec('slave.ini', 8031, null, true, false, 'caskey', true, 'mypass', 1000);
   ```
 
 ### <a name="K2HDKC-PRINTVERSION"> k2hdkc::PrintVersion()
