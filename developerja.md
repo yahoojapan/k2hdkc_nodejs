@@ -84,7 +84,7 @@ K2HDKC Node.js アドオンライブラリの提供するメインクラスで�
 クラスを生成するには以下のように指定します。
 - 永続接続  
   ```
-  var dkcobj = new require('k2hdkc')('slave.ini', 8031, true, false);
+  var dkcobj = new require('k2hdkc')('slave.ini', 8031, null, true, false);
   ```
 - ワンタイム接続  
   ```
@@ -101,6 +101,7 @@ k2hdkcオブジェクトを初期化します。
 ```
 bool Init(String   conf = null,
           int      port = -1,
+          String   cuk  = null,
           bool     auto_rejoin = false,
           bool     no_giveup_rejoin = false,
           Callback cbfunc = null
@@ -114,6 +115,9 @@ bool Init(String   conf = null,
 - port  
   永続接続用に初期化する場合には、CHMPXスレーブノードの制御ポート番号を指定します。  
   ワンタイム接続用に初期化する場合は、-1もしくは未指定とします。
+- cuk  
+  永続接続用に初期化する場合には、CHMPXスレーブノードのCUK文字列を指定します。  
+  ワンタイム接続用に初期化する場合は、nullもしくは未指定とします。
 - auto_rejoin  
   ワンタイム接続用に初期化する場合は、falseもしくは未指定とします。  
   永続接続用に初期化する場合には、boolean値を指定します。  
@@ -142,7 +146,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.clean();
   ```
@@ -160,7 +164,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false, function(error){
+  dkcobj.init('slave.ini', 8031, null, true, false, function(error){
       if(null !== error){
           console_log('failed initializing');
       }
@@ -195,7 +199,7 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
       dkcobj.clean();
   });
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   ```
 - on('', Callback cbfunc) - ワンタイム接続  
   ```
@@ -223,7 +227,7 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
       dkcobj.clean();
   });
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   ```
 - onInit(Callback cbfunc) - ワンタイム接続  
   ```
@@ -260,7 +264,7 @@ bool Clean(void)
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.clean();
   ```
@@ -294,7 +298,7 @@ k2hdkcオブジェクトが永続接続として初期化されている場合�
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.IsPermanent();
   
@@ -329,6 +333,7 @@ K2HDKCからキーおよびサブキーを指定して値を取得します。
   ```
   [bool/String] GetValue(String   conf,
                          int      port,
+                         String   cuk,
                          bool     auto_rejoin,
                          bool     no_giveup_rejoin,
                          String   key,
@@ -344,6 +349,8 @@ K2HDKCからキーおよびサブキーを指定して値を取得します。
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノード起動時に指定した設定ファイル（*.ini）を指定します。
 - port  
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノードの制御ポート番号を指定します。
+- cuk  
+  ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノードのCUK文字列を指定します。
 - auto_rejoin  
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、boolean値を指定します。  
   この値がtrueの場合には、CHMPXスレーブノードとの接続が切断された場合、再接続を自動的に実行します。  
@@ -381,7 +388,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   var parentval = dkcobj.GetValue('key', null, true, null);
   var subkeyval = dkcobj.GetValue('key', 'subkey', true, null);
@@ -395,8 +402,8 @@ Callback関数が指定されている場合には、常に**true**が返され�
   
   dkcobj.init();
   
-  var parentval = dkcobj.GetValue('slave.ini', 8031, true, false, 'key', null, true, null);
-  var subkeyval = dkcobj.GetValue('slave.ini', 8031, true, false, 'key', 'subkey', true, null);
+  var parentval = dkcobj.GetValue('slave.ini', 8031, null, true, false, 'key', null, true, null);
+  var subkeyval = dkcobj.GetValue('slave.ini', 8031, null, true, false, 'key', 'subkey', true, null);
   
   dkcobj.clean();
   ```
@@ -405,7 +412,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.GetValue('key', null, true, null, function(error, value){
       if(null !== error){
@@ -428,12 +435,12 @@ Callback関数が指定されている場合には、常に**true**が返され�
   
   dkcobj.init();
   
-  dkcobj.GetValue('slave.ini', 8031, true, false, 'key', null, true, null, function(error, value){
+  dkcobj.GetValue('slave.ini', 8031, null, true, false, 'key', null, true, null, function(error, value){
       if(null !== error){
           console_log('failed getting value');
           dkcobj.clean();
       }else{
-          dkcobj.GetValue('slave.ini', 8031, true, false, 'key', 'subkey', true, null, function(error, value){
+          dkcobj.GetValue('slave.ini', 8031, null, true, false, 'key', 'subkey', true, null, function(error, value){
               if(null !== error){
                   console_log('failed getting value');
               }
@@ -451,7 +458,7 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.on('get', function(error, value){
       if(null !== error){
@@ -476,14 +483,14 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
       dkcobj.clean();
   });
   
-  dkcobj.GetValue('slave.ini', 8031, true, false, 'key', 'subkey', true, null);
+  dkcobj.GetValue('slave.ini', 8031, null, true, false, 'key', 'subkey', true, null);
   ```
 - onGet(Callback cbfunc) - 永続接続  
   ```
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.onGet(function(error, value){
       if(null !== error){
@@ -508,7 +515,7 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
       dkcobj.clean();
   });
   
-  dkcobj.GetValue('slave.ini', 8031, true, false, 'key', 'subkey', true, null);
+  dkcobj.GetValue('slave.ini', 8031, null, true, false, 'key', 'subkey', true, null);
   ```
 
 #### 注意
@@ -532,6 +539,7 @@ K2HDKCからキーに紐付けられたサブキーのリストを取得しま�
   ```
   [bool/Array] GetSubkeys(String   conf,
                           int      port,
+                          String   cuk,
                           bool     auto_rejoin,
                           bool     no_giveup_rejoin,
                           String   key,
@@ -545,6 +553,8 @@ K2HDKCからキーに紐付けられたサブキーのリストを取得しま�
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノード起動時に指定した設定ファイル（*.ini）を指定します。
 - port  
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノードの制御ポート番号を指定します。
+- cuk  
+  ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノードのCUK文字列を指定します。
 - auto_rejoin  
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、boolean値を指定します。  
   この値がtrueの場合には、CHMPXスレーブノードとの接続が切断された場合、再接続を自動的に実行します。  
@@ -576,7 +586,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   var subkeys = dkcobj.GetSubkeys('key', true);
   
@@ -589,7 +599,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   
   dkcobj.init();
   
-  var subkeys = dkcobj.GetSubkeys('slave.ini', 8031, true, false, 'key', true);
+  var subkeys = dkcobj.GetSubkeys('slave.ini', 8031, null, true, false, 'key', true);
   
   dkcobj.clean();
   ```
@@ -598,7 +608,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.GetSubkeys('key', true, function(error, subkeys){
       if(null !== error){
@@ -614,7 +624,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   
   dkcobj.init();
   
-  dkcobj.GetSubkeys('slave.ini', 8031, true, false, 'key', true, function(error, subkeys){
+  dkcobj.GetSubkeys('slave.ini', 8031, null, true, false, 'key', true, function(error, subkeys){
       if(null !== error){
           console_log('failed getting subkey list');
       }
@@ -630,7 +640,7 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.on('getSubkeys', function(error, subkeys){
       if(null !== error){
@@ -655,14 +665,14 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
       dkcobj.clean();
   });
   
-  dkcobj.GetSubkeys('slave.ini', 8031, true, false, 'key', true);
+  dkcobj.GetSubkeys('slave.ini', 8031, null, true, false, 'key', true);
   ```
 - onGetSubkeys(Callback cbfunc) - 永続接続  
   ```
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.onGetSubkeys(function(error, subkeys){
       if(null !== error){
@@ -687,7 +697,7 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
       dkcobj.clean();
   });
   
-  dkcobj.GetSubkeys('slave.ini', 8031, true, false, 'key', true);
+  dkcobj.GetSubkeys('slave.ini', 8031, null, true, false, 'key', true);
   ```
 
 ### <a name="K2HDKC-GETSUBKEYS"> k2hdkc::GetAttrs()
@@ -704,6 +714,7 @@ K2HDKCからキーに設定されている属性名のリストを取得しま�
   ```
   [bool/Array] GetAttrs(String   conf,
                         int      port,
+                        String   cuk,
                         bool     auto_rejoin,
                         bool     no_giveup_rejoin,
                         String   key,
@@ -716,6 +727,8 @@ K2HDKCからキーに設定されている属性名のリストを取得しま�
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノード起動時に指定した設定ファイル（*.ini）を指定します。
 - port  
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノードの制御ポート番号を指定します。
+- cuk  
+  ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノードのCUK文字列を指定します。
 - auto_rejoin  
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、boolean値を指定します。  
   この値がtrueの場合には、CHMPXスレーブノードとの接続が切断された場合、再接続を自動的に実行します。  
@@ -744,7 +757,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   var attrs = dkcobj.GetAttrs('key');
   
@@ -757,7 +770,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   
   dkcobj.init();
   
-  var attrs = dkcobj.GetAttrs('slave.ini', 8031, true, false, 'key');
+  var attrs = dkcobj.GetAttrs('slave.ini', 8031, null, true, false, 'key');
   
   dkcobj.clean();
   ```
@@ -766,7 +779,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.GetAttrs('key', function(error, attrs){
       if(null !== error){
@@ -782,7 +795,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   
   dkcobj.init();
   
-  dkcobj.GetAttrs('slave.ini', 8031, true, false, 'key', function(error, attrs){
+  dkcobj.GetAttrs('slave.ini', 8031, null, true, false, 'key', function(error, attrs){
       if(null !== error){
           console_log('failed getting attribute name list');
       }
@@ -798,7 +811,7 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.on('getAttrs', function(error, attrs){
       if(null !== error){
@@ -823,14 +836,14 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
       dkcobj.clean();
   });
   
-  dkcobj.GetAttrs('slave.ini', 8031, true, false, 'key');
+  dkcobj.GetAttrs('slave.ini', 8031, null, true, false, 'key');
   ```
 - onGetAttrs(Callback cbfunc) - 永続接続  
   ```
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.onGetAttrs(function(error, attrs){
       if(null !== error){
@@ -855,7 +868,7 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
       dkcobj.clean();
   });
   
-  dkcobj.GetAttrs('slave.ini', 8031, true, false, 'key');
+  dkcobj.GetAttrs('slave.ini', 8031, null, true, false, 'key');
   ```
 
 ### <a name="K2HDKC-SETVALUE"> k2hdkc::SetValue()
@@ -876,6 +889,7 @@ K2HDKCへキーおよびサブキーを指定して値を設定します。
   ```
   bool SetValue(String   conf,
                 int      port,
+                String   cuk,
                 bool     auto_rejoin,
                 bool     no_giveup_rejoin,
                 String   key,
@@ -892,6 +906,8 @@ K2HDKCへキーおよびサブキーを指定して値を設定します。
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノード起動時に指定した設定ファイル（*.ini）を指定します。
 - port  
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノードの制御ポート番号を指定します。
+- cuk  
+  ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノードのCUK文字列を指定します。
 - auto_rejoin  
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、boolean値を指定します。  
   この値がtrueの場合には、CHMPXスレーブノードとの接続が切断された場合、再接続を自動的に実行します。  
@@ -930,7 +946,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.SetValue('key', 'val', null, null, 0);
   dkcobj.SetValue('key', 'val', 'subkey', null, 0);
@@ -944,8 +960,8 @@ Callback関数が指定されている場合には、常に**true**が返され�
   
   dkcobj.init();
   
-  dkcobj.SetValue('slave.ini', 8031, true, false, 'key', 'val', null, null, 0);
-  dkcobj.SetValue('slave.ini', 8031, true, false, 'key', 'val', 'subkey', null, 0);
+  dkcobj.SetValue('slave.ini', 8031, null, true, false, 'key', 'val', null, null, 0);
+  dkcobj.SetValue('slave.ini', 8031, null, true, false, 'key', 'val', 'subkey', null, 0);
   
   dkcobj.clean();
   ```
@@ -954,7 +970,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.SetValue('key', 'val', null, null, 0, function(error){
       if(null !== error){
@@ -977,12 +993,12 @@ Callback関数が指定されている場合には、常に**true**が返され�
   
   dkcobj.init();
   
-  dkcobj.SetValue('slave.ini', 8031, true, false, 'key', 'val', null, null, 0, function(error){
+  dkcobj.SetValue('slave.ini', 8031, null, true, false, 'key', 'val', null, null, 0, function(error){
       if(null !== error){
           console_log('failed setting value');
           dkcobj.clean();
       }else{
-          dkcobj.SetValue('slave.ini', 8031, true, false, 'key', 'val', 'subkey', null, 0, function(error){
+          dkcobj.SetValue('slave.ini', 8031, null, true, false, 'key', 'val', 'subkey', null, 0, function(error){
               if(null !== error){
                   console_log('failed setting value');
               }
@@ -1000,7 +1016,7 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.on('set', function(error){
       if(null !== error){
@@ -1025,14 +1041,14 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
       dkcobj.clean();
   });
   
-  dkcobj.SetValue('slave.ini', 8031, true, false, 'key', 'val', 'subkey', null, 0);
+  dkcobj.SetValue('slave.ini', 8031, null, true, false, 'key', 'val', 'subkey', null, 0);
   ```
 - onSet(Callback cbfunc) - 永続接続  
   ```
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.onSet(function(error){
       if(null !== error){
@@ -1057,7 +1073,7 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
       dkcobj.clean();
   });
   
-  dkcobj.SetValue('slave.ini', 8031, true, false, 'key', 'val', 'subkey', null, 0);
+  dkcobj.SetValue('slave.ini', 8031, null, true, false, 'key', 'val', 'subkey', null, 0);
   ```
 
 ### <a name="K2HDKC-SETSUBKEYS"> k2hdkc::SetSubkeys()
@@ -1075,6 +1091,7 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
   ```
   bool SetSubkeys(String   conf,
                   int      port,
+                  String   cuk,
                   bool     auto_rejoin,
                   bool     no_giveup_rejoin,
                   String   key,
@@ -1088,6 +1105,8 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノード起動時に指定した設定ファイル（*.ini）を指定します。
 - port  
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノードの制御ポート番号を指定します。
+- cuk  
+  ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノードのCUK文字列を指定します。
 - auto_rejoin  
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、boolean値を指定します。  
   この値がtrueの場合には、CHMPXスレーブノードとの接続が切断された場合、再接続を自動的に実行します。  
@@ -1118,7 +1137,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.SetSubkeys('key', ['subkey1', 'subkey2']);
   
@@ -1131,7 +1150,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   
   dkcobj.init();
   
-  dkcobj.SetSubkeys('slave.ini', 8031, true, false, 'key', ['subkey1', 'subkey2']);
+  dkcobj.SetSubkeys('slave.ini', 8031, null, true, false, 'key', ['subkey1', 'subkey2']);
   
   dkcobj.clean();
   ```
@@ -1140,7 +1159,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.SetSubkeys('key', ['subkey1', 'subkey2'], function(error){
       if(null !== error){
@@ -1156,7 +1175,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   
   dkcobj.init();
   
-  dkcobj.SetSubkeys('slave.ini', 8031, true, false, 'key', ['subkey1', 'subkey2'], function(error){
+  dkcobj.SetSubkeys('slave.ini', 8031, null, true, false, 'key', ['subkey1', 'subkey2'], function(error){
       if(null !== error){
           console_log('failed setting subkey list');
       }
@@ -1172,7 +1191,7 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.on('setSubkeys', function(error){
       if(null !== error){
@@ -1197,14 +1216,14 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
       dkcobj.clean();
   });
   
-  dkcobj.SetSubkeys('slave.ini', 8031, true, false, 'key', ['subkey1', 'subkey2']);
+  dkcobj.SetSubkeys('slave.ini', 8031, null, true, false, 'key', ['subkey1', 'subkey2']);
   ```
 - onSetSubkeys(Callback cbfunc) - 永続接続  
   ```
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.onSetSubkeys(function(error){
       if(null !== error){
@@ -1229,7 +1248,7 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
       dkcobj.clean();
   });
   
-  dkcobj.SetSubkeys('slave.ini', 8031, true, false, 'key', ['subkey1', 'subkey2']);
+  dkcobj.SetSubkeys('slave.ini', 8031, null, true, false, 'key', ['subkey1', 'subkey2']);
   ```
 
 ### <a name="K2HDKC-SETALL"> k2hdkc::SetAll()
@@ -1250,6 +1269,7 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
   ```
   bool SetAll(String   conf,
               int      port,
+              String   cuk,
               bool     auto_rejoin,
               bool     no_giveup_rejoin,
               String   key,
@@ -1266,6 +1286,8 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノード起動時に指定した設定ファイル（*.ini）を指定します。
 - port  
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノードの制御ポート番号を指定します。
+- cuk  
+  ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノードのCUK文字列を指定します。
 - auto_rejoin  
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、boolean値を指定します。  
   この値がtrueの場合には、CHMPXスレーブノードとの接続が切断された場合、再接続を自動的に実行します。  
@@ -1303,7 +1325,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.SetAll('key', 'val', ['subkey1', 'subkey2'], null, 0);
   
@@ -1316,7 +1338,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   
   dkcobj.init();
   
-  dkcobj.SetAll('slave.ini', 8031, true, false, 'key', 'val', ['subkey1', 'subkey2'], null, 0);
+  dkcobj.SetAll('slave.ini', 8031, null, true, false, 'key', 'val', ['subkey1', 'subkey2'], null, 0);
   
   dkcobj.clean();
   ```
@@ -1325,7 +1347,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.SetAll('key', 'val', ['subkey1', 'subkey2'], null, 0, function(error){
       if(null !== error){
@@ -1341,7 +1363,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   
   dkcobj.init();
   
-  dkcobj.SetAll('slave.ini', 8031, true, false, 'key', 'val', ['subkey1', 'subkey2'], null, 0, function(error){
+  dkcobj.SetAll('slave.ini', 8031, null, true, false, 'key', 'val', ['subkey1', 'subkey2'], null, 0, function(error){
       if(null !== error){
           console_log('failed setting all');
       }
@@ -1357,7 +1379,7 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.on('setAll', function(error){
       if(null !== error){
@@ -1382,14 +1404,14 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
       dkcobj.clean();
   });
   
-  dkcobj.SetAll('slave.ini', 8031, true, false, 'key', 'val', ['subkey1', 'subkey2'], null, 0);
+  dkcobj.SetAll('slave.ini', 8031, null, true, false, 'key', 'val', ['subkey1', 'subkey2'], null, 0);
   ```
 - onSetAll(Callback cbfunc) - 永続接続  
   ```
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.onSetAll(function(error){
       if(null !== error){
@@ -1414,7 +1436,7 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
       dkcobj.clean();
   });
   
-  dkcobj.SetAll('slave.ini', 8031, true, false, 'key', 'val', ['subkey1', 'subkey2'], null, 0);
+  dkcobj.SetAll('slave.ini', 8031, null, true, false, 'key', 'val', ['subkey1', 'subkey2'], null, 0);
   ```
 
 ### <a name="K2HDKC-REMOVE"> k2hdkc::Remove()
@@ -1432,6 +1454,7 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
   ```
   bool Remove(String   conf,
               int      port,
+              String   cuk,
               bool     auto_rejoin,
               bool     no_giveup_rejoin,
               String   key,
@@ -1445,6 +1468,8 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノード起動時に指定した設定ファイル（*.ini）を指定します。
 - port  
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノードの制御ポート番号を指定します。
+- cuk  
+  ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノードのCUK文字列を指定します。
 - auto_rejoin  
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、boolean値を指定します。  
   この値がtrueの場合には、CHMPXスレーブノードとの接続が切断された場合、再接続を自動的に実行します。  
@@ -1475,7 +1500,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.Remove('key', true);
   
@@ -1488,7 +1513,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   
   dkcobj.init();
   
-  dkcobj.Remove('slave.ini', 8031, true, false, 'key', true);
+  dkcobj.Remove('slave.ini', 8031, null, true, false, 'key', true);
   
   dkcobj.clean();
   ```
@@ -1497,7 +1522,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.Remove('key', true, function(error){
       if(null !== error){
@@ -1513,7 +1538,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   
   dkcobj.init();
   
-  dkcobj.Remove('slave.ini', 8031, true, false, 'key', true, function(error){
+  dkcobj.Remove('slave.ini', 8031, null, true, false, 'key', true, function(error){
       if(null !== error){
           console_log('failed removing');
       }
@@ -1529,7 +1554,7 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.on('remove', function(error){
       if(null !== error){
@@ -1554,14 +1579,14 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
       dkcobj.clean();
   });
   
-  dkcobj.Remove('slave.ini', 8031, true, false, 'key', true);
+  dkcobj.Remove('slave.ini', 8031, null, true, false, 'key', true);
   ```
 - onRemove(Callback cbfunc) - 永続接続  
   ```
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.onRemove(function(error){
       if(null !== error){
@@ -1586,7 +1611,7 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
       dkcobj.clean();
   });
   
-  dkcobj.Remove('slave.ini', 8031, true, false, 'key', true);
+  dkcobj.Remove('slave.ini', 8031, null, true, false, 'key', true);
   ```
 
 ### <a name="K2HDKC-RENAME"> k2hdkc::Rename()
@@ -1608,6 +1633,7 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
   ```
   bool Rename(String   conf,
               int      port,
+              String   cuk,
               bool     auto_rejoin,
               bool     no_giveup_rejoin,
               String   oldkey,
@@ -1625,6 +1651,8 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノード起動時に指定した設定ファイル（*.ini）を指定します。
 - port  
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノードの制御ポート番号を指定します。
+- cuk  
+  ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノードのCUK文字列を指定します。
 - auto_rejoin  
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、boolean値を指定します。  
   この値がtrueの場合には、CHMPXスレーブノードとの接続が切断された場合、再接続を自動的に実行します。  
@@ -1665,7 +1693,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.Rename('oldkey', 'newkey', 'parentkey', true, 'passphrase', 1000);
   
@@ -1678,7 +1706,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   
   dkcobj.init();
   
-  dkcobj.Rename('slave.ini', 8031, true, false, 'oldkey', 'newkey', 'parentkey', true, 'passphrase', 1000);
+  dkcobj.Rename('slave.ini', 8031, null, true, false, 'oldkey', 'newkey', 'parentkey', true, 'passphrase', 1000);
   
   dkcobj.clean();
   ```
@@ -1687,7 +1715,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.Rename('oldkey', 'newkey', 'parentkey', true, 'passphrase', 1000, function(error){
       if(null !== error){
@@ -1703,7 +1731,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   
   dkcobj.init();
   
-  dkcobj.Rename('slave.ini', 8031, true, false, 'oldkey', 'newkey', 'parentkey', true, 'passphrase', 1000, function(error){
+  dkcobj.Rename('slave.ini', 8031, null, true, false, 'oldkey', 'newkey', 'parentkey', true, 'passphrase', 1000, function(error){
       if(null !== error){
           console_log('failed renaming');
       }
@@ -1719,7 +1747,7 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.on('rename', function(error){
       if(null !== error){
@@ -1744,14 +1772,14 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
       dkcobj.clean();
   });
   
-  dkcobj.Rename('slave.ini', 8031, true, false, 'oldkey', 'newkey', 'parentkey', true, 'passphrase', 1000);
+  dkcobj.Rename('slave.ini', 8031, null, true, false, 'oldkey', 'newkey', 'parentkey', true, 'passphrase', 1000);
   ```
 - onRename(Callback cbfunc) - 永続接続  
   ```
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.onRename(function(error){
       if(null !== error){
@@ -1776,7 +1804,7 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
       dkcobj.clean();
   });
   
-  dkcobj.Rename('slave.ini', 8031, true, false, 'oldkey', 'newkey', 'parentkey', true, 'passphrase', 1000);
+  dkcobj.Rename('slave.ini', 8031, null, true, false, 'oldkey', 'newkey', 'parentkey', true, 'passphrase', 1000);
   ```
 
 ### <a name="K2HDKC-QUEUEPUSH"> k2hdkc::QueuePush()
@@ -1799,6 +1827,7 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
   ```
   bool QueuePush(String   conf,
                  int      port,
+                 String   cuk,
                  bool     auto_rejoin,
                  bool     no_giveup_rejoin,
                  String   prefix,
@@ -1817,6 +1846,8 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノード起動時に指定した設定ファイル（*.ini）を指定します。
 - port  
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノードの制御ポート番号を指定します。
+- cuk  
+  ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノードのCUK文字列を指定します。
 - auto_rejoin  
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、boolean値を指定します。  
   この値がtrueの場合には、CHMPXスレーブノードとの接続が切断された場合、再接続を自動的に実行します。  
@@ -1859,7 +1890,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.QueuePush('queue_', null,'data', true, true, 'mypass', 1000);
   dkcobj.QueuePush('keyqueue_', 'key', 'data', false, true, null, 0);
@@ -1873,8 +1904,8 @@ Callback関数が指定されている場合には、常に**true**が返され�
   
   dkcobj.init();
   
-  dkcobj.QueuePush('slave.ini', 8031, true, false, 'queue_', null,'data', true, true, 'mypass', 1000);
-  dkcobj.QueuePush('slave.ini', 8031, true, false, 'keyqueue_', 'key', 'data', false, true, null, 0);
+  dkcobj.QueuePush('slave.ini', 8031, null, true, false, 'queue_', null,'data', true, true, 'mypass', 1000);
+  dkcobj.QueuePush('slave.ini', 8031, null, true, false, 'keyqueue_', 'key', 'data', false, true, null, 0);
   
   dkcobj.clean();
   ```
@@ -1883,7 +1914,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.QueuePush('queue_', null,'data', true, true, 'mypass', 1000, function(error){
       if(null !== error){
@@ -1906,12 +1937,12 @@ Callback関数が指定されている場合には、常に**true**が返され�
   
   dkcobj.init();
   
-  dkcobj.QueuePush('slave.ini', 8031, true, false, 'queue_', null,'data', true, true, 'mypass', 1000, function(error){
+  dkcobj.QueuePush('slave.ini', 8031, null, true, false, 'queue_', null,'data', true, true, 'mypass', 1000, function(error){
       if(null !== error){
           console_log('failed queue pushing');
           dkcobj.clean();
       }else{
-          dkcobj.QueuePush('slave.ini', 8031, true, false, 'keyqueue_', 'key', 'data', false, true, null, 0, function(error){
+          dkcobj.QueuePush('slave.ini', 8031, null, true, false, 'keyqueue_', 'key', 'data', false, true, null, 0, function(error){
               if(null !== error){
                   console_log('failed queue pushing');
               }
@@ -1929,7 +1960,7 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.on('queuePush', function(error){
       if(null !== error){
@@ -1954,14 +1985,14 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
       dkcobj.clean();
   });
   
-  dkcobj.QueuePush('slave.ini', 8031, true, false, 'queue_', null,'data', true, true, 'mypass', 1000);
+  dkcobj.QueuePush('slave.ini', 8031, null, true, false, 'queue_', null,'data', true, true, 'mypass', 1000);
   ```
 - onQueuePush(Callback cbfunc) - 永続接続  
   ```
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.onQueuePush(function(error){
       if(null !== error){
@@ -1986,7 +2017,7 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
       dkcobj.clean();
   });
   
-  dkcobj.QueuePush('slave.ini', 8031, true, false, 'queue_', null,'data', true, true, 'mypass', 1000);
+  dkcobj.QueuePush('slave.ini', 8031, null, true, false, 'queue_', null,'data', true, true, 'mypass', 1000);
   ```
 
 ### <a name="K2HDKC-QUEUEPOP"> k2hdkc::QueuePop()
@@ -2006,6 +2037,7 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
   ```
   [bool/String/Array] QueuePop(String   conf,
                                int      port,
+                               String   cuk,
                                bool     auto_rejoin,
                                bool     no_giveup_rejoin,
                                String   prefix,
@@ -2021,6 +2053,8 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノード起動時に指定した設定ファイル（*.ini）を指定します。
 - port  
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノードの制御ポート番号を指定します。
+- cuk  
+  ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノードのCUK文字列を指定します。
 - auto_rejoin  
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、boolean値を指定します。  
   この値がtrueの場合には、CHMPXスレーブノードとの接続が切断された場合、再接続を自動的に実行します。  
@@ -2057,7 +2091,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   var value    = dkcobj.QueuePop('queue_', true, false, 'mypass');
   var valarray = dkcobj.QueuePop('keyqueue_', false, true, null);
@@ -2071,8 +2105,8 @@ Callback関数が指定されている場合には、常に**true**が返され�
   
   dkcobj.init();
   
-  var value    = dkcobj.QueuePop('slave.ini', 8031, true, false, 'queue_', true, false, 'mypass');
-  var valarray = dkcobj.QueuePop('slave.ini', 8031, true, false, 'keyqueue_', false, true, null);
+  var value    = dkcobj.QueuePop('slave.ini', 8031, null, true, false, 'queue_', true, false, 'mypass');
+  var valarray = dkcobj.QueuePop('slave.ini', 8031, null, true, false, 'keyqueue_', false, true, null);
   
   dkcobj.clean();
   ```
@@ -2081,7 +2115,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.QueuePop('queue_', true, false, 'mypass', function(error, value){
       if(null !== error){
@@ -2104,12 +2138,12 @@ Callback関数が指定されている場合には、常に**true**が返され�
   
   dkcobj.init();
   
-  dkcobj.QueuePop('slave.ini', 8031, true, false, 'queue_', true, false, 'mypass', function(error, value){
+  dkcobj.QueuePop('slave.ini', 8031, null, true, false, 'queue_', true, false, 'mypass', function(error, value){
       if(null !== error){
           console_log('failed queue popping');
           dkcobj.clean();
       }else{
-          dkcobj.QueuePop('slave.ini', 8031, true, false, 'keyqueue_', false, true, null, function(error, key, value){
+          dkcobj.QueuePop('slave.ini', 8031, null, true, false, 'keyqueue_', false, true, null, function(error, key, value){
               if(null !== error){
                   console_log('failed queue popping');
               }
@@ -2127,7 +2161,7 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.on('queuePop', function(error, key, value){
       if(null !== error){
@@ -2152,14 +2186,14 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
       dkcobj.clean();
   });
   
-  dkcobj.QueuePop('slave.ini', 8031, true, false, 'keyqueue_', false, true, null);
+  dkcobj.QueuePop('slave.ini', 8031, null, true, false, 'keyqueue_', false, true, null);
   ```
 - onQueuePop(Callback cbfunc) - 永続接続  
   ```
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.onQueuePop(function(error, key, value){
       if(null !== error){
@@ -2184,7 +2218,7 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
       dkcobj.clean();
   });
   
-  dkcobj.QueuePop('slave.ini', 8031, true, false, 'keyqueue_', false, true, null);
+  dkcobj.QueuePop('slave.ini', 8031, null, true, false, 'keyqueue_', false, true, null);
   ```
 
 ### <a name="K2HDKC-QUEUEREMOVE"> k2hdkc::QueueRemove()
@@ -2205,6 +2239,7 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
   ```
   bool QueueRemove(String   conf,
                    int      port,
+                   String   cuk,
                    bool     auto_rejoin,
                    bool     no_giveup_rejoin,
                    String   prefix,
@@ -2221,6 +2256,8 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノード起動時に指定した設定ファイル（*.ini）を指定します。
 - port  
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノードの制御ポート番号を指定します。
+- cuk  
+  ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノードのCUK文字列を指定します。
 - auto_rejoin  
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、boolean値を指定します。  
   この値がtrueの場合には、CHMPXスレーブノードとの接続が切断された場合、再接続を自動的に実行します。  
@@ -2257,7 +2294,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.QueueRemove('queue_', 1, true, false, 'mypass');
   dkcobj.QueueRemove('keyqueue_', 1, false, true, null);
@@ -2271,8 +2308,8 @@ Callback関数が指定されている場合には、常に**true**が返され�
   
   dkcobj.init();
   
-  dkcobj.QueueRemove('slave.ini', 8031, true, false, 'queue_', 1, true, false, 'mypass');
-  dkcobj.QueueRemove('slave.ini', 8031, true, false, 'keyqueue_', 1, false, true, null);
+  dkcobj.QueueRemove('slave.ini', 8031, null, true, false, 'queue_', 1, true, false, 'mypass');
+  dkcobj.QueueRemove('slave.ini', 8031, null, true, false, 'keyqueue_', 1, false, true, null);
   
   dkcobj.clean();
   ```
@@ -2281,7 +2318,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.QueueRemove('queue_', 1, true, false, 'mypass', function(error){
       if(null !== error){
@@ -2304,12 +2341,12 @@ Callback関数が指定されている場合には、常に**true**が返され�
   
   dkcobj.init();
   
-  dkcobj.QueueRemove('slave.ini', 8031, true, false, 'queue_', 1, true, false, 'mypass', function(error){
+  dkcobj.QueueRemove('slave.ini', 8031, null, true, false, 'queue_', 1, true, false, 'mypass', function(error){
       if(null !== error){
           console_log('failed queue removing');
           dkcobj.clean();
       }else{
-          dkcobj.QueueRemove('slave.ini', 8031, true, false, 'keyqueue_', 1, false, true, null, function(error){
+          dkcobj.QueueRemove('slave.ini', 8031, null, true, false, 'keyqueue_', 1, false, true, null, function(error){
               if(null !== error){
                   console_log('failed queue removing');
               }
@@ -2327,7 +2364,7 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.on('queueRemove', function(error){
       if(null !== error){
@@ -2352,14 +2389,14 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
       dkcobj.clean();
   });
   
-  dkcobj.QueueRemove('slave.ini', 8031, true, false, 'keyqueue_', 1, false, true, null);
+  dkcobj.QueueRemove('slave.ini', 8031, null, true, false, 'keyqueue_', 1, false, true, null);
   ```
 - onQueueRemove(Callback cbfunc) - 永続接続  
   ```
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.onQueueRemove(function(error){
       if(null !== error){
@@ -2384,7 +2421,7 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
       dkcobj.clean();
   });
   
-  dkcobj.QueueRemove('slave.ini', 8031, true, false, 'keyqueue_', 1, false, true, null);
+  dkcobj.QueueRemove('slave.ini', 8031, null, true, false, 'keyqueue_', 1, false, true, null);
   ```
 
 ### <a name="K2HDKC-CASINIT"> k2hdkc::CasInit()
@@ -2404,6 +2441,7 @@ CAS（Compare and Swap）としてキー、値を初期化します。
   ```
   bool CasInit(String   conf,
                int      port,
+               String   cuk,
                bool     auto_rejoin,
                bool     no_giveup_rejoin,
                String   key,
@@ -2419,6 +2457,8 @@ CAS（Compare and Swap）としてキー、値を初期化します。
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノード起動時に指定した設定ファイル（*.ini）を指定します。
 - port  
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノードの制御ポート番号を指定します。
+- cuk  
+  ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノードのCUK文字列を指定します。
 - auto_rejoin  
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、boolean値を指定します。  
   この値がtrueの場合には、CHMPXスレーブノードとの接続が切断された場合、再接続を自動的に実行します。  
@@ -2454,7 +2494,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.CasInit('caskey', 1, 'mypass', 1000);
   
@@ -2467,7 +2507,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   
   dkcobj.init();
   
-  dkcobj.CasInit('slave.ini', 8031, true, false, 'caskey', 1, 'mypass', 1000);
+  dkcobj.CasInit('slave.ini', 8031, null, true, false, 'caskey', 1, 'mypass', 1000);
   
   dkcobj.clean();
   ```
@@ -2476,7 +2516,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.CasInit('caskey', 1, 'mypass', 1000, function(error){
       if(null !== error){
@@ -2492,7 +2532,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   
   dkcobj.init();
   
-  dkcobj.CasInit('slave.ini', 8031, true, false, 'caskey', 1, 'mypass', 1000, function(error){
+  dkcobj.CasInit('slave.ini', 8031, null, true, false, 'caskey', 1, 'mypass', 1000, function(error){
       if(null !== error){
           console_log('failed initializing CAS');
       }
@@ -2508,7 +2548,7 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.on('casInit', function(error){
       if(null !== error){
@@ -2533,14 +2573,14 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
       dkcobj.clean();
   });
   
-  dkcobj.CasInit('slave.ini', 8031, true, false, 'caskey', 1, 'mypass', 1000);
+  dkcobj.CasInit('slave.ini', 8031, null, true, false, 'caskey', 1, 'mypass', 1000);
   ```
 - onCasInit(Callback cbfunc) - 永続接続  
   ```
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.onCasInit(function(error){
       if(null !== error){
@@ -2565,7 +2605,7 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
       dkcobj.clean();
   });
   
-  dkcobj.CasInit('slave.ini', 8031, true, false, 'caskey', 1, 'mypass', 1000);
+  dkcobj.CasInit('slave.ini', 8031, null, true, false, 'caskey', 1, 'mypass', 1000);
   ```
 
 ### <a name="K2HDKC-CASGET"> k2hdkc::CasGet()
@@ -2583,6 +2623,7 @@ CAS（Compare and Swap）のキーの値を取得します。
   ```
   int CasGet(String   conf,
              int      port,
+             String   cuk,
              bool     auto_rejoin,
              bool     no_giveup_rejoin,
              String   key,
@@ -2596,6 +2637,8 @@ CAS（Compare and Swap）のキーの値を取得します。
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノード起動時に指定した設定ファイル（*.ini）を指定します。
 - port  
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノードの制御ポート番号を指定します。
+- cuk  
+  ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノードのCUK文字列を指定します。
 - auto_rejoin  
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、boolean値を指定します。  
   この値がtrueの場合には、CHMPXスレーブノードとの接続が切断された場合、再接続を自動的に実行します。  
@@ -2626,7 +2669,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   var value = dkcobj.CasGet('caskey', 'mypass');
   
@@ -2639,7 +2682,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   
   dkcobj.init();
   
-  var value = dkcobj.CasGet('slave.ini', 8031, true, false, 'caskey', 'mypass');
+  var value = dkcobj.CasGet('slave.ini', 8031, null, true, false, 'caskey', 'mypass');
   
   dkcobj.clean();
   ```
@@ -2648,7 +2691,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.CasGet('caskey', 'mypass', function(error, value){
       if(null !== error){
@@ -2664,7 +2707,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   
   dkcobj.init();
   
-  dkcobj.CasGet('slave.ini', 8031, true, false, 'caskey', 'mypass', function(error, value){
+  dkcobj.CasGet('slave.ini', 8031, null, true, false, 'caskey', 'mypass', function(error, value){
       if(null !== error){
           console_log('failed getting CAS value');
       }
@@ -2680,7 +2723,7 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.on('casGet', function(error, value){
       if(null !== error){
@@ -2705,14 +2748,14 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
       dkcobj.clean();
   });
   
-  dkcobj.CasGet('slave.ini', 8031, true, false, 'caskey', 'mypass');
+  dkcobj.CasGet('slave.ini', 8031, null, true, false, 'caskey', 'mypass');
   ```
 - onCasGet(Callback cbfunc) - 永続接続  
   ```
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.onCasGet(function(error, value){
       if(null !== error){
@@ -2737,7 +2780,7 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
       dkcobj.clean();
   });
   
-  dkcobj.CasGet('slave.ini', 8031, true, false, 'caskey', 'mypass');
+  dkcobj.CasGet('slave.ini', 8031, null, true, false, 'caskey', 'mypass');
   ```
 
 ### <a name="K2HDKC-CASSET"> k2hdkc::CasSet()
@@ -2758,6 +2801,7 @@ CAS（Compare and Swap）のキーに値を設定します。
   ```
   bool CasSet(String   conf,
               int      port,
+              String   cuk,
               bool     auto_rejoin,
               bool     no_giveup_rejoin,
               String   key,
@@ -2774,6 +2818,8 @@ CAS（Compare and Swap）のキーに値を設定します。
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノード起動時に指定した設定ファイル（*.ini）を指定します。
 - port  
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノードの制御ポート番号を指定します。
+- cuk  
+  ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノードのCUK文字列を指定します。
 - auto_rejoin  
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、boolean値を指定します。  
   この値がtrueの場合には、CHMPXスレーブノードとの接続が切断された場合、再接続を自動的に実行します。  
@@ -2811,7 +2857,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.CasSet('caskey', 1, 5, 'mypass', 1000);
   
@@ -2824,7 +2870,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   
   dkcobj.init();
   
-  dkcobj.CasSet('slave.ini', 8031, true, false, 'caskey', 1, 5, 'mypass', 1000);
+  dkcobj.CasSet('slave.ini', 8031, null, true, false, 'caskey', 1, 5, 'mypass', 1000);
   
   dkcobj.clean();
   ```
@@ -2833,7 +2879,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.CasSet('caskey', 1, 5, 'mypass', 1000, function(error){
       if(null !== error){
@@ -2849,7 +2895,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   
   dkcobj.init();
   
-  dkcobj.CasSet('slave.ini', 8031, true, false, 'caskey', 1, 5, 'mypass', 1000, function(error){
+  dkcobj.CasSet('slave.ini', 8031, null, true, false, 'caskey', 1, 5, 'mypass', 1000, function(error){
       if(null !== error){
           console_log('failed setting CAS value');
       }
@@ -2865,7 +2911,7 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.on('casSet', function(error){
       if(null !== error){
@@ -2890,14 +2936,14 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
       dkcobj.clean();
   });
   
-  dkcobj.CasSet('slave.ini', 8031, true, false, 'caskey', 1, 5, 'mypass', 1000);
+  dkcobj.CasSet('slave.ini', 8031, null, true, false, 'caskey', 1, 5, 'mypass', 1000);
   ```
 - onCasSet(Callback cbfunc) - 永続接続  
   ```
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.onCasSet(function(error){
       if(null !== error){
@@ -2922,7 +2968,7 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
       dkcobj.clean();
   });
   
-  dkcobj.CasSet('slave.ini', 8031, true, false, 'caskey', 1, 5, 'mypass', 1000);
+  dkcobj.CasSet('slave.ini', 8031, null, true, false, 'caskey', 1, 5, 'mypass', 1000);
   ```
 
 ### <a name="K2HDKC-CASINCDEC"> k2hdkc::CasIncDec()
@@ -2942,6 +2988,7 @@ CAS（Compare and Swap）のキーの値をインクリメントもしくはデ�
   ```
   bool CasIncDec(String   conf,
                  int      port,
+                 String   cuk,
                  bool     auto_rejoin,
                  bool     no_giveup_rejoin,
                  String   key,
@@ -2957,6 +3004,8 @@ CAS（Compare and Swap）のキーの値をインクリメントもしくはデ�
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノード起動時に指定した設定ファイル（*.ini）を指定します。
 - port  
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノードの制御ポート番号を指定します。
+- cuk  
+  ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、CHMPXスレーブノードのCUK文字列を指定します。
 - auto_rejoin  
   ワンタイム接続用に初期化されたk2hdkcオブジェクトの場合、boolean値を指定します。  
   この値がtrueの場合には、CHMPXスレーブノードとの接続が切断された場合、再接続を自動的に実行します。  
@@ -2992,7 +3041,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.CasIncDec('caskey', true, 'mypass', 1000);
   
@@ -3005,7 +3054,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   
   dkcobj.init();
   
-  dkcobj.CasIncDec('slave.ini', 8031, true, false, 'caskey', true, 'mypass', 1000);
+  dkcobj.CasIncDec('slave.ini', 8031, null, true, false, 'caskey', true, 'mypass', 1000);
   
   dkcobj.clean();
   ```
@@ -3014,7 +3063,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.CasIncDec('caskey', true, 'mypass', 1000, function(error){
       if(null !== error){
@@ -3030,7 +3079,7 @@ Callback関数が指定されている場合には、常に**true**が返され�
   
   dkcobj.init();
   
-  dkcobj.CasIncDec('slave.ini', 8031, true, false, 'caskey', true, 'mypass', 1000, function(error){
+  dkcobj.CasIncDec('slave.ini', 8031, null, true, false, 'caskey', true, 'mypass', 1000, function(error){
       if(null !== error){
           console_log('failed increment/decrement CAS value');
       }
@@ -3046,7 +3095,7 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.on('casIncDec', function(error){
       if(null !== error){
@@ -3071,14 +3120,14 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
       dkcobj.clean();
   });
   
-  dkcobj.CasIncDec('slave.ini', 8031, true, false, 'caskey', true, 'mypass', 1000);
+  dkcobj.CasIncDec('slave.ini', 8031, null, true, false, 'caskey', true, 'mypass', 1000);
   ```
 - onCasIncDec(Callback cbfunc) - 永続接続  
   ```
   var k2hdkc = require('bindings')('k2hdkc');
   var dkcobj = new k2hdkc();
   
-  dkcobj.init('slave.ini', 8031, true, false);
+  dkcobj.init('slave.ini', 8031, null, true, false);
   
   dkcobj.onCasIncDec(function(error){
       if(null !== error){
@@ -3103,7 +3152,7 @@ Callback関数を指定せず、イベントハンドラを設定して非同期
       dkcobj.clean();
   });
   
-  dkcobj.CasIncDec('slave.ini', 8031, true, false, 'caskey', true, 'mypass', 1000);
+  dkcobj.CasIncDec('slave.ini', 8031, null, true, false, 'caskey', true, 'mypass', 1000);
   ```
 
 ### <a name="K2HDKC-PRINTVERSION"> k2hdkc::PrintVersion()
