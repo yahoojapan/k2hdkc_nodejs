@@ -1,3 +1,10 @@
+k2hdkc (0.9.10) unstable; urgency=low
+
+  * Switched Travis CI to Github actions - #15
+  * Supported Node.js 12 and 14 - #14
+
+ -- Takeshi Nakatani <ggtakec@gmail.com>  Tue, 24 Nov 2020 11:17:56 +0900
+
 k2hdkc (0.9.9) unstable; urgency=low
 
   * Fixed a bug in k2hdkc_node.cc - #11
