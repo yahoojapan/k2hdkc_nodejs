@@ -1635,7 +1635,7 @@ NAN_METHOD(K2hdkcNode::GetSubkeys)
 			Local<Array>	retarr	= Nan::New<Array>();
 			int				pos		= 0 ;
 			for(strarr_t::const_iterator iter = strarr.begin(); iter != strarr.end(); ++iter, ++pos){
-				retarr->Set(pos, Nan::New<String>(iter->c_str()).ToLocalChecked());
+				Nan::Set(retarr, pos, Nan::New<String>(iter->c_str()).ToLocalChecked());
 			}
 			info.GetReturnValue().Set(retarr);
 		}
@@ -1753,7 +1753,7 @@ NAN_METHOD(K2hdkcNode::GetAttrs)
 			Local<Array>	retarr	= Nan::New<Array>();
 			int				pos		= 0 ;
 			for(strarr_t::const_iterator iter = strarr.begin(); iter != strarr.end(); ++iter, ++pos){
-				retarr->Set(pos, Nan::New<String>(iter->c_str()).ToLocalChecked());
+				Nan::Set(retarr, pos, Nan::New<String>(iter->c_str()).ToLocalChecked());
 			}
 			info.GetReturnValue().Set(retarr);
 		}
@@ -2068,7 +2068,7 @@ NAN_METHOD(K2hdkcNode::SetSubkeys)
 			for(int pos = 0; pos < static_cast<int>(inSubkeys->Length()); ++pos){
 				string		strkey;
 				{
-					Nan::Utf8String	buf(inSubkeys->Get(pos));
+					Nan::Utf8String	buf(Nan::Get(inSubkeys, pos).ToLocalChecked());
 					strkey = std::string(*buf);
 				}
 				if(Subkeys.end() == Subkeys.insert(strkey.c_str())){
@@ -2256,7 +2256,7 @@ NAN_METHOD(K2hdkcNode::SetAll)
 			for(int pos = 0; pos < static_cast<int>(inSubkeys->Length()); ++pos){
 				string		strkey;
 				{
-					Nan::Utf8String	buf(inSubkeys->Get(pos));
+					Nan::Utf8String	buf(Nan::Get(inSubkeys, pos).ToLocalChecked());
 					strkey = std::string(*buf);
 				}
 				if(Subkeys.end() == Subkeys.insert(strkey.c_str())){
@@ -3326,11 +3326,11 @@ NAN_METHOD(K2hdkcNode::QueuePop)
 				string			strtmpkey(reinterpret_cast<const char*>(pkeytmp), keytmplen);
 				if(pvaltmp && 0 < valtmplen){
 					string		strtmpval(reinterpret_cast<const char*>(pvaltmp), valtmplen);
-					retarr->Set(0, Nan::New<String>(strtmpkey.c_str()).ToLocalChecked());
-					retarr->Set(1, Nan::New<String>(strtmpval.c_str()).ToLocalChecked());
+					Nan::Set(retarr, 0, Nan::New<String>(strtmpkey.c_str()).ToLocalChecked());
+					Nan::Set(retarr, 1, Nan::New<String>(strtmpval.c_str()).ToLocalChecked());
 				}else{
-					retarr->Set(0, Nan::New<String>(strtmpkey.c_str()).ToLocalChecked());
-					retarr->Set(1, Nan::Null());
+					Nan::Set(retarr, 0, Nan::New<String>(strtmpkey.c_str()).ToLocalChecked());
+					Nan::Set(retarr, 1, Nan::Null());
 				}
 				info.GetReturnValue().Set(retarr);
 			}else{
