@@ -211,6 +211,21 @@ done
 cd ${TESTDIR}
 
 #
+# Set mqueue size
+#
+if [ ! -f /proc/sys/fs/mqueue/msg_max ]; then
+	echo -n " [ERROR] /proc/sys/fs/mqueue/msg_max is not existed."
+	exit 1
+fi
+CURRENT_MSGMAX=`cat /proc/sys/fs/mqueue/msg_max`
+if [ "X${CURRENT_MSGMAX}" = "X" ]; then
+	CURRENT_MSGMAX=0
+fi
+if [ ${CURRENT_MSGMAX} -lt 128 ]; then
+	echo 128 | sudo tee /proc/sys/fs/mqueue/msg_max
+fi
+
+#
 # Start chmpx server
 #
 if [ "X${CHMPX_SERVER}" = "Xrun" ]; then
