@@ -1,6 +1,6 @@
 {
   "name": "k2hdkc",
-  "version": "0.9.9",
+  "version": "0.9.10",
   "description": "K2HDKC addon library for Node.js",
   "os": "linux",
   "main": "index.js",
