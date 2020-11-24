@@ -1,6 +1,6 @@
 k2hdkc nodejs addon library
 ===========================
-[![Build Status](https://travis-ci.org/yahoojapan/k2hdkc_nodejs.svg?branch=master)](https://travis-ci.org/yahoojapan/k2hdkc_nodejs)
+[![Node.js AntPickax CI](https://github.com/yahoojapan/k2hdkc_nodejs/workflows/Node.js%20AntPickax%20CI/badge.svg)](https://github.com/yahoojapan/k2hdkc_nodejs/actions)
 [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/yahoojapan/k2hdkc_nodejs/master/LICENSE)
 [![GitHub forks](https://img.shields.io/github/forks/yahoojapan/k2hdkc_nodejs.svg)](https://github.com/yahoojapan/k2hdkc_nodejs/network)
 [![GitHub stars](https://img.shields.io/github/stars/yahoojapan/k2hdkc_nodejs.svg)](https://github.com/yahoojapan/k2hdkc_nodejs/stargazers)
