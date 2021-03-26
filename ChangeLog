@@ -1,3 +1,9 @@
+k2hdkc (1.0.0) unstable; urgency=low
+
+  * Updated README.md for a reference to k2hdkc dbaas - #18
+
+ -- Takeshi Nakatani <ggtakec@gmail.com>  Fri, 26 Mar 2021 19:19:38 +0900
+
 k2hdkc (0.9.10) unstable; urgency=low
 
   * Switched Travis CI to Github actions - #15
