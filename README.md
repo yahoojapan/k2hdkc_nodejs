@@ -29,14 +29,17 @@ $ npm install k2hdkc
 ```
 
 ### Documents
-  - [Document top page](https://nodejs.k2hdkc.antpick.ax/)
-  - [Github wiki page](https://github.com/yahoojapan/k2hdkc_nodejs/wiki)
-  - [About K2HDKC](https://k2hdkc.antpick.ax/)
-  - [About AntPickax](https://antpick.ax/)
+- [Document top page](https://nodejs.k2hdkc.antpick.ax/)
+- [Github wiki page](https://github.com/yahoojapan/k2hdkc_nodejs/wiki)
+- [About K2HDKC](https://k2hdkc.antpick.ax/)
+- [About AntPickax](https://antpick.ax/)
 
 ### Packages
-  - [NPM packages](https://www.npmjs.com/package/k2hdkc)
-  - [NPM antpickax](https://www.npmjs.com/org/antpickax)
+- [NPM packages](https://www.npmjs.com/package/k2hdkc)
+- [NPM antpickax](https://www.npmjs.com/org/antpickax)
+
+### Related products
+- [K2HDKC Database As A Service(DBaaS)](https://dbaas.k2hdkc.antpick.ax/)
 
 ### License
 This software is released under the MIT License, see the license file.
