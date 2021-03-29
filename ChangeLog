@@ -1,3 +1,9 @@
+k2hdkc (1.0.1) unstable; urgency=low
+
+  * Updated package.json for mocha and chai - #20
+
+ -- Takeshi Nakatani <ggtakec@gmail.com>  Mon, 29 Mar 2021 18:09:40 +0900
+
 k2hdkc (1.0.0) unstable; urgency=low
 
   * Updated README.md for a reference to k2hdkc dbaas - #18
