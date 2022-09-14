@@ -9,11 +9,11 @@
   },
   "dependencies": {
     "bindings": "^1.5.0",
-    "nan": "^2.15.0"
+    "nan": "^2.16.0"
   },
   "devDependencies": {
-    "chai": "^4.3.4",
-    "mocha": "^9.1.0",
+    "chai": "^4.3.6",
+    "mocha": "^10.0.0",
     "publish-please": "^5.5.2"
   },
   "scripts": {
@@ -25,8 +25,8 @@
     "build:after": "echo \"Build - Succeed\"",
     "install": "npm run build",
     "test": "npm run test:all",
-    "test:all": "echo \"Test - k2hdkc all\" && if [ -d test_* ]; then TEST_DIR=`ls -1 | grep test_ | head -1`; else TEST_DIR=test; fi; ${TEST_DIR}/run_test.sh k2hdkc && echo \"Finished\"",
-    "test:k2hdkc": "echo \"Test - k2hdkc k2hdkc\" && if [ -d test_* ]; then TEST_DIR=`ls -1 | grep test_ | head -1`; else TEST_DIR=test; fi; ${TEST_DIR}/run_test.sh k2hdkc && echo \"Finished\"",
+    "test:all": "echo \"Test - k2hdkc all\" && test/run_test.sh k2hdkc && echo \"Finished\"",
+    "test:k2hdkc": "echo \"Test - k2hdkc k2hdkc\" && test/run_test.sh k2hdkc && echo \"Finished\"",
     "publish-please": "publish-please",
     "prepublishOnly": "publish-please guard"
   },
