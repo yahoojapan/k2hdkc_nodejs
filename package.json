@@ -23,7 +23,6 @@
     "build:rebuild": "if [ -f src/binding.gyp ]; then cd src; fi && node-gyp rebuild --verbose --release --target_arch=x64 --coverage=true",
     "build:linkdir": "if [ ! -f build -a ! -s build ]; then ln -s src/build .; fi",
     "build:after": "echo \"Build - Succeed\"",
-    "install": "npm run build",
     "test": "npm run test:all",
     "test:all": "echo \"Test - k2hdkc all\" && test/run_test.sh k2hdkc && echo \"Finished\"",
     "test:k2hdkc": "echo \"Test - k2hdkc k2hdkc\" && test/run_test.sh k2hdkc && echo \"Finished\"",
