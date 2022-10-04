@@ -24,8 +24,8 @@
     "build:linkdir": "if [ ! -f build -a ! -s build ]; then ln -s src/build .; fi",
     "build:after": "echo \"Build - Succeed\"",
     "test": "npm run test:all",
-    "test:all": "echo \"Test - k2hdkc all\" && test/run_test.sh k2hdkc && echo \"Finished\"",
-    "test:k2hdkc": "echo \"Test - k2hdkc k2hdkc\" && test/run_test.sh k2hdkc && echo \"Finished\"",
+    "test:all": "echo \"Test - k2hdkc all\" && tests/test.sh k2hdkc && echo \"Finished\"",
+    "test:k2hdkc": "echo \"Test - k2hdkc k2hdkc\" && tests/test.sh k2hdkc && echo \"Finished\"",
     "publish-please": "publish-please",
     "prepublishOnly": "publish-please guard"
   },
