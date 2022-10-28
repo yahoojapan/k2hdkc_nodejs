@@ -1,3 +1,4 @@
+#!/bin/sh
 #
 # K2HDKC
 # 
@@ -88,25 +89,12 @@ initialize_pid_file()
 ##############################################################
 # Current environment
 #
-PROGRAM_NAME=`basename $0`
-RUNDIR=`pwd`
-SELFSCRIPTDIR=`dirname $0`
-if [ "X$SELFSCRIPTDIR" = "X" -o "X$SELFSCRIPTDIR" = "X." ]; then
-	TMP_BASENAME=`basename $0`
-	TMP_FIRSTWORD=`echo $0 | awk -F"/" '{print $1}'`
-
-	if [ "X$TMP_BASENAME" = "X$TMP_FIRSTWORD" ]; then
-		# search path
-		SELFSCRIPTDIR=`which $0`
-		SELFSCRIPTDIR=`dirname $SELFSCRIPTDIR`
-	else
-		SELFSCRIPTDIR=.
-	fi
-fi
-SELFSCRIPTDIR=`cd -P ${SELFSCRIPTDIR}; pwd`
-SRCTOP=`cd -P ${SELFSCRIPTDIR}/..; pwd`
-SRCDIR=${SRCTOP}/src
-TESTDIR=${SELFSCRIPTDIR}
+PROGRAM_NAME=$(basename "${0}")
+SCRIPTDIR=$(dirname "${0}")
+SCRIPTDIR=$(cd "${SCRIPTDIR}" || exit 1; pwd)
+SRCTOP=$(cd "${SCRIPTDIR}/.." || exit 1; pwd)
+SRCDIR=$(cd "${SRCTOP}/src" || exit 1; pwd)
+TESTSDIR=$(cd "${SRCTOP}/tests" || exit 1; pwd)
 
 #
 # Pid files
@@ -208,7 +196,7 @@ done
 ##############################################################
 # Do work
 #
-cd ${TESTDIR}
+cd ${TESTSDIR}
 
 #
 # Set mqueue size
@@ -252,7 +240,7 @@ if [ "X${CHMPX_SERVER}" = "Xrun" ]; then
 	#
 	# Run chmpx(1) server process
 	#
-	chmpx -conf ${TESTDIR}/test_server.ini -ctlport 8021 ${CHMPX_DBG_OPTION} > ${CHMPX_SVR1_LOGFILE} 2>&1 &
+	chmpx -conf ${TESTSDIR}/test_server.ini -ctlport 8021 ${CHMPX_DBG_OPTION} > ${CHMPX_SVR1_LOGFILE} 2>&1 &
 	CHMPX_SERVER_PID=$!
 
 	#
@@ -274,7 +262,7 @@ if [ "X${CHMPX_SERVER}" = "Xrun" ]; then
 	#
 	# Run chmpx(2) server process
 	#
-	chmpx -conf ${TESTDIR}/test_server.ini -ctlport 8023 ${CHMPX_DBG_OPTION} > ${CHMPX_SVR2_LOGFILE} 2>&1 &
+	chmpx -conf ${TESTSDIR}/test_server.ini -ctlport 8023 ${CHMPX_DBG_OPTION} > ${CHMPX_SVR2_LOGFILE} 2>&1 &
 	CHMPX_SERVER_PID=$!
 
 	#
@@ -321,7 +309,7 @@ if [ "X${K2HDKC_SERVER}" = "Xrun" ]; then
 	#
 	# Run k2hdkc(1) server process
 	#
-	k2hdkc -conf ${TESTDIR}/test_server.ini -ctlport 8021 ${K2HDKC_DBG_OPTION} > ${K2HDKC1_LOGFILE} 2>&1 &
+	k2hdkc -conf ${TESTSDIR}/test_server.ini -ctlport 8021 ${K2HDKC_DBG_OPTION} > ${K2HDKC1_LOGFILE} 2>&1 &
 	K2HDKC_SERVER_PID=$!
 
 	#
@@ -343,7 +331,7 @@ if [ "X${K2HDKC_SERVER}" = "Xrun" ]; then
 	#
 	# Run k2hdkc(2) server process
 	#
-	k2hdkc -conf ${TESTDIR}/test_server.ini -ctlport 8023 ${K2HDKC_DBG_OPTION} > ${K2HDKC2_LOGFILE} 2>&1 &
+	k2hdkc -conf ${TESTSDIR}/test_server.ini -ctlport 8023 ${K2HDKC_DBG_OPTION} > ${K2HDKC2_LOGFILE} 2>&1 &
 	K2HDKC_SERVER_PID=$!
 
 	#
@@ -381,7 +369,7 @@ if [ "X${CHMPX_SLAVE}" = "Xrun" ]; then
 	#
 	# Run chmpx slave process
 	#
-	chmpx -conf ${TESTDIR}/test_slave.ini ${CHMPX_DBG_OPTION} > ${CHMPX_SLV_LOGFILE} 2>&1 &
+	chmpx -conf ${TESTSDIR}/test_slave.ini ${CHMPX_DBG_OPTION} > ${CHMPX_SLV_LOGFILE} 2>&1 &
 	CHMPX_SLAVE_PID=$!
 
 	#
@@ -475,7 +463,10 @@ fi
 exit 0
 
 #
-# VIM modelines
-#
-# vim:set ts=4 fenc=utf-8:
+# Local variables:
+# tab-width: 4
+# c-basic-offset: 4
+# End:
+# vim600: noexpandtab sw=4 ts=4 fdm=marker
+# vim<600: noexpandtab sw=4 ts=4
 #
