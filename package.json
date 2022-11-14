@@ -13,8 +13,7 @@
   },
   "devDependencies": {
     "chai": "^4.3.6",
-    "mocha": "^10.0.0",
-    "publish-please": "^5.5.2"
+    "mocha": "^10.0.0"
   },
   "scripts": {
     "build": "npm run build:before && npm run build:configure && npm run build:rebuild && npm run build:linkdir && npm run build:after",
@@ -25,9 +24,7 @@
     "build:after": "echo \"Build - Succeed\"",
     "test": "npm run test:all",
     "test:all": "echo \"Test - k2hdkc all\" && tests/test.sh k2hdkc && echo \"Finished\"",
-    "test:k2hdkc": "echo \"Test - k2hdkc k2hdkc\" && tests/test.sh k2hdkc && echo \"Finished\"",
-    "publish-please": "publish-please",
-    "prepublishOnly": "publish-please guard"
+    "test:k2hdkc": "echo \"Test - k2hdkc k2hdkc\" && tests/test.sh k2hdkc && echo \"Finished\""
   },
   "repository": {
     "type": "git",

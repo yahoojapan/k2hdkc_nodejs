@@ -1,12 +1,12 @@
 /*
  * K2HDKC
- * 
+ *
  * Copyright 2017 Yahoo! JAPAN corporation.
- * 
+ *
  * K2HDKC is k2hash based distributed KVS cluster.
  * K2HDKC uses K2HASH, CHMPX, FULLOCK libraries. K2HDKC supports
  * distributed KVS cluster server program and client libraries.
- * 
+ *
  * For the full copyright and license information, please view
  * the license file that was distributed with this source code.
  *
@@ -756,7 +756,7 @@ class SetAllWorker : public Nan::AsyncWorker
 				}
 
 				// set value to key
-				result = pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, (is_val_set ? reinterpret_cast<const unsigned char*>(strval.c_str()) : NULL), (is_val_set ? strval.length() + 1 : 0), false, (is_pass_set ? strpass.c_str() : NULL), (expire > 0 ? &expire : NULL), &rescode);
+				result = pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, (is_val_set ? reinterpret_cast<const unsigned char*>(strval.c_str()) : NULL), (is_val_set ? strval.length() + 1 : 0), false, (is_pass_set ? strpass.c_str() : NULL), &expire, &rescode);
 				DKC_DELETE(pComObj);
 
 				// set subkeys
@@ -1786,7 +1786,10 @@ class CasIncDecWorker : public Nan::AsyncWorker
 #endif
 
 /*
- * VIM modelines
- *
- * vim:set ts=4 fenc=utf-8:
+ * Local variables:
+ * tab-width: 4
+ * c-basic-offset: 4
+ * End:
+ * vim600: noexpandtab sw=4 ts=4 fdm=marker
+ * vim<600: noexpandtab sw=4 ts=4
  */
