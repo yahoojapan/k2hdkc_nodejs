@@ -1,12 +1,12 @@
 /*
  * K2HDKC
- * 
+ *
  * Copyright 2017 Yahoo! JAPAN corporation.
- * 
+ *
  * K2HDKC is k2hash based distributed KVS cluster.
  * K2HDKC uses K2HASH, CHMPX, FULLOCK libraries. K2HDKC supports
  * distributed KVS cluster server program and client libraries.
- * 
+ *
  * For the full copyright and license information, please view
  * the license file that was distributed with this source code.
  *
@@ -281,25 +281,24 @@ NAN_METHOD(K2hdkcNode::New)
 		if(0 < info.Length()){
 			// create permanent connection at initializing
 			int				argpos			= 0;
-			std::string		conf("");
 			int16_t			ctlport			= CHM_INVALID_PORT;
-			std::string		cuk("");
-			bool			auto_rejoin		= false;
-			bool			no_giveup_rejoin= false;
 
 			if(!info[argpos]->IsString()){
 				Nan::ThrowSyntaxError("First parameter is not configuration");
 			}else{
 				// 1'st argument is conf
 				Nan::Utf8String	buf(info[argpos++]);
-				conf						= std::string(*buf);
+				std::string		conf			= std::string(*buf);
+				std::string		cuk("");
+				bool			auto_rejoin		= false;
+				bool			no_giveup_rejoin= false;
 				if(argpos < info.Length() && info[argpos]->IsNumber()){
 					// 2'nd argument is port
 					ctlport					= static_cast<int16_t>(Nan::To<int32_t>(info[argpos++]).FromJust());
 					if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
 						// 3'rd argument is cuk
-						Nan::Utf8String	buf(info[argpos++]);
-						cuk				= std::string(*buf);
+						Nan::Utf8String	buf2(info[argpos++]);
+						cuk				= std::string(*buf2);
 						if(argpos < info.Length() && info[argpos]->IsBoolean()){
 							// 4'th argument is auto rejoin
 							auto_rejoin			= Nan::To<bool>(info[argpos++]).FromJust();
@@ -325,8 +324,8 @@ NAN_METHOD(K2hdkcNode::New)
 
 				}else if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
 					// 2'nd argument is cuk
-					Nan::Utf8String	buf(info[argpos++]);
-					cuk				= std::string(*buf);
+					Nan::Utf8String	buf3(info[argpos++]);
+					cuk				= std::string(*buf3);
 					if(argpos < info.Length() && info[argpos]->IsBoolean()){
 						// 3'rd argument is auto rejoin
 						auto_rejoin			= Nan::To<bool>(info[argpos++]).FromJust();
@@ -1060,8 +1059,8 @@ NAN_METHOD(K2hdkcNode::Init)
 
 				if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
 					// 3'rd argument is cuk
-					Nan::Utf8String	buf(info[argpos++]);
-					cuk					= std::string(*buf);
+					Nan::Utf8String	buf2(info[argpos++]);
+					cuk					= std::string(*buf2);
 					if(argpos < info.Length() && info[argpos]->IsBoolean()){
 						// 4'th argument is auto rejoin
 						auto_rejoin			= Nan::To<bool>(info[argpos++]).FromJust();
@@ -1122,8 +1121,8 @@ NAN_METHOD(K2hdkcNode::Init)
 
 			}else if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
 				// 2'nd argument is cuk
-				Nan::Utf8String	buf(info[argpos++]);
-				cuk					= std::string(*buf);
+				Nan::Utf8String	buf3(info[argpos++]);
+				cuk					= std::string(*buf3);
 				if(argpos < info.Length() && info[argpos]->IsBoolean()){
 					// 3'rd argument is auto rejoin
 					auto_rejoin			= Nan::To<bool>(info[argpos++]).FromJust();
@@ -1503,8 +1502,8 @@ NAN_METHOD(K2hdkcNode::GetValue)
 		size_t					valtmplen	= 0L;
 		bool					result		= pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, attrchk, (is_pass_set ? strpass.c_str() : NULL), &pvaltmp, &valtmplen, &rescode);
 		if(result && (pvaltmp && 0 < valtmplen)){
-			string	result(reinterpret_cast<const char*>(pvaltmp), valtmplen);
-			info.GetReturnValue().Set(Nan::New<String>(result.c_str()).ToLocalChecked());
+			string	strresult(reinterpret_cast<const char*>(pvaltmp), valtmplen);
+			info.GetReturnValue().Set(Nan::New<String>(strresult.c_str()).ToLocalChecked());
 		}else{
 			info.GetReturnValue().Set(Nan::Null());
 		}
@@ -2066,12 +2065,12 @@ NAN_METHOD(K2hdkcNode::SetSubkeys)
 			Local<Array>	inSubkeys = Local<Array>::Cast(info[argpos++]);
 			K2HSubKeys		Subkeys;
 			for(int pos = 0; pos < static_cast<int>(inSubkeys->Length()); ++pos){
-				string		strkey;
+				string		tmpkey;
 				{
 					Nan::Utf8String	buf(Nan::Get(inSubkeys, pos).ToLocalChecked());
-					strkey = std::string(*buf);
+					tmpkey = std::string(*buf);
 				}
-				if(Subkeys.end() == Subkeys.insert(strkey.c_str())){
+				if(Subkeys.end() == Subkeys.insert(tmpkey.c_str())){
 					// failed to set subkey
 					info.GetReturnValue().Set(Nan::False());
 					return;
@@ -2254,12 +2253,12 @@ NAN_METHOD(K2hdkcNode::SetAll)
 			Local<Array>	inSubkeys = Local<Array>::Cast(info[argpos++]);
 			K2HSubKeys		Subkeys;
 			for(int pos = 0; pos < static_cast<int>(inSubkeys->Length()); ++pos){
-				string		strkey;
+				string		tmpkey;
 				{
 					Nan::Utf8String	buf(Nan::Get(inSubkeys, pos).ToLocalChecked());
-					strkey = std::string(*buf);
+					tmpkey = std::string(*buf);
 				}
-				if(Subkeys.end() == Subkeys.insert(strkey.c_str())){
+				if(Subkeys.end() == Subkeys.insert(tmpkey.c_str())){
 					// failed to set subkey
 					info.GetReturnValue().Set(Nan::False());
 					return;
@@ -2358,7 +2357,7 @@ NAN_METHOD(K2hdkcNode::SetAll)
 			}
 
 			// set value to key
-			result = pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, (is_val_set ? reinterpret_cast<const unsigned char*>(strval.c_str()) : NULL), (is_val_set ? strval.length() + 1 : 0), false, (is_pass_set ? strpass.c_str() : NULL), (expire > 0 ? &expire : NULL), &rescode);
+			result = pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, (is_val_set ? reinterpret_cast<const unsigned char*>(strval.c_str()) : NULL), (is_val_set ? strval.length() + 1 : 0), false, strpass.c_str(), &expire, &rescode);
 			DKC_DELETE(pComObj);
 
 			// set subkeys
@@ -3343,8 +3342,8 @@ NAN_METHOD(K2hdkcNode::QueuePop)
 			result = pComObj->QueueCommandSend(reinterpret_cast<const unsigned char*>(strprefix.c_str()), strprefix.length() + 1, is_fifo, true, (is_pass_set ? strpass.c_str() : NULL), &pvaltmp, &valtmplen, &rescode);
 
 			if(result && (pvaltmp && 0 < valtmplen)){
-				string	result(reinterpret_cast<const char*>(pvaltmp), valtmplen);
-				info.GetReturnValue().Set(Nan::New<String>(result.c_str()).ToLocalChecked());
+				string	strresult(reinterpret_cast<const char*>(pvaltmp), valtmplen);
+				info.GetReturnValue().Set(Nan::New<String>(strresult.c_str()).ToLocalChecked());
 			}else{
 				info.GetReturnValue().Set(Nan::Null());
 			}
@@ -4339,7 +4338,10 @@ NAN_METHOD(K2hdkcNode::PrintVersion)
 //@}
 
 /*
- * VIM modelines
- *
- * vim:set ts=4 fenc=utf-8:
+ * Local variables:
+ * tab-width: 4
+ * c-basic-offset: 4
+ * End:
+ * vim600: noexpandtab sw=4 ts=4 fdm=marker
+ * vim<600: noexpandtab sw=4 ts=4
  */
