@@ -7,15 +7,14 @@ k2hdkc nodejs addon library
 [![GitHub issues](https://img.shields.io/github/issues/yahoojapan/k2hdkc_nodejs.svg)](https://github.com/yahoojapan/k2hdkc_nodejs/issues)
 [![NPM packages](https://badge.fury.io/js/k2hdkc.svg)](https://badge.fury.io/js/k2hdkc)
 
-K2HDKC addon library for Node.js.  
- - K2HDKC - K2Hash based Distributed Kvs Cluster by Yahoo! JAPAN
+K2HDKC addon library for Node.js
 
 ### Overview
 K2HDKC is k2hash based distributed KVS cluster server program and client library by Yahoo! JAPAN. 
 This addon library is for using K2HASH on nodejs.
 
 By k2hdkc nodejs addon library, you can easily create K2HDKC slave client program in JavaScript language.
-For details on the features and functions of k2hdkc nodejs, refer to [k2hdkc documentation](https://k2hdkc.antpick.ax/).  
+For details on the features and functions of k2hdkc nodejs, see the [k2hdkc nodejs documentation](https://nodejs.k2hdkc.antpick.ax/) and [k2hdkc documentation](https://k2hdkc.antpick.ax/).  
 
 ![K2HDKC Node.js addon](https://nodejs.k2hdkc.antpick.ax/images/top_k2hdkc_nodejs.png)
 
@@ -37,9 +36,6 @@ $ npm install k2hdkc
 ### Packages
 - [NPM packages](https://www.npmjs.com/package/k2hdkc)
 - [NPM antpickax](https://www.npmjs.com/org/antpickax)
-
-### Related products
-- [K2HDKC Database As A Service(DBaaS)](https://dbaas.k2hdkc.antpick.ax/)
 
 ### License
 This software is released under the MIT License, see the license file.
