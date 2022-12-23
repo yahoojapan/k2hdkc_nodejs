@@ -2,7 +2,7 @@
 #
 # K2HDKC
 #
-# Copyright 2017 Yahoo! JAPAN corporation.
+# Copyright 2017 Yahoo Japan Corporation.
 #
 # K2HDKC is k2hash based distributed KVS cluster.
 # K2HDKC uses K2HASH, CHMPX, FULLOCK libraries. K2HDKC supports
