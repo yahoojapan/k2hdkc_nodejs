@@ -1,7 +1,7 @@
 /*
  * K2HDKC
  * 
- * Copyright 2017 Yahoo! JAPAN corporation.
+ * Copyright 2017 Yahoo Japan Corporation.
  * 
  * K2HDKC is k2hash based distributed KVS cluster.
  * K2HDKC uses K2HASH, CHMPX, FULLOCK libraries. K2HDKC supports
@@ -74,7 +74,10 @@ exports.stop = function(parentobj, testdir)
 };
 
 /*
- * VIM modelines
- *
- * vim:set ts=4 fenc=utf-8:
+ * Local variables:
+ * tab-width: 4
+ * c-basic-offset: 4
+ * End:
+ * vim600: noexpandtab sw=4 ts=4 fdm=marker
+ * vim<600: noexpandtab sw=4 ts=4
  */
