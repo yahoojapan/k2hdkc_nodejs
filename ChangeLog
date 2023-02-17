@@ -1,3 +1,20 @@
+k2hdkc (1.0.3) unstable; urgency=low
+
+  * Added build flags and removed unnecessary files - #36
+  * Updated header and footer in comment lines - #35
+  * Updated issue/pullrequest templates and README.md - #33
+  * Reviewed ShellCheck processing again - #32
+  * Reviewed ShellCheck processing and fixed bugs - #31
+  * Eliminated unnecessary copies in nodejs_helper.sh - #30
+  * Updated packages - #29
+  * Updated github actions and nodejs version, and fixed bugs - #28
+  * Changed run_process_helper.sh simply instead of the which command etc - #27
+  * Renamed the test directory to tests and run_test.sh to test.sh - #26
+  * Removed install entry from scripts in package.json file - #25
+  * Cleaned up package.json and updated related package versions - #24
+
+ -- Takeshi Nakatani <ggtakec@gmail.com>  Fri, 17 Feb 2023 22:25:53 +0900
+
 k2hdkc (1.0.2) unstable; urgency=low
 
   * Updated some npm packages, added .auditignore, etc - #22
