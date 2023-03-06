@@ -1,3 +1,9 @@
+k2hdkc (1.0.5) unstable; urgency=low
+
+  * Updated building/packaging scripts - #40
+
+ -- Takeshi Nakatani <ggtakec@gmail.com>  Mon, 06 Mar 2023 21:27:13 +0900
+
 k2hdkc (1.0.4) unstable; urgency=low
 
   * Fixed package.json for install command - #38
