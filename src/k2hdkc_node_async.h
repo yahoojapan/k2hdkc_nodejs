@@ -742,6 +742,9 @@ class SetAllWorker : public Nan::AsyncWorker
 			// work
 			bool			result	= false;
 			dkcres_type_t	rescode = DKC_NORESTYPE;
+
+			// cppcheck-suppress unmatchedSuppression
+			// cppcheck-suppress knownConditionTrueFalse
 			if(is_pass_set && 0 < expire){
 				// set value with passphrase and expire, then the operation is separated.
 				K2hdkcComSet*	pComObj;
@@ -750,12 +753,16 @@ class SetAllWorker : public Nan::AsyncWorker
 				}else{
 					pComObj = GetPmSlaveK2hdkcComSet(pslaveobj);
 				}
+				// cppcheck-suppress unmatchedSuppression
+				// cppcheck-suppress knownConditionTrueFalse
 				if(!pComObj){
 					this->SetErrorMessage("Internal error: Could not create command object.");
 					return;
 				}
 
 				// set value to key
+				// cppcheck-suppress unmatchedSuppression
+				// cppcheck-suppress knownConditionTrueFalse
 				result = pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, (is_val_set ? reinterpret_cast<const unsigned char*>(strval.c_str()) : NULL), (is_val_set ? strval.length() + 1 : 0), false, (is_pass_set ? strpass.c_str() : NULL), &expire, &rescode);
 				DKC_DELETE(pComObj);
 
