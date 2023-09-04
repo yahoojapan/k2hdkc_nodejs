@@ -1,3 +1,10 @@
+k2hdkc (1.0.6) unstable; urgency=low
+
+  * Updated support NodeJS version - #43
+  * Fixed errors in cppcheck 2.10 - #44
+
+ -- Takeshi Nakatani <ggtakec@gmail.com>  Mon, 04 Sep 2023 16:16:49 +0900
+
 k2hdkc (1.0.5) unstable; urgency=low
 
   * Updated building/packaging scripts - #40
