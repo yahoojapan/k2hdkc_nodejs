@@ -1249,7 +1249,7 @@ NAN_METHOD(K2hdkcNode::Clean)
 
 NAN_METHOD(K2hdkcNode::IsPermanent)
 {
-	K2hdkcNode*		obj = Nan::ObjectWrap::Unwrap<K2hdkcNode>(info.This());
+	const K2hdkcNode*	obj = Nan::ObjectWrap::Unwrap<K2hdkcNode>(info.This());
 
 	if(obj->_k2hdkcslave){
 		info.GetReturnValue().Set(Nan::True());
