@@ -1,6 +1,6 @@
 {
   "name": "k2hdkc",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "K2HDKC addon library for Node.js",
   "os": "linux",
   "main": "index.js",
@@ -53,8 +53,5 @@
   "contributors": [
     "Hirotaka Wakabayashi <hiwakaba@yahoo-corp.jp> (https://github.com/hiwakaba)"
   ],
-  "license": "MIT",
-  "comments": {
-    "domain": "unknown"
-  }
+  "license": "MIT"
 }
