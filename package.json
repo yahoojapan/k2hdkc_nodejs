@@ -1,5 +1,5 @@
 {
-  "name": "k2hdkc",
+  "name": "@yj-intl/k2hdkc",
   "version": "1.0.9",
   "description": "K2HDKC addon library for Node.js",
   "os": "linux",
@@ -9,10 +9,10 @@
   },
   "dependencies": {
     "bindings": "^1.5.0",
-    "nan": "^2.18.0"
+    "nan": "^2.19.0"
   },
   "devDependencies": {
-    "chai": "^4.3.10",
+    "chai": "^4.4.1",
     "mocha": "^10.2.0"
   },
   "scripts": {
@@ -29,7 +29,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git@github.com:yahoojapan/k2hdkc_nodejs.git"
+    "url": "git@ghe.corp.yahoo.co.jp:yjcore/k2hdkc_nodejs.git"
   },
   "publishConfig": {
     "access": "public"
@@ -46,12 +46,15 @@
     "in-memory"
   ],
   "bugs": {
-    "url": "http://github.com/yahoojapan/k2hdkc_nodejs/issues",
-    "email": "antpickax-support@mail.yahoo.co.jp"
+    "url": "http://ghe.corp.yahoo.co.jp/yjcore/k2hdkc_nodejs/issues",
+    "email": "yjcore-lib-dev@ml.yahoo-corp.jp"
   },
-  "author": "Takeshi Nakatani <ggtakec@gmail.com> (https://github.com/ggtakec)",
+  "author": "Takeshi Nakatani <nakatani@yahoo-corp.jp> (https://ghe.corp.yahoo.co.jp/nakatani)",
   "contributors": [
-    "Hirotaka Wakabayashi <hiwakaba@yahoo-corp.jp> (https://github.com/hiwakaba)"
+    "Hirotaka Wakabayashi <hiwakaba@yahoo-corp.jp> (https://ghe.corp.yahoo.co.jp/hiwakaba)"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "athenz": {
+    "domain": "yjcorelib.screwdriver"
+  }
 }
