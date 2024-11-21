@@ -1,3 +1,9 @@
+k2hdkc (1.0.11) unstable; urgency=low
+
+  * Changed supported OS and NodeJS version - #54
+
+ -- Takeshi Nakatani <ggtakec@gmail.com>  Thu, 21 Nov 2024 17:36:52 +0900
+
 k2hdkc (1.0.10) unstable; urgency=low
 
   * Updated github actions tools and dependencies - #52
