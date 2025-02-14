@@ -71,11 +71,11 @@ while [ $# -ne 0 ]; do
 	if [ -z "$1" ]; then
 		break
 
-	elif [ "$1" = "-h" ] || [ "$1" = "-H" ] || [ "$1" = "--help" ] || [ "$1" = "--HELP" ]; then
+	elif echo "$1" | grep -q -i -e "^-h$" -e "^--help$"; then
 		PrintUsage "${PRGNAME}"
 		exit 0
 
-	elif [ "$1" = "-d" ] || [ "$1" = "-D" ] || [ "$1" = "--debuglevel" ] || [ "$1" = "--DEBUGLEVEL" ]; then
+	elif echo "$1" | grep -q -i -e "^-d$" -e "^--debuglevel$"; then
 		#
 		# DEBUG option
 		#
@@ -88,23 +88,22 @@ while [ $# -ne 0 ]; do
 			echo "[ERROR] --debuglevel(-d) option needs parameter(info/warn/err/silent)"
 			exit 1
 		fi
-
-		if [ "$1" = "dmp" ] || [ "$1" = "DMP" ] || [ "$1" = "dump" ] || [ "$1" = "DUMP" ]; then
+		if echo "$1" | grep -q -i -e "^dmp$" -e "^dump$"; then
 			DEBUG_MODE="DUMP"
-		elif [ "$1" = "inf" ] || [ "$1" = "INF" ] || [ "$1" = "info" ] || [ "$1" = "INFO" ]; then
+		elif echo "$1" | grep -q -i -e "^inf$" -e "^info$"; then
 			DEBUG_MODE="INFO"
-		elif [ "$1" = "wan" ] || [ "$1" = "WAN" ] || [ "$1" = "warn" ] || [ "$1" = "WARN" ] || [ "$1" = "warning" ] || [ "$1" = "WARNING" ]; then
+		elif echo "$1" | grep -q -i -e "^wan$" -e "^warn$" -e "^warning$"; then
 			DEBUG_MODE="WAN"
-		elif [ "$1" = "err" ] || [ "$1" = "ERR" ] || [ "$1" = "error" ] || [ "$1" = "ERROR" ]; then
+		elif echo "$1" | grep -q -i -e "^err$" -e "^error$"; then
 			DEBUG_MODE="ERR"
-		elif [ "$1" = "slt" ] || [ "$1" = "SLT" ] || [ "$1" = "silent" ] || [ "$1" = "SILENT" ]; then
+		elif echo "$1" | grep -q -i -e "^slt$" -e "^silent$"; then
 			DEBUG_MODE="SILENT"
 		else
 			echo "[ERROR] Unknown --debuglevel(-d) option parameter(info/warn/err/silent) : $1"
 			exit 1
 		fi
 
-	elif [ "$1" = "--logfile" ] || [ "$1" = "--LOGFILE" ] || [ "$1" = "-l" ] || [ "$1" = "-L" ]; then
+	elif echo "$1" | grep -q -i -e "^-l$" -e "^--logfile$"; then
 		#
 		# LOG FILE option
 		#
