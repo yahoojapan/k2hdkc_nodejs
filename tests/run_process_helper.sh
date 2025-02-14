@@ -64,12 +64,17 @@ initialize_pid_file()
 		#
 		# force kill if exists yet
 		#
+		TMP_RUN_KILL=0
 		for _one_pid in ${PIDS}; do
-			if ps -p "${_one_pid}" >/dev/null 2>&1; then
-				kill -9 "${_one_pid}" >/dev/null 2>&1
-				sleep 1
+			# shellcheck disable=SC2009
+			if ( ps -o pid,stat ax 2>/dev/null | grep -v 'PID' | awk '$2~/^[^Z]/ { print $1 }' | grep -q "^${_one_pid}$" || exit 1 && exit 0 ); then
+				kill -KILL "${_one_pid}" >/dev/null 2>&1
+				TMP_RUN_KILL=1
 			fi
 		done
+		if [ "${TMP_RUN_KILL}" -eq 1 ]; then
+			sleep 2
+		fi
 
 		#
 		# recheck pid
@@ -78,20 +83,30 @@ initialize_pid_file()
 		PROC_ZOMBIE=""
 		for _one_pid in ${PIDS}; do
 			# shellcheck disable=SC2009
-			if PSRESULT=$(ps -p "${_one_pid}" 2>&1 | grep -v 'PID'); then
-				if echo "${PSRESULT}" | grep "${_one_pid}" | grep -q 'defunct'; then
+			if ( ps -o pid,stat ax 2>/dev/null | grep -v 'PID' | awk '$2~/^[^Z]/ { print $1 }' | grep -q "^${_one_pid}$" || exit 1 && exit 0 ); then
+				#
+				# Found process id(not zombie)
+				#
+				PROC_NOT_ZOMBIE="${PROC_NOT_ZOMBIE} ${_one_pid}"
+			else
+				# shellcheck disable=SC2009
+				if ( ps -o pid,stat ax 2>/dev/null | grep -v 'PID' | grep -q "^${_one_pid}$" || exit 1 && exit 0 ); then
+					#
+					# Found process id(zombie)
+					#
 					PROC_ZOMBIE="${PROC_ZOMBIE} ${_one_pid}"
 				else
-					PROC_NOT_ZOMBIE="${PROC_NOT_ZOMBIE} ${_one_pid}"
+					#
+					# Not found process id
+					#
+					:
 				fi
 			fi
 		done
-
 		if [ -n "${PROC_NOT_ZOMBIE}" ]; then
 			printf '[ERROR] could not stop process(%s) : ' "${PROC_NOT_ZOMBIE}"
 			return 1
 		fi
-
 		if [ -n "${PROC_ZOMBIE}" ]; then
 			printf '[WARNING] could not stop process(%s) because it was zombie, but we can continue... : ' "${PROC_ZOMBIE}"
 		fi
@@ -136,11 +151,11 @@ while [ $# -ne 0 ]; do
 	if [ -z "$1" ]; then
 		break
 
-	elif [ "$1" = "-h" ] || [ "$1" = "-H" ] || [ "$1" = "--help" ] || [ "$1" = "--HELP" ]; then
+	elif echo "$1" | grep -q -i -e "^-h$" -e "^--help$"; then
 		PrintUsage "${PRGNAME}"
 		exit 0
 
-	elif [ "$1" = "start_all" ] || [ "$1" = "START_ALL" ]; then
+	elif echo "$1" | grep -q -i "^start_all$"; then
 		if [ -n "${CHMPX_SERVER}" ] || [ -n "${K2HDKC_SERVER}" ] || [ -n "${CHMPX_SLAVE}" ]; then
 			echo "[ERROR] Options conflicted. Another action option has already been specified."
 			exit 1
@@ -149,28 +164,28 @@ while [ $# -ne 0 ]; do
 		K2HDKC_SERVER="start"
 		CHMPX_SLAVE="start"
 
-	elif [ "$1" = "start_chmpx_server" ] || [ "$1" = "START_CHMPX_SERVER" ]; then
+	elif echo "$1" | grep -q -i "^start_chmpx_server$"; then
 		if [ -n "${CHMPX_SERVER}" ]; then
 			echo "[ERROR] Options conflicted. Another action option has already been specified."
 			exit 1
 		fi
 		CHMPX_SERVER="start"
 
-	elif [ "$1" = "start_k2hdkc_server" ] || [ "$1" = "START_K2HDKC_SERVER" ]; then
+	elif echo "$1" | grep -q -i "^start_k2hdkc_server$"; then
 		if [ -n "${K2HDKC_SERVER}" ]; then
 			echo "[ERROR] Options conflicted. Another action option has already been specified."
 			exit 1
 		fi
 		K2HDKC_SERVER="start"
 
-	elif [ "$1" = "start_chmpx_slave" ] || [ "$1" = "START_CHMPX_SLAVE" ]; then
+	elif echo "$1" | grep -q -i "^start_chmpx_slave$"; then
 		if [ -n "${CHMPX_SLAVE}" ]; then
 			echo "[ERROR] Options conflicted. Another action option has already been specified."
 			exit 1
 		fi
 		CHMPX_SLAVE="start"
 
-	elif [ "$1" = "stop_all" ] || [ "$1" = "STOP_ALL" ]; then
+	elif echo "$1" | grep -q -i "^stop_all$"; then
 		if [ -n "${CHMPX_SERVER}" ] || [ -n "${K2HDKC_SERVER}" ] || [ -n "${CHMPX_SLAVE}" ]; then
 			echo "[ERROR] Options conflicted. Another action option has already been specified."
 			exit 1
@@ -179,43 +194,44 @@ while [ $# -ne 0 ]; do
 		K2HDKC_SERVER="stop"
 		CHMPX_SLAVE="stop"
 
-	elif [ "$1" = "stop_chmpx_server" ] || [ "$1" = "STOP_CHMPX_SERVER" ]; then
+	elif echo "$1" | grep -q -i "^stop_chmpx_server$"; then
 		if [ -n "${CHMPX_SERVER}" ]; then
 			echo "[ERROR] Options conflicted. Another action option has already been specified."
 			exit 1
 		fi
 		CHMPX_SERVER="stop"
 
-	elif [ "$1" = "stop_k2hdkc_server" ] || [ "$1" = "STOP_K2HDKC_SERVER" ]; then
+	elif echo "$1" | grep -q -i "^stop_k2hdkc_server$"; then
 		if [ -n "${K2HDKC_SERVER}" ]; then
 			echo "[ERROR] Options conflicted. Another action option has already been specified."
 			exit 1
 		fi
 		K2HDKC_SERVER="stop"
 
-	elif [ "$1" = "stop_chmpx_slave" ] || [ "$1" = "STOP_CHMPX_SLAVE" ]; then
+	elif echo "$1" | grep -q -i "^stop_chmpx_slave$"; then
 		if [ -n "${CHMPX_SLAVE}" ]; then
 			echo "[ERROR] Options conflicted. Another action option has already been specified."
 			exit 1
 		fi
 		CHMPX_SLAVE="stop"
 
-	elif [ "$1" = "-d" ] || [ "$1" = "-D" ] || [ "$1" = "--debug" ] || [ "$1" = "--DEBUG" ]; then
+	elif echo "$1" | grep -q -i -e "^-d$" -e "^--debug$"; then
 		if [ -n "${CHMDBGMODE_ENV_VAL}" ] || [ -n "${DKCDBGMODE_ENV_VAL}" ]; then
 			echo "[ERROR] Options conflicted. Another debug option has already been specified."
 			exit 1
 		fi
 		shift
-		if [ "$1" = "err" ] || [ "$1" = "ERR" ]; then
+
+		if echo "$1" | grep -q -i -e "^err$" -e "^error$"; then
 			CHMDBGMODE_ENV_VAL="ERR"
 			DKCDBGMODE_ENV_VAL="ERR"
-		elif [ "$1" = "wan" ] || [ "$1" = "WAN" ]; then
+		elif echo "$1" | grep -q -i -e "^wan$" -e "^warn$" -e "^warning$"; then
 			CHMDBGMODE_ENV_VAL="WAN"
 			DKCDBGMODE_ENV_VAL="WAN"
-		elif [ "$1" = "info" ] || [ "$1" = "INFO" ]; then
+		elif echo "$1" | grep -q -i -e "^inf$" -e "^info$"; then
 			CHMDBGMODE_ENV_VAL="INFO"
 			DKCDBGMODE_ENV_VAL="INFO"
-		elif [ "$1" = "dump" ] || [ "$1" = "DUMP" ]; then
+		elif echo "$1" | grep -q -i -e "^dmp$" -e "^dump$"; then
 			CHMDBGMODE_ENV_VAL="DUMP"
 			DKCDBGMODE_ENV_VAL="DUMP"
 		else
@@ -303,12 +319,13 @@ if [ -n "${CHMPX_SERVER}" ] && [ "${CHMPX_SERVER}" = "start" ]; then
 	#
 	CHMDBGMODE="${CHMDBGMODE_ENV_VAL}" chmpx -conf "${TESTSDIR}"/test_server.ini -ctlport 8021 > "${CHMPX_SVR1_LOGFILE}" 2>&1 &
 	CHMPX_SERVER_PID=$!
+	sleep 1
 
 	#
 	# Check process chmpx(1)
 	#
-	sleep 1
-	if ! ps -p "${CHMPX_SERVER_PID}" >/dev/null 2>&1; then
+	# shellcheck disable=SC2009
+	if ! ( ps -o pid,stat ax 2>/dev/null | grep -v 'PID' | awk '$2~/^[^Z]/ { print $1 }' | grep -q "^${CHMPX_SERVER_PID}$" || exit 1 && exit 0 ); then
 		printf '[ERROR] could not run chmpx(1) server process. : '
 		exit 1
 	fi
@@ -324,12 +341,13 @@ if [ -n "${CHMPX_SERVER}" ] && [ "${CHMPX_SERVER}" = "start" ]; then
 	#
 	CHMDBGMODE="${CHMDBGMODE_ENV_VAL}" chmpx -conf "${TESTSDIR}"/test_server.ini -ctlport 8023 > "${CHMPX_SVR2_LOGFILE}" 2>&1 &
 	CHMPX_SERVER_PID=$!
+	sleep 1
 
 	#
 	# Check process chmpx(2)
 	#
-	sleep 1
-	if ! ps -p "${CHMPX_SERVER_PID}" >/dev/null 2>&1; then
+	# shellcheck disable=SC2009
+	if ! ( ps -o pid,stat ax 2>/dev/null | grep -v 'PID' | awk '$2~/^[^Z]/ { print $1 }' | grep -q "^${CHMPX_SERVER_PID}$" || exit 1 && exit 0 ); then
 		printf '[ERROR] could not run chmpx(2) server process. : '
 		exit 1
 	fi
@@ -371,12 +389,13 @@ if [ -n "${K2HDKC_SERVER}" ] && [ "${K2HDKC_SERVER}" = "start" ]; then
 	#
 	DKCDBGMODE="${DKCDBGMODE_ENV_VAL}" k2hdkc -conf "${TESTSDIR}"/test_server.ini -ctlport 8021 > "${K2HDKC1_LOGFILE}" 2>&1 &
 	K2HDKC_SERVER_PID=$!
+	sleep 1
 
 	#
 	# Check process - k2hdkc(1)
 	#
-	sleep 1
-	if ! ps -p "${K2HDKC_SERVER_PID}" >/dev/null 2>&1; then
+	# shellcheck disable=SC2009
+	if ! ( ps -o pid,stat ax 2>/dev/null | grep -v 'PID' | awk '$2~/^[^Z]/ { print $1 }' | grep -q "^${K2HDKC_SERVER_PID}$" || exit 1 && exit 0 ); then
 		printf '[ERROR] could not run k2hdkc(1) server process. : '
 		exit 1
 	fi
@@ -392,12 +411,13 @@ if [ -n "${K2HDKC_SERVER}" ] && [ "${K2HDKC_SERVER}" = "start" ]; then
 	#
 	DKCDBGMODE="${DKCDBGMODE_ENV_VAL}" k2hdkc -conf "${TESTSDIR}"/test_server.ini -ctlport 8023 > "${K2HDKC2_LOGFILE}" 2>&1 &
 	K2HDKC_SERVER_PID=$!
+	sleep 1
 
 	#
 	# Check process - k2hdkc(2)
 	#
-	sleep 1
-	if ! ps -p "${K2HDKC_SERVER_PID}" >/dev/null 2>&1; then
+	# shellcheck disable=SC2009
+	if ! ( ps -o pid,stat ax 2>/dev/null | grep -v 'PID' | awk '$2~/^[^Z]/ { print $1 }' | grep -q "^${K2HDKC_SERVER_PID}$" || exit 1 && exit 0 ); then
 		printf '[ERROR] could not run k2hdkc(2) server process. : '
 		exit 1
 	fi
@@ -431,12 +451,13 @@ if [ -n "${CHMPX_SLAVE}" ] && [ "${CHMPX_SLAVE}" = "start" ]; then
 	#
 	CHMDBGMODE="${CHMDBGMODE_ENV_VAL}" chmpx -conf "${TESTSDIR}"/test_slave.ini > "${CHMPX_SLV_LOGFILE}" 2>&1 &
 	CHMPX_SLAVE_PID=$!
+	sleep 1
 
 	#
 	# Check process
 	#
-	sleep 1
-	if ! ps -p "${CHMPX_SLAVE_PID}" >/dev/null 2>&1; then
+	# shellcheck disable=SC2009
+	if ! ( ps -o pid,stat ax 2>/dev/null | grep -v 'PID' | awk '$2~/^[^Z]/ { print $1 }' | grep -q "^${CHMPX_SLAVE_PID}$" || exit 1 && exit 0 ); then
 		printf '[ERROR] could not run chmpx slave process. : '
 		exit 1
 	fi
