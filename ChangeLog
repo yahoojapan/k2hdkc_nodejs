@@ -1,3 +1,9 @@
+k2hdkc (1.0.12) unstable; urgency=low
+
+  * Changed publish NodeJS versions to v22 and Fixed scripts, etc - #56
+
+ -- Takeshi Nakatani <ggtakec@gmail.com>  Fri, 14 Feb 2025 11:37:21 +0900
+
 k2hdkc (1.0.11) unstable; urgency=low
 
   * Changed supported OS and NodeJS version - #54
