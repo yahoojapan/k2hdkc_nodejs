@@ -23,7 +23,7 @@ PRGNAME=$(basename "$0")
 SCRIPTDIR=$(dirname "$0")
 SCRIPTDIR=$(cd "${SCRIPTDIR}" || exit 1; pwd)
 SRCTOP=$(cd "${SCRIPTDIR}/.." || exit 1; pwd)
-TESTSDIR=$(cd "${SRCTOP}/tests" || exit 1; pwd)
+TESTS_DIR="${SRCTOP}/tests"
 
 #
 # Pid files
@@ -228,7 +228,7 @@ while [ $# -ne 0 ]; do
 		elif echo "$1" | grep -q -i -e "^wan$" -e "^warn$" -e "^warning$"; then
 			CHMDBGMODE_ENV_VAL="WAN"
 			DKCDBGMODE_ENV_VAL="WAN"
-		elif echo "$1" | grep -q -i -e "^inf$" -e "^info$"; then
+		elif echo "$1" | grep -q -i -e "^inf$" -e "^info$" -e "^msg$"; then
 			CHMDBGMODE_ENV_VAL="INFO"
 			DKCDBGMODE_ENV_VAL="INFO"
 		elif echo "$1" | grep -q -i -e "^dmp$" -e "^dump$"; then
@@ -260,6 +260,53 @@ if [ -z "${CHMPX_SERVER}" ] && [ -z "${K2HDKC_SERVER}" ] && [ -z "${CHMPX_SLAVE}
 fi
 
 #
+# Default values from env
+#
+if [ -z "${CHMDBGMODE_ENV_VAL}" ] && [ -n "${CHMDBGMODE}" ]; then
+	if echo "${CHMDBGMODE}" | grep -q -i -e "^err$" -e "^error$"; then
+		CHMDBGMODE_ENV_VAL="ERR"
+	elif echo "${CHMDBGMODE}" | grep -q -i -e "^wan$" -e "^warn$" -e "^warning$"; then
+		CHMDBGMODE_ENV_VAL="WAN"
+	elif echo "${CHMDBGMODE}" | grep -q -i -e "^inf$" -e "^info$" -e "^msg$"; then
+		CHMDBGMODE_ENV_VAL="INFO"
+	elif echo "${CHMDBGMODE}" | grep -q -i -e "^dmp$" -e "^dump$"; then
+		CHMDBGMODE_ENV_VAL="DUMP"
+	fi
+fi
+if [ -z "${DKCDBGMODE_ENV_VAL}" ] && [ -n "${DKCDBGMODE}" ]; then
+	if echo "${DKCDBGMODE}" | grep -q -i -e "^err$" -e "^error$"; then
+		DKCDBGMODE_ENV_VAL="ERR"
+	elif echo "${DKCDBGMODE}" | grep -q -i -e "^wan$" -e "^warn$" -e "^warning$"; then
+		DKCDBGMODE_ENV_VAL="WAN"
+	elif echo "${DKCDBGMODE}" | grep -q -i -e "^inf$" -e "^info$" -e "^msg$"; then
+		DKCDBGMODE_ENV_VAL="INFO"
+	elif echo "${DKCDBGMODE}" | grep -q -i -e "^dmp$" -e "^dump$"; then
+		DKCDBGMODE_ENV_VAL="DUMP"
+	fi
+fi
+
+if [ -n "${CHMDBGMODE_ENV_VAL}" ]; then
+	if [ -z "${CHMPX_SVR1_LOGFILE}" ] || [ "${CHMPX_SVR1_LOGFILE}" = "/dev/null" ]; then
+		CHMPX_SVR1_LOGFILE="/tmp/test_helper_chmpx_server1.log"
+	fi
+	if [ -z "${CHMPX_SVR2_LOGFILE}" ] || [ "${CHMPX_SVR2_LOGFILE}" = "/dev/null" ]; then
+		CHMPX_SVR2_LOGFILE="/tmp/test_helper_chmpx_server2.log"
+	fi
+	if [ -z "${CHMPX_SLV_LOGFILE}" ] || [ "${CHMPX_SLV_LOGFILE}" = "/dev/null" ]; then
+		CHMPX_SLV_LOGFILE="/tmp/test_helper_chmpx_slave.log"
+	fi
+fi
+
+if [ -n "${DKCDBGMODE_ENV_VAL}" ]; then
+	if [ -z "${K2HDKC1_LOGFILE}" ] || [ "${K2HDKC1_LOGFILE}" = "/dev/null" ]; then
+		K2HDKC1_LOGFILE="/tmp/test_helper_k2hdkc_server1.log"
+	fi
+	if [ -z "${K2HDKC2_LOGFILE}" ] || [ "${K2HDKC2_LOGFILE}" = "/dev/null" ]; then
+		K2HDKC2_LOGFILE="/tmp/test_helper_k2hdkc_server2.log"
+	fi
+fi
+
+#
 # Set default values
 #
 if [ -z "${CHMDBGMODE_ENV_VAL}" ]; then
@@ -269,10 +316,18 @@ if [ -z "${DKCDBGMODE_ENV_VAL}" ]; then
 	DKCDBGMODE_ENV_VAL="silent"
 fi
 
+#----------------------------------------------------------
+# node path(relative path from SRCTOP) for k2hdkc
+#----------------------------------------------------------
+if [ -n "${NODE_PATH}" ]; then
+	K2HDKC_NODE_PATH="${NODE_PATH}:"
+fi
+K2HDKC_NODE_PATH="${K2HDKC_NODE_PATH}${SRCTOP}/build/Release"
+
 #==========================================================
 # Executing(current at TESTDIR)
 #==========================================================
-cd "${TESTSDIR}" || exit 1
+cd "${TESTS_DIR}" || exit 1
 
 #
 # Set mqueue size
@@ -317,7 +372,7 @@ if [ -n "${CHMPX_SERVER}" ] && [ "${CHMPX_SERVER}" = "start" ]; then
 	#
 	# Run chmpx(1) server process
 	#
-	CHMDBGMODE="${CHMDBGMODE_ENV_VAL}" chmpx -conf "${TESTSDIR}"/test_server.ini -ctlport 8021 > "${CHMPX_SVR1_LOGFILE}" 2>&1 &
+	CHMDBGMODE="${CHMDBGMODE_ENV_VAL}" chmpx -conf "${TESTS_DIR}"/test_server.ini -ctlport 8021 > "${CHMPX_SVR1_LOGFILE}" 2>&1 &
 	CHMPX_SERVER_PID=$!
 	sleep 1
 
@@ -339,7 +394,7 @@ if [ -n "${CHMPX_SERVER}" ] && [ "${CHMPX_SERVER}" = "start" ]; then
 	#
 	# Run chmpx(2) server process
 	#
-	CHMDBGMODE="${CHMDBGMODE_ENV_VAL}" chmpx -conf "${TESTSDIR}"/test_server.ini -ctlport 8023 > "${CHMPX_SVR2_LOGFILE}" 2>&1 &
+	CHMDBGMODE="${CHMDBGMODE_ENV_VAL}" chmpx -conf "${TESTS_DIR}"/test_server.ini -ctlport 8023 > "${CHMPX_SVR2_LOGFILE}" 2>&1 &
 	CHMPX_SERVER_PID=$!
 	sleep 1
 
@@ -360,11 +415,9 @@ if [ -n "${CHMPX_SERVER}" ] && [ "${CHMPX_SERVER}" = "start" ]; then
 	echo "[SUCCEED] chmpx(2) server pid = ${CHMPX_SERVER_PID}"
 fi
 
-#
 #----------------------------------------------------------
 # Start k2hdkc server
 #----------------------------------------------------------
-#
 if [ -n "${K2HDKC_SERVER}" ] && [ "${K2HDKC_SERVER}" = "start" ]; then
 	printf '    -> Run k2hdkc two server processes : '
 
@@ -387,7 +440,7 @@ if [ -n "${K2HDKC_SERVER}" ] && [ "${K2HDKC_SERVER}" = "start" ]; then
 	#
 	# Run k2hdkc(1) server process
 	#
-	DKCDBGMODE="${DKCDBGMODE_ENV_VAL}" k2hdkc -conf "${TESTSDIR}"/test_server.ini -ctlport 8021 > "${K2HDKC1_LOGFILE}" 2>&1 &
+	DKCDBGMODE="${DKCDBGMODE_ENV_VAL}" k2hdkc -conf "${TESTS_DIR}"/test_server.ini -ctlport 8021 > "${K2HDKC1_LOGFILE}" 2>&1 &
 	K2HDKC_SERVER_PID=$!
 	sleep 1
 
@@ -409,7 +462,7 @@ if [ -n "${K2HDKC_SERVER}" ] && [ "${K2HDKC_SERVER}" = "start" ]; then
 	#
 	# Run k2hdkc(2) server process
 	#
-	DKCDBGMODE="${DKCDBGMODE_ENV_VAL}" k2hdkc -conf "${TESTSDIR}"/test_server.ini -ctlport 8023 > "${K2HDKC2_LOGFILE}" 2>&1 &
+	DKCDBGMODE="${DKCDBGMODE_ENV_VAL}" k2hdkc -conf "${TESTS_DIR}"/test_server.ini -ctlport 8023 > "${K2HDKC2_LOGFILE}" 2>&1 &
 	K2HDKC_SERVER_PID=$!
 	sleep 1
 
@@ -430,11 +483,9 @@ if [ -n "${K2HDKC_SERVER}" ] && [ "${K2HDKC_SERVER}" = "start" ]; then
 	echo "[SUCCEED] k2hdkc(2) server pid = ${K2HDKC_SERVER_PID}"
 fi
 
-#
 #----------------------------------------------------------
 # Start chmpx slave
 #----------------------------------------------------------
-#
 if [ -n "${CHMPX_SLAVE}" ] && [ "${CHMPX_SLAVE}" = "start" ]; then
 	printf '    -> Run chmpx one slave process : '
 
@@ -449,7 +500,7 @@ if [ -n "${CHMPX_SLAVE}" ] && [ "${CHMPX_SLAVE}" = "start" ]; then
 	#
 	# Run chmpx slave process
 	#
-	CHMDBGMODE="${CHMDBGMODE_ENV_VAL}" chmpx -conf "${TESTSDIR}"/test_slave.ini > "${CHMPX_SLV_LOGFILE}" 2>&1 &
+	CHMDBGMODE="${CHMDBGMODE_ENV_VAL}" chmpx -conf "${TESTS_DIR}"/test_slave.ini > "${CHMPX_SLV_LOGFILE}" 2>&1 &
 	CHMPX_SLAVE_PID=$!
 	sleep 1
 
@@ -470,11 +521,9 @@ if [ -n "${CHMPX_SLAVE}" ] && [ "${CHMPX_SLAVE}" = "start" ]; then
 	echo "[SUCCEED] chmpx slave pid = ${CHMPX_SLAVE_PID}"
 fi
 
-#
 #----------------------------------------------------------
 # Stop chmpx slave
 #----------------------------------------------------------
-#
 if [ -n "${CHMPX_SLAVE}" ] && [ "${CHMPX_SLAVE}" = "stop" ]; then
 	printf '    -> Stop chmpx one slave process : '
 
@@ -488,11 +537,9 @@ if [ -n "${CHMPX_SLAVE}" ] && [ "${CHMPX_SLAVE}" = "stop" ]; then
 	echo "[SUCCEED] stop chmpx slave"
 fi
 
-#
 #----------------------------------------------------------
 # Stop k2hdkc server
 #----------------------------------------------------------
-#
 if [ -n "${K2HDKC_SERVER}" ] && [ "${K2HDKC_SERVER}" = "stop" ]; then
 	printf '    -> Stop k2hdkc two server processes : '
 
@@ -515,11 +562,9 @@ if [ -n "${K2HDKC_SERVER}" ] && [ "${K2HDKC_SERVER}" = "stop" ]; then
 	printf '[SUCCEED] stop stop k2hdkc(2) server process. : '
 fi
 
-#
 #----------------------------------------------------------
 # Stop chmpx server
 #----------------------------------------------------------
-#
 if [ -n "${CHMPX_SERVER}" ] && [ "${CHMPX_SERVER}" = "stop" ]; then
 	printf '    -> Stop chmpx two server processes : '
 

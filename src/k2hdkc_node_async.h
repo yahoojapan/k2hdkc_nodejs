@@ -27,280 +27,297 @@
 //---------------------------------------------------------
 // InitWorker class
 //
-// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin)
+// Constructor:			constructor(const Napi::Function& callback, K2hdkcSlave& slaveobj, const std::string& configuration, int control_port, const std::string& inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin)
 // Callback function:	function(string error)
 //
 //---------------------------------------------------------
-class InitWorker : public Nan::AsyncWorker
+class InitWorker : public Napi::AsyncWorker
 {
 	public:
-		InitWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, const char* inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin) :
-			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), cuk(inputcuk ? inputcuk : ""), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin)
-		{}
-		~InitWorker() {}
-
-		void Execute()
+		InitWorker(const Napi::Function& callback, K2hdkcSlave& slaveobj, const std::string& configuration, int control_port, const std::string& inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin) :
+			Napi::AsyncWorker(callback), _callbackRef(Napi::Persistent(callback)),
+			_slaveobj(slaveobj), _conf(configuration), _ctlport(control_port), _cuk(inputcuk), _auto_rejoin(is_auto_rejoin), _no_giveup_rejoin(is_nogiveup_rejoin)
 		{
-			if(!pslaveobj){
-				this->SetErrorMessage("No object is associated to async worker");
-				return;
+			_callbackRef.Ref();
+		}
+
+		~InitWorker() override
+		{
+			if(_callbackRef){
+				_callbackRef.Unref();
+				_callbackRef.Reset();
 			}
-			if(!is_set_conf){
-				this->SetErrorMessage("No configuration is associated to async worker");
+		}
+
+		// Run on worker thread
+		void Execute() override
+		{
+			if(_conf.empty()){
+				SetError("No configuration is associated to async worker");
 				return;
 			}
 
 			// build permanent connection object
-			if(pslaveobj->Initialize(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin)){
-				if(!pslaveobj->Open(no_giveup_rejoin)){
+			if(_slaveobj.Initialize(_conf.c_str(), _ctlport, (_cuk.empty() ? NULL : _cuk.c_str()), _auto_rejoin)){
+				if(!_slaveobj.Open(_no_giveup_rejoin)){
 					// set error
-					this->SetErrorMessage("Failed to open(join to) chmpx slave.");
+					SetError("Failed to open(join to) chmpx slave.");
 				}
 			}else{
 				// set error
-				this->SetErrorMessage("Failed to initialize k2hdkcslave object.");
+				SetError("Failed to initialize k2hdkcslave object.");
 			}
 		}
 
-		void HandleOKCallback()
+		// handler for success
+		void OnOK() override
 		{
-			Nan::HandleScope		scope;
-			const int				argc		= 1;
-			v8::Local<v8::Value>	argv[argc]	= { Nan::Null() };
+			Napi::Env env = Env();
+			Napi::HandleScope scope(env);
 
-			if(callback){
-				callback->Call(argc, argv);
+			if(!_callbackRef.IsEmpty()){
+				_callbackRef.Value().Call({ env.Null() });
 			}else{
-				Nan::ThrowSyntaxError("Internal error in async worker");
-				return;
+				Napi::TypeError::New(env, "Internal error in async worker");
 			}
 		}
 
-        void HandleErrorCallback()
-        {
-			Nan::HandleScope		scope;
-			const int				argc		= 1;
-			v8::Local<v8::Value>	argv[argc]	= { Nan::New<v8::String>(this->ErrorMessage()).ToLocalChecked() };
+		// handler for failure (by calling SetError)
+		void OnError(const Napi::Error& err) override
+		{
+			Napi::Env env = Env();
+			Napi::HandleScope scope(env);
 
-			if(callback){
-				callback->Call(argc, argv);
+			// The first argument is the error message.
+			if(!_callbackRef.IsEmpty()){
+				_callbackRef.Value().Call({ Napi::String::New(env, err.Value().ToString().Utf8Value()) });
 			}else{
-				Nan::ThrowSyntaxError("Internal error in async worker");
-				return;
+				// Throw error
+				err.ThrowAsJavaScriptException();
 			}
-        }
+		}
 
 	private:
-		K2hdkcSlave*	pslaveobj;
-
-		bool			is_set_conf;
-		std::string		conf;
-		int16_t			ctlport;
-		std::string		cuk;
-		bool			auto_rejoin;
-		bool			no_giveup_rejoin;
+		Napi::FunctionReference	_callbackRef;
+		K2hdkcSlave&			_slaveobj;
+		std::string				_conf;
+		int16_t					_ctlport;
+		std::string				_cuk;
+		bool					_auto_rejoin;
+		bool					_no_giveup_rejoin;
 };
 
 //---------------------------------------------------------
 // GetValueWorker class
 //
-// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, const char* psubkey, bool is_check_attr, const char* ppass)
+// Constructor:			constructor(const Napi::Function& callback, K2hdkcSlave& slaveobj, const std::string& configuration, int control_port, const std::string& inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const std::string& key, const std::string& subkey, bool is_check_attr, const std::string& pass)
 // Callback function:	function(string error[, string value])
 //
 //---------------------------------------------------------
-class GetValueWorker : public Nan::AsyncWorker
+class GetValueWorker : public Napi::AsyncWorker
 {
 	public:
-		GetValueWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, const char* inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, const char* psubkey, bool is_check_attr, const char* ppass) :
-			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), cuk(inputcuk ? inputcuk : ""), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
-			is_key_set(NULL != pkey), strkey(pkey ? pkey : ""), is_subkey_set(NULL != psubkey), strsubkey(psubkey ? psubkey : ""), attrchk(is_check_attr), is_pass_set(NULL != ppass), strpass(ppass ? ppass : ""), is_result_set(false), strresult("")
-		{}
-		~GetValueWorker() {}
-
-		void Execute()
+		GetValueWorker(const Napi::Function& callback, K2hdkcSlave& slaveobj, const std::string& configuration, int control_port, const std::string& inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const std::string& key, const std::string& subkey, bool is_check_attr, const std::string& pass) :
+			Napi::AsyncWorker(callback), _callbackRef(Napi::Persistent(callback)),
+			_slaveobj(slaveobj), _conf(configuration), _ctlport(control_port), _cuk(inputcuk), _auto_rejoin(is_auto_rejoin), _no_giveup_rejoin(is_nogiveup_rejoin), _strkey(key), _strsubkey(subkey), _attrchk(is_check_attr), _strpass(pass), _is_result_set(false), _strresult("")
 		{
-			if(!pslaveobj && !is_set_conf){
+			_callbackRef.Ref();
+		}
+
+		~GetValueWorker() override
+		{
+			if(_callbackRef){
+				_callbackRef.Unref();
+				_callbackRef.Reset();
+			}
+		}
+
+		// Run on worker thread
+		void Execute() override
+		{
+			if(!_slaveobj.GetChmCntrlObject() && _conf.empty()){
 				// onetime connection mode needs configuration
-				this->SetErrorMessage("No configuration is associated to async worker");
+				SetError("No configuration is associated to async worker");
 				return;
 			}
-			if(!is_key_set){
-				this->SetErrorMessage("Specified key is empty(null)");
+			if(_strkey.empty()){
+				SetError("Specified key is empty(null)");
 				return;
 			}
 
 			// work
 			dkcres_type_t	rescode = DKC_NORESTYPE;
-			if(is_subkey_set){
+			if(!_strsubkey.empty()){
 				// subkey is specified, thus need to check the key has it.
 				K2hdkcComGetSubkeys*	pSubComObj;
-				if(!pslaveobj){
-					pSubComObj = GetOtSlaveK2hdkcComGetSubkeys(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
+				if(!_slaveobj.GetChmCntrlObject()){
+					pSubComObj = GetOtSlaveK2hdkcComGetSubkeys(_conf.c_str(), _ctlport, (_cuk.empty() ? NULL : _cuk.c_str()), _auto_rejoin, _no_giveup_rejoin);
 				}else{
-					pSubComObj = GetPmSlaveK2hdkcComGetSubkeys(pslaveobj);
+					pSubComObj = GetPmSlaveK2hdkcComGetSubkeys(&_slaveobj);
 				}
 				if(!pSubComObj){
-					this->SetErrorMessage("Internal error: Could not create command object.");
+					SetError("Internal error: Could not create command object.");
 					return;
 				}
 				// get subkey list in key
 				K2HSubKeys*	pSubKeys= NULL;
-				if(!pSubComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, attrchk, &pSubKeys, &rescode) || !pSubKeys){
+				if(!pSubComObj->CommandSend(reinterpret_cast<const unsigned char*>(_strkey.c_str()), _strkey.length() + 1, _attrchk, &pSubKeys, &rescode) || !pSubKeys){
 					// key does not have any subkey
 					DKC_DELETE(pSubComObj);
-					is_result_set = false;
 					return;
 				}
+				DKC_DELETE(pSubComObj);
 
 				// convert subkey binary data to string array
 				strarr_t	strarr;
 				pSubKeys->StringArray(strarr);
 				DKC_DELETE(pSubKeys);
-				DKC_DELETE(pSubComObj);
 
 				// check subkey
 				bool	found = false;
 				for(strarr_t::const_iterator iter = strarr.begin(); iter != strarr.end(); ++iter){
-					if(0 == strcmp(iter->c_str(), strsubkey.c_str())){
+					if(0 == strcmp(iter->c_str(), _strsubkey.c_str())){
 						found = true;
 						break;
 					}
 				}
 				if(!found){
 					// not found subkey in key
-					is_result_set = false;
 					return;
 				}
 				// switch key to subkey
-				strkey = strsubkey;
+				_strkey = _strsubkey;
 			}
 
 			// get value
 			K2hdkcComGet*	pComObj;
-			if(!pslaveobj){
-				pComObj = GetOtSlaveK2hdkcComGet(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
+			if(!_slaveobj.GetChmCntrlObject()){
+				pComObj = GetOtSlaveK2hdkcComGet(_conf.c_str(), _ctlport, (_cuk.empty() ? NULL : _cuk.c_str()), _auto_rejoin, _no_giveup_rejoin);
 			}else{
-				pComObj = GetPmSlaveK2hdkcComGet(pslaveobj);
+				pComObj = GetPmSlaveK2hdkcComGet(&_slaveobj);
 			}
 			if(!pComObj){
-				this->SetErrorMessage("Internal error: Could not create command object.");
+				SetError("Internal error: Could not create command object.");
 				return;
 			}
+
 			const unsigned char*	pvaltmp		= NULL;
 			size_t					valtmplen	= 0L;
-			bool					result		= pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, attrchk, (is_pass_set ? strpass.c_str() : NULL), &pvaltmp, &valtmplen, &rescode);
+			bool					result		= pComObj->CommandSend(reinterpret_cast<const unsigned char*>(_strkey.c_str()), _strkey.length() + 1, _attrchk, (_strpass.empty() ? NULL : _strpass.c_str()), &pvaltmp, &valtmplen, &rescode);
 			if(result && (pvaltmp && 0 < valtmplen)){
-				strresult		= std::string(reinterpret_cast<const char*>(pvaltmp), valtmplen);
-				is_result_set	= true;
-			}else{
-				is_result_set	= false;
+				_strresult		= std::string(reinterpret_cast<const char*>(pvaltmp), ('\0' == pvaltmp[valtmplen - 1] ? valtmplen - 1 : valtmplen));
+				_is_result_set	= true;
 			}
 			DKC_DELETE(pComObj);
 		}
 
-		void HandleOKCallback()
+		// handler for success
+		void OnOK() override
 		{
-			Nan::HandleScope		scope;
-			const int				argc		= 2;
+			Napi::Env env = Env();
+			Napi::HandleScope scope(env);
 
-			if(callback){
-				if(is_result_set){
-					v8::Local<v8::Value>	argv[argc] = { Nan::Null(), Nan::New<v8::String>(strresult.c_str()).ToLocalChecked() };
-					callback->Call(argc, argv);
+			if(!_callbackRef.IsEmpty()){
+				if(_is_result_set){
+					Napi::String	valBuf = Napi::String::New(env, _strresult.c_str(), _strresult.length());
+					_callbackRef.Value().Call({ env.Null(), valBuf });
 				}else{
-					v8::Local<v8::Value>	argv[argc] = { Nan::Null(), Nan::Null() };
-					callback->Call(argc, argv);
+					_callbackRef.Value().Call({ env.Null(), env.Null() });
 				}
 			}else{
-				Nan::ThrowSyntaxError("Internal error in async worker");
-				return;
+				Napi::TypeError::New(env, "Internal error in async worker").ThrowAsJavaScriptException();
 			}
 		}
 
-        void HandleErrorCallback()
-        {
-			Nan::HandleScope		scope;
-			const int				argc		= 1;
-			v8::Local<v8::Value>	argv[argc]	= { Nan::New<v8::String>(this->ErrorMessage()).ToLocalChecked() };
+		// handler for failure (by calling SetError)
+		void OnError(const Napi::Error& err) override
+		{
+			Napi::Env env = Env();
+			Napi::HandleScope scope(env);
 
-			if(callback){
-				callback->Call(argc, argv);
+			// The first argument is the error message.
+			if(!_callbackRef.IsEmpty()){
+				_callbackRef.Value().Call({ Napi::String::New(env, err.Value().ToString().Utf8Value()) });
 			}else{
-				Nan::ThrowSyntaxError("Internal error in async worker");
-				return;
+				// Throw error
+				err.ThrowAsJavaScriptException();
 			}
-        }
+		}
 
 	private:
-		K2hdkcSlave*	pslaveobj;
+		Napi::FunctionReference	_callbackRef;
+		K2hdkcSlave&			_slaveobj;
+		std::string				_conf;
+		int16_t					_ctlport;
+		std::string				_cuk;
+		bool					_auto_rejoin;
+		bool					_no_giveup_rejoin;
 
-		bool			is_set_conf;
-		std::string		conf;
-		int16_t			ctlport;
-		std::string		cuk;
-		bool			auto_rejoin;
-		bool			no_giveup_rejoin;
+		std::string				_strkey;
+		std::string				_strsubkey;
+		bool					_attrchk;
+		std::string				_strpass;
 
-		bool			is_key_set;
-		std::string		strkey;
-		bool			is_subkey_set;
-		std::string		strsubkey;
-		bool			attrchk;
-		bool			is_pass_set;
-		std::string		strpass;
-
-		bool			is_result_set;
-		std::string		strresult;
+		bool					_is_result_set;
+		std::string				_strresult;
 };
 
 //---------------------------------------------------------
 // GetSubkeysWorker class
 //
-// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, bool is_check_attr)
+// Constructor:			constructor(const Napi::Function& callback, K2hdkcSlave& slaveobj, const std::string& configuration, int control_port, const std::string& inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const std::string& key, bool is_check_attr)
 // Callback function:	function(string error, array subkeys)
 //
 //---------------------------------------------------------
-class GetSubkeysWorker : public Nan::AsyncWorker
+class GetSubkeysWorker : public Napi::AsyncWorker
 {
 	public:
-		GetSubkeysWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, const char* inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, bool is_check_attr) :
-			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), cuk(inputcuk ? inputcuk : ""), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin), is_key_set(NULL != pkey), strkey(pkey ? pkey : ""), attrchk(is_check_attr)
-		{}
-		~GetSubkeysWorker() {}
-
-		void Execute()
+		GetSubkeysWorker(const Napi::Function& callback, K2hdkcSlave& slaveobj, const std::string& configuration, int control_port, const std::string& inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const std::string& key, bool is_check_attr) :
+			Napi::AsyncWorker(callback), _callbackRef(Napi::Persistent(callback)),
+			_slaveobj(slaveobj), _conf(configuration), _ctlport(control_port), _cuk(inputcuk), _auto_rejoin(is_auto_rejoin), _no_giveup_rejoin(is_nogiveup_rejoin), _strkey(key), _attrchk(is_check_attr)
 		{
-			if(!pslaveobj && !is_set_conf){
+			_callbackRef.Ref();
+		}
+
+		~GetSubkeysWorker() override
+		{
+			if(_callbackRef){
+				_callbackRef.Unref();
+				_callbackRef.Reset();
+			}
+		}
+
+		// Run on worker thread
+		void Execute() override
+		{
+			if(!_slaveobj.GetChmCntrlObject() && _conf.empty()){
 				// onetime connection mode needs configuration
-				this->SetErrorMessage("No configuration is associated to async worker");
+				SetError("No configuration is associated to async worker");
 				return;
 			}
-			if(!is_key_set){
-				this->SetErrorMessage("Specified key is empty(null)");
+			if(_strkey.empty()){
+				SetError("Specified key is empty(null)");
 				return;
 			}
 
 			// get command object
 			K2hdkcComGetSubkeys*	pComObj;
-			if(!pslaveobj){
-				pComObj = GetOtSlaveK2hdkcComGetSubkeys(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
+			if(!_slaveobj.GetChmCntrlObject()){
+				pComObj = GetOtSlaveK2hdkcComGetSubkeys(_conf.c_str(), _ctlport, (_cuk.empty() ? NULL : _cuk.c_str()), _auto_rejoin, _no_giveup_rejoin);
 			}else{
-				pComObj = GetPmSlaveK2hdkcComGetSubkeys(pslaveobj);
+				pComObj = GetPmSlaveK2hdkcComGetSubkeys(&_slaveobj);
 			}
 			if(!pComObj){
-				this->SetErrorMessage("Internal error: Could not create command object.");
+				SetError("Internal error: Could not create command object.");
 				return;
 			}
 
 			// get subkey list in key
 			dkcres_type_t	rescode = DKC_NORESTYPE;
 			K2HSubKeys*		pSubKeys= NULL;
-			if(!pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, attrchk, &pSubKeys, &rescode) || !pSubKeys){
+			if(!pComObj->CommandSend(reinterpret_cast<const unsigned char*>(_strkey.c_str()), _strkey.length() + 1, _attrchk, &pSubKeys, &rescode) || !pSubKeys){
 				// key does not have any subkey
-				this->SetErrorMessage("Failed to get subkey because the key does not have any subkey.");
+				SetError("Failed to get subkey because the key does not have any subkey.");
 			}else{
 				// convert subkey binary data to string array
 				subkey_array.clear();
@@ -308,108 +325,125 @@ class GetSubkeysWorker : public Nan::AsyncWorker
 				DKC_DELETE(pSubKeys);
 
 				if(0 == subkey_array.size()){
-					this->SetErrorMessage("Failed to get subkey because the key does not have any subkey.");
+					SetError("Failed to get subkey because the key does not have any subkey.");
 				}
 			}
 			DKC_DELETE(pComObj);
 		}
 
-		void HandleOKCallback()
+		// handler for success
+		void OnOK() override
 		{
-			Nan::HandleScope		scope;
-			v8::Local<v8::Array>	retarr		= Nan::New<v8::Array>();
-			int						pos			= 0 ;
-			for(strarr_t::const_iterator iter = subkey_array.begin(); iter != subkey_array.end(); ++iter, ++pos){
-				Nan::Set(retarr, pos, Nan::New<v8::String>(iter->c_str()).ToLocalChecked());
-			}
-			const int				argc		= 2;
-			v8::Local<v8::Value>	argv[argc]	= { Nan::Null(), retarr };
+			Napi::Env env = Env();
+			Napi::HandleScope scope(env);
 
-			if(callback){
-				callback->Call(argc, argv);
+			Napi::Array retarr	= Napi::Array::New(env, subkey_array.size());
+			uint32_t	pos		= 0;
+			for(const auto &str: subkey_array){
+				std::string	strtmp(str);
+				while(!strtmp.empty()){
+					unsigned char tmpch = static_cast<unsigned char>(strtmp.back());
+					if('\0' != tmpch && !std::isspace(tmpch)){
+						break;
+					}
+					strtmp.pop_back();
+				}
+				retarr.Set(pos++, Napi::String::New(env, strtmp));
+			}
+
+			if(!_callbackRef.IsEmpty()){
+				_callbackRef.Value().Call({ env.Null(), retarr });
 			}else{
-				Nan::ThrowSyntaxError("Internal error in async worker");
-				return;
+				Napi::TypeError::New(env, "Internal error in async worker").ThrowAsJavaScriptException();
 			}
 		}
 
-        void HandleErrorCallback()
-        {
-			Nan::HandleScope		scope;
-			const int				argc		= 2;
-			v8::Local<v8::Value>	argv[argc]	= { Nan::New<v8::String>(this->ErrorMessage()).ToLocalChecked(), Nan::Null() };
+		// handler for failure (by calling SetError)
+		void OnError(const Napi::Error& err) override
+		{
+			Napi::Env env = Env();
+			Napi::HandleScope scope(env);
 
-			if(callback){
-				callback->Call(argc, argv);
+			// The first argument is the error message.
+			if(!_callbackRef.IsEmpty()){
+				_callbackRef.Value().Call({ Napi::String::New(env, err.Value().ToString().Utf8Value()) });
 			}else{
-				Nan::ThrowSyntaxError("Internal error in async worker");
-				return;
+				// Throw error
+				err.ThrowAsJavaScriptException();
 			}
-        }
+		}
 
 	private:
-		K2hdkcSlave*	pslaveobj;
+		Napi::FunctionReference	_callbackRef;
+		K2hdkcSlave&			_slaveobj;
+		std::string				_conf;
+		int16_t					_ctlport;
+		std::string				_cuk;
+		bool					_auto_rejoin;
+		bool					_no_giveup_rejoin;
 
-		bool			is_set_conf;
-		std::string		conf;
-		int16_t			ctlport;
-		std::string		cuk;
-		bool			auto_rejoin;
-		bool			no_giveup_rejoin;
-		bool			is_key_set;
+		std::string				_strkey;
+		bool					_attrchk;
 
-		std::string		strkey;
-		bool			attrchk;
-
-		strarr_t		subkey_array;
+		strarr_t				subkey_array;
 };
 
 //---------------------------------------------------------
 // GetAttrsWorker class
 //
-// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey)
+// Constructor:			constructor(const Napi::Function& callback, K2hdkcSlave& slaveobj, const std::string& configuration, int control_port, const std::string& inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const std::string& key)
 // Callback function:	function(string error, array attribute_keys)
 //
 //---------------------------------------------------------
-class GetAttrsWorker : public Nan::AsyncWorker
+class GetAttrsWorker : public Napi::AsyncWorker
 {
 	public:
-		GetAttrsWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, const char* inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey) :
-			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), cuk(inputcuk ? inputcuk : ""), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin), is_key_set(NULL != pkey), strkey(pkey ? pkey : "")
-		{}
-		~GetAttrsWorker() {}
-
-		void Execute()
+		GetAttrsWorker(const Napi::Function& callback, K2hdkcSlave& slaveobj, const std::string& configuration, int control_port, const std::string& inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const std::string& key) :
+			Napi::AsyncWorker(callback), _callbackRef(Napi::Persistent(callback)),
+			_slaveobj(slaveobj), _conf(configuration), _ctlport(control_port), _cuk(inputcuk), _auto_rejoin(is_auto_rejoin), _no_giveup_rejoin(is_nogiveup_rejoin), _strkey(key)
 		{
-			if(!pslaveobj && !is_set_conf){
+			_callbackRef.Ref();
+		}
+
+		~GetAttrsWorker() override
+		{
+			if(_callbackRef){
+				_callbackRef.Unref();
+				_callbackRef.Reset();
+			}
+		}
+
+		// Run on worker thread
+		void Execute() override
+		{
+			if(!_slaveobj.GetChmCntrlObject() && _conf.empty()){
 				// onetime connection mode needs configuration
-				this->SetErrorMessage("No configuration is associated to async worker");
+				SetError("No configuration is associated to async worker");
 				return;
 			}
-			if(!is_key_set){
-				this->SetErrorMessage("Specified key is empty(null)");
+			if(_strkey.empty()){
+				SetError("Specified key is empty(null)");
 				return;
 			}
 
 			// get command object
 			K2hdkcComGetAttrs*	pComObj;
-			if(!pslaveobj){
-				pComObj = GetOtSlaveK2hdkcComGetAttrs(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
+			if(!_slaveobj.GetChmCntrlObject()){
+				pComObj = GetOtSlaveK2hdkcComGetAttrs(_conf.c_str(), _ctlport, (_cuk.empty() ? NULL : _cuk.c_str()), _auto_rejoin, _no_giveup_rejoin);
 			}else{
-				pComObj = GetPmSlaveK2hdkcComGetAttrs(pslaveobj);
+				pComObj = GetPmSlaveK2hdkcComGetAttrs(&_slaveobj);
 			}
 			if(!pComObj){
-				this->SetErrorMessage("Internal error: Could not create command object.");
+				SetError("Internal error: Could not create command object.");
 				return;
 			}
 
 			// get attribute list in key
 			dkcres_type_t	rescode = DKC_NORESTYPE;
 			K2HAttrs*		pAttrs	= NULL;
-			if(!pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, &pAttrs, &rescode) || !pAttrs){
+			if(!pComObj->CommandSend(reinterpret_cast<const unsigned char*>(_strkey.c_str()), _strkey.length() + 1, &pAttrs, &rescode) || !pAttrs){
 				// key does not have any attribute key
-				this->SetErrorMessage("Failed to get attribute keys because the key does not have any attribute.");
+				SetError("Failed to get attribute keys because the key does not have any attribute.");
 			}else{
 				// convert attribute key binary data to string array
 				attrs_array.clear();
@@ -417,1377 +451,1431 @@ class GetAttrsWorker : public Nan::AsyncWorker
 				DKC_DELETE(pAttrs);
 
 				if(0 == attrs_array.size()){
-					this->SetErrorMessage("Failed to get attribute keys because the key does not have any attribute.");
+					SetError("Failed to get attribute keys because the key does not have any attribute.");
 				}
 			}
 			DKC_DELETE(pComObj);
 		}
 
-		void HandleOKCallback()
+		// handler for success
+		void OnOK() override
 		{
-			Nan::HandleScope		scope;
-			v8::Local<v8::Array>	retarr		= Nan::New<v8::Array>();
-			int						pos			= 0 ;
-			for(strarr_t::const_iterator iter = attrs_array.begin(); iter != attrs_array.end(); ++iter, ++pos){
-				Nan::Set(retarr, pos, Nan::New<v8::String>(iter->c_str()).ToLocalChecked());
-			}
-			const int				argc		= 2;
-			v8::Local<v8::Value>	argv[argc]	= { Nan::Null(), retarr };
+			Napi::Env env = Env();
+			Napi::HandleScope scope(env);
 
-			if(callback){
-				callback->Call(argc, argv);
+			Napi::Array retarr	= Napi::Array::New(env, attrs_array.size());
+			uint32_t	pos		= 0;
+			for(const auto &str: attrs_array){
+				std::string	strtmp(str);
+				while(!strtmp.empty()){
+					unsigned char tmpch = static_cast<unsigned char>(strtmp.back());
+					if('\0' != tmpch && !std::isspace(tmpch)){
+						break;
+					}
+					strtmp.pop_back();
+				}
+				retarr.Set(pos++, Napi::String::New(env, strtmp));
+			}
+
+			if(!_callbackRef.IsEmpty()){
+				_callbackRef.Value().Call({ env.Null(), retarr });
 			}else{
-				Nan::ThrowSyntaxError("Internal error in async worker");
-				return;
+				Napi::TypeError::New(env, "Internal error in async worker").ThrowAsJavaScriptException();
 			}
 		}
 
-        void HandleErrorCallback()
-        {
-			Nan::HandleScope		scope;
-			const int				argc		= 2;
-			v8::Local<v8::Value>	argv[argc]	= { Nan::New<v8::String>(this->ErrorMessage()).ToLocalChecked(), Nan::Null() };
+		// handler for failure (by calling SetError)
+		void OnError(const Napi::Error& err) override
+		{
+			Napi::Env env = Env();
+			Napi::HandleScope scope(env);
 
-			if(callback){
-				callback->Call(argc, argv);
+			// The first argument is the error message.
+			if(!_callbackRef.IsEmpty()){
+				_callbackRef.Value().Call({ Napi::String::New(env, err.Value().ToString().Utf8Value()) });
 			}else{
-				Nan::ThrowSyntaxError("Internal error in async worker");
-				return;
+				// Throw error
+				err.ThrowAsJavaScriptException();
 			}
-        }
+		}
 
 	private:
-		K2hdkcSlave*	pslaveobj;
+		Napi::FunctionReference	_callbackRef;
+		K2hdkcSlave&			_slaveobj;
+		std::string				_conf;
+		int16_t					_ctlport;
+		std::string				_cuk;
+		bool					_auto_rejoin;
+		bool					_no_giveup_rejoin;
+		std::string				_strkey;
 
-		bool			is_set_conf;
-		std::string		conf;
-		int16_t			ctlport;
-		std::string		cuk;
-		bool			auto_rejoin;
-		bool			no_giveup_rejoin;
-		bool			is_key_set;
-
-		std::string		strkey;
-
-		strarr_t		attrs_array;
+		strarr_t				attrs_array;
 };
 
 //---------------------------------------------------------
 // SetValueWorker class
 //
-// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, const char* pval, const char* psubkey, const char* ppass, const time_t* pexpire)
+// Constructor:			constructor(const Napi::Function& callback, K2hdkcSlave& slaveobj, const std::string& configuration, int control_port, const std::string& inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const std::string& key, const std::string& val, const std::string& subkey, const std::string& pass, const time_t input_expire)
 // Callback function:	function(string error)
 //
 //---------------------------------------------------------
-class SetValueWorker : public Nan::AsyncWorker
+class SetValueWorker : public Napi::AsyncWorker
 {
 	public:
-		SetValueWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, const char* inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, const char* pval, const char* psubkey, const char* ppass, const time_t* pexpire) :
-			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), cuk(inputcuk ? inputcuk : ""), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
-			is_key_set(NULL != pkey), strkey(pkey ? pkey : ""), is_val_set(NULL != pval), strval(pval ? pval : ""), is_subkey_set(NULL != psubkey), strsubkey(psubkey ? psubkey : ""), is_pass_set(NULL != ppass), strpass(ppass ? ppass : ""), expire(pexpire ? *pexpire : 0)
-		{}
-		~SetValueWorker() {}
-
-		void Execute()
+		SetValueWorker(const Napi::Function& callback, K2hdkcSlave& slaveobj, const std::string& configuration, int control_port, const std::string& inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const std::string& key, const std::string& val, const std::string& subkey, const std::string& pass, const time_t input_expire) :
+			Napi::AsyncWorker(callback), _callbackRef(Napi::Persistent(callback)),
+			_slaveobj(slaveobj), _conf(configuration), _ctlport(control_port), _cuk(inputcuk), _auto_rejoin(is_auto_rejoin), _no_giveup_rejoin(is_nogiveup_rejoin), _strkey(key), _strval(val), _strsubkey(subkey), _strpass(pass), _expire(input_expire)
 		{
-			if(!pslaveobj && !is_set_conf){
+			_callbackRef.Ref();
+		}
+
+		~SetValueWorker() override
+		{
+			if(_callbackRef){
+				_callbackRef.Unref();
+				_callbackRef.Reset();
+			}
+		}
+
+		// Run on worker thread
+		void Execute() override
+		{
+			if(!_slaveobj.GetChmCntrlObject() && _conf.empty()){
 				// onetime connection mode needs configuration
-				this->SetErrorMessage("No configuration is associated to async worker");
+				SetError("No configuration is associated to async worker");
 				return;
 			}
-			if(!is_key_set){
-				this->SetErrorMessage("Specified key is empty(null)");
+			if(_strkey.empty()){
+				SetError("Specified key is empty(null)");
 				return;
 			}
 
 			// work
 			dkcres_type_t	rescode = DKC_NORESTYPE;
-			if(is_subkey_set){
+			if(!_strsubkey.empty()){
 				// subkey is specified, set value into subkey
 				K2hdkcComAddSubkey*	pComObj;
-				if(!pslaveobj){
-					pComObj = GetOtSlaveK2hdkcComAddSubkey(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
+				if(!_slaveobj.GetChmCntrlObject()){
+					pComObj = GetOtSlaveK2hdkcComAddSubkey(_conf.c_str(), _ctlport, (_cuk.empty() ? NULL : _cuk.c_str()), _auto_rejoin, _no_giveup_rejoin);
 				}else{
-					pComObj = GetPmSlaveK2hdkcComAddSubkey(pslaveobj);
+					pComObj = GetPmSlaveK2hdkcComAddSubkey(&_slaveobj);
 				}
 				if(!pComObj){
-					this->SetErrorMessage("Internal error: Could not create command object.");
+					SetError("Internal error: Could not create command object.");
 					return;
 				}
-				if(!pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, reinterpret_cast<const unsigned char*>(strsubkey.c_str()), strsubkey.length() + 1, (is_val_set ? reinterpret_cast<const unsigned char*>(strval.c_str()) : NULL), (is_val_set ? strval.length() + 1 : 0), true, (is_pass_set ? strpass.c_str() : NULL), (expire > 0 ? &expire : NULL), &rescode)){
-					this->SetErrorMessage("Failed to set value into subkey/key.");
+				if(!pComObj->CommandSend(reinterpret_cast<const unsigned char*>(_strkey.c_str()), _strkey.length() + 1, reinterpret_cast<const unsigned char*>(_strsubkey.c_str()), _strsubkey.length() + 1, (_strval.empty() ? NULL : reinterpret_cast<const unsigned char*>(_strval.c_str())), (_strval.empty() ? 0 : _strval.length() + 1), true, (_strpass.empty() ? NULL : _strpass.c_str()), (_expire > 0 ? &_expire : NULL), &rescode)){
+					SetError("Failed to set value into subkey/key.");
 				}
 				DKC_DELETE(pComObj);
 			}else{
 				// set value to key
 				K2hdkcComSet*	pComObj;
-				if(!pslaveobj){
-					pComObj = GetOtSlaveK2hdkcComSet(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
+				if(!_slaveobj.GetChmCntrlObject()){
+					pComObj = GetOtSlaveK2hdkcComSet(_conf.c_str(), _ctlport, (_cuk.empty() ? NULL : _cuk.c_str()), _auto_rejoin, _no_giveup_rejoin);
 				}else{
-					pComObj = GetPmSlaveK2hdkcComSet(pslaveobj);
+					pComObj = GetPmSlaveK2hdkcComSet(&_slaveobj);
 				}
 				if(!pComObj){
-					this->SetErrorMessage("Internal error: Could not create command object.");
+					SetError("Internal error: Could not create command object.");
 					return;
 				}
-				if(!pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, (is_val_set ? reinterpret_cast<const unsigned char*>(strval.c_str()) : NULL), (is_val_set ? strval.length() + 1 : 0), false, (is_pass_set ? strpass.c_str() : NULL), (expire > 0 ? &expire : NULL), &rescode)){
-					this->SetErrorMessage("Failed to set value into key.");
+				if(!pComObj->CommandSend(reinterpret_cast<const unsigned char*>(_strkey.c_str()), _strkey.length() + 1, (_strval.empty() ? NULL : reinterpret_cast<const unsigned char*>(_strval.c_str())), (_strval.empty() ? 0 : _strval.length() + 1), false, (_strpass.empty() ? NULL : _strpass.c_str()), (_expire > 0 ? &_expire : NULL), &rescode)){
+					SetError("Failed to set value into key.");
 				}
 				DKC_DELETE(pComObj);
 			}
 		}
 
-		void HandleOKCallback()
+		// handler for success
+		void OnOK() override
 		{
-			Nan::HandleScope		scope;
-			const int				argc		= 1;
-			v8::Local<v8::Value>	argv[argc]	= { Nan::Null() };
+			Napi::Env env = Env();
+			Napi::HandleScope scope(env);
 
-			if(callback){
-				callback->Call(argc, argv);
+			if(!_callbackRef.IsEmpty()){
+				_callbackRef.Value().Call({ env.Null() });
 			}else{
-				Nan::ThrowSyntaxError("Internal error in async worker");
-				return;
+				Napi::TypeError::New(env, "Internal error in async worker");
 			}
 		}
 
-        void HandleErrorCallback()
-        {
-			Nan::HandleScope		scope;
-			const int				argc		= 1;
-			v8::Local<v8::Value>	argv[argc]	= { Nan::New<v8::String>(this->ErrorMessage()).ToLocalChecked() };
+		// handler for failure (by calling SetError)
+		void OnError(const Napi::Error& err) override
+		{
+			Napi::Env env = Env();
+			Napi::HandleScope scope(env);
 
-			if(callback){
-				callback->Call(argc, argv);
+			// The first argument is the error message.
+			if(!_callbackRef.IsEmpty()){
+				_callbackRef.Value().Call({ Napi::String::New(env, err.Value().ToString().Utf8Value()) });
 			}else{
-				Nan::ThrowSyntaxError("Internal error in async worker");
-				return;
+				// Throw error
+				err.ThrowAsJavaScriptException();
 			}
-        }
+		}
 
 	private:
-		K2hdkcSlave*	pslaveobj;
+		Napi::FunctionReference	_callbackRef;
+		K2hdkcSlave&			_slaveobj;
+		std::string				_conf;
+		int16_t					_ctlport;
+		std::string				_cuk;
+		bool					_auto_rejoin;
+		bool					_no_giveup_rejoin;
 
-		bool			is_set_conf;
-		std::string		conf;
-		int16_t			ctlport;
-		std::string		cuk;
-		bool			auto_rejoin;
-		bool			no_giveup_rejoin;
-
-		bool			is_key_set;
-		std::string		strkey;
-		bool			is_val_set;
-		std::string		strval;
-		bool			is_subkey_set;
-		std::string		strsubkey;
-		bool			is_pass_set;
-		std::string		strpass;
-		time_t			expire;
+		std::string				_strkey;
+		std::string				_strval;
+		std::string				_strsubkey;
+		std::string				_strpass;
+		time_t					_expire;
 };
 
 //---------------------------------------------------------
 // SetSubkeysWorker class
 //
-// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, unsigned char* psubkeys, size_t subkeylength)
+// Constructor:			constructor(const Napi::Function& callback, K2hdkcSlave& slaveobj, const std::string& configuration, int control_port, const std::string& inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const std::string& key, unsigned char* psubkeys, size_t subkeylength)
 // Callback function:	function(string error)
 //
 //---------------------------------------------------------
-class SetSubkeysWorker : public Nan::AsyncWorker
+class SetSubkeysWorker : public Napi::AsyncWorker
 {
 	public:
-		SetSubkeysWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, const char* inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, unsigned char* psubkeys, size_t subkeylength) :
-			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), cuk(inputcuk ? inputcuk : ""), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
-			is_key_set(NULL != pkey), strkey(pkey ? pkey : ""), bysubkeys(NULL), skeylen(0)
+		SetSubkeysWorker(const Napi::Function& callback, K2hdkcSlave& slaveobj, const std::string& configuration, int control_port, const std::string& inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const std::string& key, unsigned char* psubkeys, size_t subkeylength) :
+			Napi::AsyncWorker(callback), _callbackRef(Napi::Persistent(callback)),
+			_slaveobj(slaveobj), _conf(configuration), _ctlport(control_port), _cuk(inputcuk), _auto_rejoin(is_auto_rejoin), _no_giveup_rejoin(is_nogiveup_rejoin), _strkey(key), _bysubkeys(NULL), _skeylen(0)
 		{
+			_callbackRef.Ref();
+
 			if(psubkeys && 0UL < subkeylength){
-				bysubkeys	= k2hbindup(psubkeys, subkeylength);
-				skeylen		= subkeylength;
+				_bysubkeys	= k2hbindup(psubkeys, subkeylength);
+				_skeylen		= subkeylength;
 			}
 		}
 
 		~SetSubkeysWorker()
 		{
-			K2H_Free(bysubkeys);
+			if(_callbackRef){
+				_callbackRef.Unref();
+				_callbackRef.Reset();
+			}
+			K2H_Free(_bysubkeys);
 		}
 
-		void Execute()
+		// Run on worker thread
+		void Execute() override
 		{
-			if(!pslaveobj && !is_set_conf){
+			if(!_slaveobj.GetChmCntrlObject() && _conf.empty()){
 				// onetime connection mode needs configuration
-				this->SetErrorMessage("No configuration is associated to async worker");
+				SetError("No configuration is associated to async worker");
 				return;
 			}
-			if(!is_key_set){
-				this->SetErrorMessage("Specified key is empty(null)");
+			if(_strkey.empty()){
+				SetError("Specified key is empty(null)");
 				return;
 			}
 
 			// work
 			K2hdkcComSetSubkeys*	pComObj;
-			if(!pslaveobj){
-				pComObj = GetOtSlaveK2hdkcComSetSubkeys(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
+			if(!_slaveobj.GetChmCntrlObject()){
+				pComObj = GetOtSlaveK2hdkcComSetSubkeys(_conf.c_str(), _ctlport, (_cuk.empty() ? NULL : _cuk.c_str()), _auto_rejoin, _no_giveup_rejoin);
 			}else{
-				pComObj = GetPmSlaveK2hdkcComSetSubkeys(pslaveobj);
+				pComObj = GetPmSlaveK2hdkcComSetSubkeys(&_slaveobj);
 			}
 			if(!pComObj){
-				this->SetErrorMessage("Internal error: Could not create command object.");
+				SetError("Internal error: Could not create command object.");
 				return;
 			}
 
 			bool			result	= false;
 			dkcres_type_t	rescode = DKC_NORESTYPE;
-			if(bysubkeys && 0UL < skeylen){
+			if(_bysubkeys && 0UL < _skeylen){
 				// set subkeys to key
-				result = pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, bysubkeys, skeylen, &rescode);
+				result = pComObj->CommandSend(reinterpret_cast<const unsigned char*>(_strkey.c_str()), _strkey.length() + 1, _bysubkeys, _skeylen, &rescode);
 			}else{
 				// clear subkeys
-				result = pComObj->ClearSubkeysCommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, &rescode);
+				result = pComObj->ClearSubkeysCommandSend(reinterpret_cast<const unsigned char*>(_strkey.c_str()), _strkey.length() + 1, &rescode);
 			}
 			DKC_DELETE(pComObj);
 
 			if(!result){
-				if(bysubkeys && 0UL < skeylen){
-					this->SetErrorMessage("Failed to set subkeys into key.");
+				if(_bysubkeys && 0UL < _skeylen){
+					SetError("Failed to set subkeys into key.");
 				}else{
-					this->SetErrorMessage("Failed to clear subkeys in key.");
+					SetError("Failed to clear subkeys in key.");
 				}
 			}
 		}
 
-		void HandleOKCallback()
+		// handler for success
+		void OnOK() override
 		{
-			Nan::HandleScope		scope;
-			const int				argc		= 1;
-			v8::Local<v8::Value>	argv[argc]	= { Nan::Null() };
+			Napi::Env env = Env();
+			Napi::HandleScope scope(env);
 
-			if(callback){
-				callback->Call(argc, argv);
+			if(!_callbackRef.IsEmpty()){
+				_callbackRef.Value().Call({ env.Null() });
 			}else{
-				Nan::ThrowSyntaxError("Internal error in async worker");
-				return;
+				Napi::TypeError::New(env, "Internal error in async worker");
 			}
 		}
 
-        void HandleErrorCallback()
-        {
-			Nan::HandleScope		scope;
-			const int				argc		= 1;
-			v8::Local<v8::Value>	argv[argc]	= { Nan::New<v8::String>(this->ErrorMessage()).ToLocalChecked() };
+		// handler for failure (by calling SetError)
+		void OnError(const Napi::Error& err) override
+		{
+			Napi::Env env = Env();
+			Napi::HandleScope scope(env);
 
-			if(callback){
-				callback->Call(argc, argv);
+			// The first argument is the error message.
+			if(!_callbackRef.IsEmpty()){
+				_callbackRef.Value().Call({ Napi::String::New(env, err.Value().ToString().Utf8Value()) });
 			}else{
-				Nan::ThrowSyntaxError("Internal error in async worker");
-				return;
+				// Throw error
+				err.ThrowAsJavaScriptException();
 			}
-        }
+		}
 
 	private:
-		K2hdkcSlave*	pslaveobj;
+		Napi::FunctionReference	_callbackRef;
+		K2hdkcSlave&			_slaveobj;
+		std::string				_conf;
+		int16_t					_ctlport;
+		std::string				_cuk;
+		bool					_auto_rejoin;
+		bool					_no_giveup_rejoin;
 
-		bool			is_set_conf;
-		std::string		conf;
-		int16_t			ctlport;
-		std::string		cuk;
-		bool			auto_rejoin;
-		bool			no_giveup_rejoin;
-
-		bool			is_key_set;
-		std::string		strkey;
-		unsigned char*	bysubkeys;
-		size_t			skeylen;
+		std::string				_strkey;
+		unsigned char*			_bysubkeys;
+		size_t					_skeylen;
 };
 
 //---------------------------------------------------------
 // SetAllWorker class
 //
-// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, const char* pval, unsigned char* psubkeys, size_t subkeylength, const char* ppass, const time_t* pexpire)
+// Constructor:			constructor(const Napi::Function& callback, K2hdkcSlave& slaveobj, const std::string& configuration, int control_port, const std::string& inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const std::string& key, const std::string& val, unsigned char* psubkeys, size_t subkeylength, const std::string& pass, const time_t input_expire)
 // Callback function:	function(string error)
 //
 //---------------------------------------------------------
-class SetAllWorker : public Nan::AsyncWorker
+class SetAllWorker : public Napi::AsyncWorker
 {
 	public:
-		SetAllWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, const char* inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, const char* pval, unsigned char* psubkeys, size_t subkeylength, const char* ppass, const time_t* pexpire) :
-			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), cuk(inputcuk ? inputcuk : ""), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
-			is_key_set(NULL != pkey), strkey(pkey ? pkey : ""), is_val_set(NULL != pval), strval(pval ? pval : ""), bysubkeys(NULL), skeylen(0), is_pass_set(NULL != ppass), strpass(ppass ? ppass : ""), expire(pexpire ? *pexpire : 0)
+		SetAllWorker(const Napi::Function& callback, K2hdkcSlave& slaveobj, const std::string& configuration, int control_port, const std::string& inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const std::string& key, const std::string& val, unsigned char* psubkeys, size_t subkeylength, const std::string& pass, const time_t input_expire) :
+			Napi::AsyncWorker(callback), _callbackRef(Napi::Persistent(callback)),
+			_slaveobj(slaveobj), _conf(configuration), _ctlport(control_port), _cuk(inputcuk), _auto_rejoin(is_auto_rejoin), _no_giveup_rejoin(is_nogiveup_rejoin), _strkey(key), _strval(val), _bysubkeys(NULL), _skeylen(0), _strpass(pass), _expire(input_expire)
 		{
+			_callbackRef.Ref();
+
 			if(psubkeys && 0UL < subkeylength){
-				bysubkeys	= k2hbindup(psubkeys, subkeylength);
-				skeylen		= subkeylength;
+				_bysubkeys	= k2hbindup(psubkeys, subkeylength);
+				_skeylen		= subkeylength;
 			}
 		}
 
 		~SetAllWorker()
 		{
-			K2H_Free(bysubkeys);
+			if(_callbackRef){
+				_callbackRef.Unref();
+				_callbackRef.Reset();
+			}
+			K2H_Free(_bysubkeys);
 		}
 
-		void Execute()
+		// Run on worker thread
+		void Execute() override
 		{
-			if(!pslaveobj && !is_set_conf){
+			if(!_slaveobj.GetChmCntrlObject() && _conf.empty()){
 				// onetime connection mode needs configuration
-				this->SetErrorMessage("No configuration is associated to async worker");
+				SetError("No configuration is associated to async worker");
 				return;
 			}
-			if(!is_key_set){
-				this->SetErrorMessage("Specified key is empty(null)");
+			if(_strkey.empty()){
+				SetError("Specified key is empty(null)");
 				return;
 			}
 
 			// work
 			bool			result	= false;
 			dkcres_type_t	rescode = DKC_NORESTYPE;
-
-			// cppcheck-suppress unmatchedSuppression
-			// cppcheck-suppress knownConditionTrueFalse
-			if(is_pass_set && 0 < expire){
+			if(!_strpass.empty() && 0 < _expire){
 				// set value with passphrase and expire, then the operation is separated.
 				K2hdkcComSet*	pComObj;
-				if(!pslaveobj){
-					pComObj = GetOtSlaveK2hdkcComSet(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
+				if(!_slaveobj.GetChmCntrlObject()){
+					pComObj = GetOtSlaveK2hdkcComSet(_conf.c_str(), _ctlport, (_cuk.empty() ? NULL : _cuk.c_str()), _auto_rejoin, _no_giveup_rejoin);
 				}else{
-					pComObj = GetPmSlaveK2hdkcComSet(pslaveobj);
+					pComObj = GetPmSlaveK2hdkcComSet(&_slaveobj);
 				}
-				// cppcheck-suppress unmatchedSuppression
-				// cppcheck-suppress knownConditionTrueFalse
 				if(!pComObj){
-					this->SetErrorMessage("Internal error: Could not create command object.");
+					SetError("Internal error: Could not create command object.");
 					return;
 				}
 
 				// set value to key
-				// cppcheck-suppress unmatchedSuppression
-				// cppcheck-suppress knownConditionTrueFalse
-				result = pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, (is_val_set ? reinterpret_cast<const unsigned char*>(strval.c_str()) : NULL), (is_val_set ? strval.length() + 1 : 0), false, (is_pass_set ? strpass.c_str() : NULL), &expire, &rescode);
+				result = pComObj->CommandSend(reinterpret_cast<const unsigned char*>(_strkey.c_str()), _strkey.length() + 1, (_strval.empty() ? NULL : reinterpret_cast<const unsigned char*>(_strval.c_str())), (_strval.empty() ? 0 : _strval.length() + 1), false, _strpass.c_str(), &_expire, &rescode);
 				DKC_DELETE(pComObj);
 
 				// set subkeys
-				if(result && bysubkeys && 0UL < skeylen){
-
+				if(result && _bysubkeys && 0UL < _skeylen){
 					K2hdkcComSetSubkeys*	pSubComObj;
-					if(!pslaveobj){
-						pSubComObj = GetOtSlaveK2hdkcComSetSubkeys(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
+					if(!_slaveobj.GetChmCntrlObject()){
+						pSubComObj = GetOtSlaveK2hdkcComSetSubkeys(_conf.c_str(), _ctlport, (_cuk.empty() ? NULL : _cuk.c_str()), _auto_rejoin, _no_giveup_rejoin);
 					}else{
-						pSubComObj = GetPmSlaveK2hdkcComSetSubkeys(pslaveobj);
+						pSubComObj = GetPmSlaveK2hdkcComSetSubkeys(&_slaveobj);
 					}
 					if(!pSubComObj){
-						this->SetErrorMessage("Internal error: Could not create command object.");
+						SetError("Internal error: Could not create command object.");
 						return;
 					}
 
 					// set subkeys to key
-					result = pSubComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, bysubkeys, skeylen, &rescode);
+					result = pSubComObj->CommandSend(reinterpret_cast<const unsigned char*>(_strkey.c_str()), _strkey.length() + 1, _bysubkeys, _skeylen, &rescode);
 					DKC_DELETE(pSubComObj);
 				}
 
 			}else{
 				// no passphrase and no expire, then one action
 				K2hdkcComSetAll*	pComObj;
-				if(!pslaveobj){
-					pComObj = GetOtSlaveK2hdkcComSetAll(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
+				if(!_slaveobj.GetChmCntrlObject()){
+					pComObj = GetOtSlaveK2hdkcComSetAll(_conf.c_str(), _ctlport, (_cuk.empty() ? NULL : _cuk.c_str()), _auto_rejoin, _no_giveup_rejoin);
 				}else{
-					pComObj = GetPmSlaveK2hdkcComSetAll(pslaveobj);
+					pComObj = GetPmSlaveK2hdkcComSetAll(&_slaveobj);
 				}
 				if(!pComObj){
-					this->SetErrorMessage("Internal error: Could not create command object.");
+					SetError("Internal error: Could not create command object.");
 					return;
 				}
 				// set value and subkeys
-				result = pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, (is_val_set ? reinterpret_cast<const unsigned char*>(strval.c_str()) : NULL), (is_val_set ? strval.length() + 1 : 0), bysubkeys, skeylen, NULL, 0UL, &rescode);
+				result = pComObj->CommandSend(reinterpret_cast<const unsigned char*>(_strkey.c_str()), _strkey.length() + 1, (_strval.empty() ? NULL : reinterpret_cast<const unsigned char*>(_strval.c_str())), (_strval.empty() ? 0 : _strval.length() + 1), _bysubkeys, _skeylen, NULL, 0UL, &rescode);
 				DKC_DELETE(pComObj);
 			}
 			if(!result){
-				this->SetErrorMessage("Failed to set value/subkeys into key.");
+				SetError("Failed to set value/subkeys into key.");
 			}
 		}
 
-		void HandleOKCallback()
+		// handler for success
+		void OnOK() override
 		{
-			Nan::HandleScope		scope;
-			const int				argc		= 1;
-			v8::Local<v8::Value>	argv[argc]	= { Nan::Null() };
+			Napi::Env env = Env();
+			Napi::HandleScope scope(env);
 
-			if(callback){
-				callback->Call(argc, argv);
+			if(!_callbackRef.IsEmpty()){
+				_callbackRef.Value().Call({ env.Null() });
 			}else{
-				Nan::ThrowSyntaxError("Internal error in async worker");
-				return;
+				Napi::TypeError::New(env, "Internal error in async worker");
 			}
 		}
 
-        void HandleErrorCallback()
-        {
-			Nan::HandleScope		scope;
-			const int				argc		= 1;
-			v8::Local<v8::Value>	argv[argc]	= { Nan::New<v8::String>(this->ErrorMessage()).ToLocalChecked() };
+		// handler for failure (by calling SetError)
+		void OnError(const Napi::Error& err) override
+		{
+			Napi::Env env = Env();
+			Napi::HandleScope scope(env);
 
-			if(callback){
-				callback->Call(argc, argv);
+			// The first argument is the error message.
+			if(!_callbackRef.IsEmpty()){
+				_callbackRef.Value().Call({ Napi::String::New(env, err.Value().ToString().Utf8Value()) });
 			}else{
-				Nan::ThrowSyntaxError("Internal error in async worker");
-				return;
+				// Throw error
+				err.ThrowAsJavaScriptException();
 			}
-        }
+		}
 
 	private:
-		K2hdkcSlave*	pslaveobj;
+		Napi::FunctionReference	_callbackRef;
+		K2hdkcSlave&			_slaveobj;
+		std::string				_conf;
+		int16_t					_ctlport;
+		std::string				_cuk;
+		bool					_auto_rejoin;
+		bool					_no_giveup_rejoin;
 
-		bool			is_set_conf;
-		std::string		conf;
-		int16_t			ctlport;
-		std::string		cuk;
-		bool			auto_rejoin;
-		bool			no_giveup_rejoin;
-
-		bool			is_key_set;
-		std::string		strkey;
-		bool			is_val_set;
-		std::string		strval;
-		unsigned char*	bysubkeys;
-		size_t			skeylen;
-		bool			is_pass_set;
-		std::string		strpass;
-		time_t			expire;
+		std::string				_strkey;
+		std::string				_strval;
+		unsigned char*			_bysubkeys;
+		size_t					_skeylen;
+		std::string				_strpass;
+		time_t					_expire;
 };
 
 //---------------------------------------------------------
 // RemoveWorker class
 //
-// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, bool is_del_subkeys)
+// Constructor:			constructor(const Napi::Function& callback, K2hdkcSlave& slaveobj, const std::string& configuration, int control_port, const std::string& inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const std::string& key, bool is_del_subkeys)
 // Callback function:	function(string error)
 //
 //---------------------------------------------------------
-class RemoveWorker : public Nan::AsyncWorker
+class RemoveWorker : public Napi::AsyncWorker
 {
 	public:
-		RemoveWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, const char* inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, bool is_del_subkeys) :
-			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), cuk(inputcuk ? inputcuk : ""), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
-			is_key_set(NULL != pkey), strkey(pkey ? pkey : ""), is_subkeys(is_del_subkeys)
-		{}
-
-		~RemoveWorker() {}
-
-		void Execute()
+		RemoveWorker(const Napi::Function& callback, K2hdkcSlave& slaveobj, const std::string& configuration, int control_port, const std::string& inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const std::string& key, bool is_del_subkeys) :
+			Napi::AsyncWorker(callback), _callbackRef(Napi::Persistent(callback)),
+			_slaveobj(slaveobj), _conf(configuration), _ctlport(control_port), _cuk(inputcuk), _auto_rejoin(is_auto_rejoin), _no_giveup_rejoin(is_nogiveup_rejoin), _strkey(key), _is_subkeys(is_del_subkeys)
 		{
-			if(!pslaveobj && !is_set_conf){
+			_callbackRef.Ref();
+		}
+
+		~RemoveWorker() override
+		{
+			if(_callbackRef){
+				_callbackRef.Unref();
+				_callbackRef.Reset();
+			}
+		}
+
+		// Run on worker thread
+		void Execute() override
+		{
+			if(!_slaveobj.GetChmCntrlObject() && _conf.empty()){
 				// onetime connection mode needs configuration
-				this->SetErrorMessage("No configuration is associated to async worker");
+				SetError("No configuration is associated to async worker");
 				return;
 			}
-			if(!is_key_set){
-				this->SetErrorMessage("Specified key is empty(null)");
+			if(_strkey.empty()){
+				SetError("Specified key is empty(null)");
 				return;
 			}
 
 			// work
 			K2hdkcComDel*	pComObj;
-			if(!pslaveobj){
-				pComObj = GetOtSlaveK2hdkcComDel(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
+			if(!_slaveobj.GetChmCntrlObject()){
+				pComObj = GetOtSlaveK2hdkcComDel(_conf.c_str(), _ctlport, (_cuk.empty() ? NULL : _cuk.c_str()), _auto_rejoin, _no_giveup_rejoin);
 			}else{
-				pComObj = GetPmSlaveK2hdkcComDel(pslaveobj);
+				pComObj = GetPmSlaveK2hdkcComDel(&_slaveobj);
 			}
 			if(!pComObj){
-				this->SetErrorMessage("Internal error: Could not create command object.");
+				SetError("Internal error: Could not create command object.");
 				return;
 			}
 
 			// remove key
 			dkcres_type_t	rescode = DKC_NORESTYPE;
-			if(!pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, is_subkeys, true, &rescode)){
-				this->SetErrorMessage("Failed to remove key.");
+			if(!pComObj->CommandSend(reinterpret_cast<const unsigned char*>(_strkey.c_str()), _strkey.length() + 1, _is_subkeys, true, &rescode)){
+				SetError("Failed to remove key.");
 			}
 			DKC_DELETE(pComObj);
 		}
 
-		void HandleOKCallback()
+		// handler for success
+		void OnOK() override
 		{
-			Nan::HandleScope		scope;
-			const int				argc		= 1;
-			v8::Local<v8::Value>	argv[argc]	= { Nan::Null() };
+			Napi::Env env = Env();
+			Napi::HandleScope scope(env);
 
-			if(callback){
-				callback->Call(argc, argv);
+			if(!_callbackRef.IsEmpty()){
+				_callbackRef.Value().Call({ env.Null() });
 			}else{
-				Nan::ThrowSyntaxError("Internal error in async worker");
-				return;
+				Napi::TypeError::New(env, "Internal error in async worker");
 			}
 		}
 
-        void HandleErrorCallback()
-        {
-			Nan::HandleScope		scope;
-			const int				argc		= 1;
-			v8::Local<v8::Value>	argv[argc]	= { Nan::New<v8::String>(this->ErrorMessage()).ToLocalChecked() };
+		// handler for failure (by calling SetError)
+		void OnError(const Napi::Error& err) override
+		{
+			Napi::Env env = Env();
+			Napi::HandleScope scope(env);
 
-			if(callback){
-				callback->Call(argc, argv);
+			// The first argument is the error message.
+			if(!_callbackRef.IsEmpty()){
+				_callbackRef.Value().Call({ Napi::String::New(env, err.Value().ToString().Utf8Value()) });
 			}else{
-				Nan::ThrowSyntaxError("Internal error in async worker");
-				return;
+				// Throw error
+				err.ThrowAsJavaScriptException();
 			}
-        }
+		}
 
 	private:
-		K2hdkcSlave*	pslaveobj;
+		Napi::FunctionReference	_callbackRef;
+		K2hdkcSlave&			_slaveobj;
+		std::string				_conf;
+		int16_t					_ctlport;
+		std::string				_cuk;
+		bool					_auto_rejoin;
+		bool					_no_giveup_rejoin;
 
-		bool			is_set_conf;
-		std::string		conf;
-		int16_t			ctlport;
-		std::string		cuk;
-		bool			auto_rejoin;
-		bool			no_giveup_rejoin;
-
-		bool			is_key_set;
-		std::string		strkey;
-		bool			is_subkeys;
+		std::string				_strkey;
+		bool					_is_subkeys;
 };
 
 //---------------------------------------------------------
 // RenameWorker class
 //
-// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* poldkey, const char* pnewkey, const char* pparentkey, bool is_check_attr, const char* ppass, const time_t* pexpire)
+// Constructor:			constructor(const Napi::Function& callback, K2hdkcSlave& slaveobj, const std::string& configuration, int control_port, const std::string& inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const std::string& oldkey, const std::string& newkey, const std::string& parentkey, bool is_check_attr, const std::string& pass, const time_t input_expire)
 // Callback function:	function(string error)
 //
 //---------------------------------------------------------
-class RenameWorker : public Nan::AsyncWorker
+class RenameWorker : public Napi::AsyncWorker
 {
 	public:
-		RenameWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, const char* inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* poldkey, const char* pnewkey, const char* pparentkey, bool is_check_attr, const char* ppass, const time_t* pexpire) :
-			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), cuk(inputcuk ? inputcuk : ""), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
-			is_old_set(NULL != poldkey), strold(poldkey ? poldkey : ""), is_new_set(NULL != pnewkey), strnew(pnewkey ? pnewkey : ""), is_parent_set(NULL != pparentkey), strparent(pparentkey ? pparentkey : ""), attrchk(is_check_attr), is_pass_set(NULL != ppass), strpass(ppass ? ppass : ""), expire(pexpire ? *pexpire : 0)
-		{}
-
-		~RenameWorker() {}
-
-		void Execute()
+		RenameWorker(const Napi::Function& callback, K2hdkcSlave& slaveobj, const std::string& configuration, int control_port, const std::string& inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const std::string& oldkey, const std::string& newkey, const std::string& parentkey, bool is_check_attr, const std::string& pass, const time_t input_expire) :
+			Napi::AsyncWorker(callback), _callbackRef(Napi::Persistent(callback)),
+			_slaveobj(slaveobj), _conf(configuration), _ctlport(control_port), _cuk(inputcuk), _auto_rejoin(is_auto_rejoin), _no_giveup_rejoin(is_nogiveup_rejoin), _strold(oldkey), _strnew(newkey), _strparent(parentkey), _attrchk(is_check_attr), _strpass(pass), _expire(input_expire)
 		{
-			if(!pslaveobj && !is_set_conf){
+			_callbackRef.Ref();
+		}
+
+		~RenameWorker() override
+		{
+			if(_callbackRef){
+				_callbackRef.Unref();
+				_callbackRef.Reset();
+			}
+		}
+
+		// Run on worker thread
+		void Execute() override
+		{
+			if(!_slaveobj.GetChmCntrlObject() && _conf.empty()){
 				// onetime connection mode needs configuration
-				this->SetErrorMessage("No configuration is associated to async worker");
+				SetError("No configuration is associated to async worker");
 				return;
 			}
-			if(!is_old_set || !is_new_set){
-				this->SetErrorMessage("Specified source(old) key or destination(new) key name is empty(null)");
+			if(_strold.empty() || _strnew.empty()){
+				SetError("Specified source(old) key or destination(new) key name is empty(null)");
 				return;
 			}
 
 			// work
 			K2hdkcComRen*	pComObj;
-			if(!pslaveobj){
-				pComObj = GetOtSlaveK2hdkcComRen(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
+			if(!_slaveobj.GetChmCntrlObject()){
+				pComObj = GetOtSlaveK2hdkcComRen(_conf.c_str(), _ctlport, (_cuk.empty() ? NULL : _cuk.c_str()), _auto_rejoin, _no_giveup_rejoin);
 			}else{
-				pComObj = GetPmSlaveK2hdkcComRen(pslaveobj);
+				pComObj = GetPmSlaveK2hdkcComRen(&_slaveobj);
 			}
 			if(!pComObj){
-				this->SetErrorMessage("Internal error: Could not create command object.");
+				SetError("Internal error: Could not create command object.");
 				return;
 			}
 
 			// rename key
 			dkcres_type_t	rescode = DKC_NORESTYPE;
-			if(!pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strold.c_str()), strold.length() + 1, reinterpret_cast<const unsigned char*>(strnew.c_str()), strnew.length() + 1, (is_parent_set ? reinterpret_cast<const unsigned char*>(strparent.c_str()) : NULL), (is_parent_set ? strparent.length() + 1 : 0), attrchk, (is_pass_set ? strpass.c_str() : NULL), (expire > 0 ? &expire : NULL), &rescode)){
-				this->SetErrorMessage("Failed to rename key.");
+			if(!pComObj->CommandSend(reinterpret_cast<const unsigned char*>(_strold.c_str()), _strold.length() + 1, reinterpret_cast<const unsigned char*>(_strnew.c_str()), _strnew.length() + 1, (_strparent.empty() ? NULL : reinterpret_cast<const unsigned char*>(_strparent.c_str())), (_strparent.empty() ? 0 : _strparent.length() + 1), _attrchk, (_strpass.empty() ? NULL : _strpass.c_str()), (_expire > 0 ? &_expire : NULL), &rescode)){
+				SetError("Failed to rename key.");
 			}
 			DKC_DELETE(pComObj);
 		}
 
-		void HandleOKCallback()
+		// handler for success
+		void OnOK() override
 		{
-			Nan::HandleScope		scope;
-			const int				argc		= 1;
-			v8::Local<v8::Value>	argv[argc]	= { Nan::Null() };
+			Napi::Env env = Env();
+			Napi::HandleScope scope(env);
 
-			if(callback){
-				callback->Call(argc, argv);
+			if(!_callbackRef.IsEmpty()){
+				_callbackRef.Value().Call({ env.Null() });
 			}else{
-				Nan::ThrowSyntaxError("Internal error in async worker");
-				return;
+				Napi::TypeError::New(env, "Internal error in async worker");
 			}
 		}
 
-        void HandleErrorCallback()
-        {
-			Nan::HandleScope		scope;
-			const int				argc		= 1;
-			v8::Local<v8::Value>	argv[argc]	= { Nan::New<v8::String>(this->ErrorMessage()).ToLocalChecked() };
+		// handler for failure (by calling SetError)
+		void OnError(const Napi::Error& err) override
+		{
+			Napi::Env env = Env();
+			Napi::HandleScope scope(env);
 
-			if(callback){
-				callback->Call(argc, argv);
+			// The first argument is the error message.
+			if(!_callbackRef.IsEmpty()){
+				_callbackRef.Value().Call({ Napi::String::New(env, err.Value().ToString().Utf8Value()) });
 			}else{
-				Nan::ThrowSyntaxError("Internal error in async worker");
-				return;
+				// Throw error
+				err.ThrowAsJavaScriptException();
 			}
-        }
+		}
 
 	private:
-		K2hdkcSlave*	pslaveobj;
+		Napi::FunctionReference	_callbackRef;
+		K2hdkcSlave&			_slaveobj;
+		std::string				_conf;
+		int16_t					_ctlport;
+		std::string				_cuk;
+		bool					_auto_rejoin;
+		bool					_no_giveup_rejoin;
 
-		bool			is_set_conf;
-		std::string		conf;
-		int16_t			ctlport;
-		std::string		cuk;
-		bool			auto_rejoin;
-		bool			no_giveup_rejoin;
-
-		bool			is_old_set;
-		std::string		strold;
-		bool			is_new_set;
-		std::string		strnew;
-		bool			is_parent_set;
-		std::string		strparent;
-		bool			attrchk;
-		bool			is_pass_set;
-		std::string		strpass;
-		time_t			expire;
+		std::string				_strold;
+		std::string				_strnew;
+		std::string				_strparent;
+		bool					_attrchk;
+		std::string				_strpass;
+		time_t					_expire;
 };
 
 //---------------------------------------------------------
 // QueuePushWorker class
 //
-// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pprefix, const char* pkey, const char* pval, bool is_fifo_type, bool is_check_attr, const char* ppass, const time_t* pexpire)
+// Constructor:			constructor(const Napi::Function& callback, K2hdkcSlave& slaveobj, const std::string& configuration, int control_port, const std::string& inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const std::string& prefix, const std::string& key, const std::string& val, bool is_fifo_type, bool is_check_attr, const std::string& pass, const time_t input_expire)
 // Callback function:	function(string error)
 //
 //---------------------------------------------------------
-class QueuePushWorker : public Nan::AsyncWorker
+class QueuePushWorker : public Napi::AsyncWorker
 {
 	public:
-		QueuePushWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, const char* inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pprefix, const char* pkey, const char* pval, bool is_fifo_type, bool is_check_attr, const char* ppass, const time_t* pexpire) :
-			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), cuk(inputcuk ? inputcuk : ""), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
-			is_prefix_set(NULL != pprefix), strprefix(pprefix ? pprefix : ""), is_key_set(NULL != pkey), strkey(pkey ? pkey : ""), is_val_set(NULL != pval), strval(pval ? pval : ""), is_fifo(is_fifo_type), attrchk(is_check_attr), is_pass_set(NULL != ppass), strpass(ppass ? ppass : ""), expire(pexpire ? *pexpire : 0)
-		{}
-
-		~QueuePushWorker() {}
-
-		void Execute()
+		QueuePushWorker(const Napi::Function& callback, K2hdkcSlave& slaveobj, const std::string& configuration, int control_port, const std::string& inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const std::string& prefix, const std::string& key, const std::string& val, bool is_fifo_type, bool is_check_attr, const std::string& pass, const time_t input_expire) :
+			Napi::AsyncWorker(callback), _callbackRef(Napi::Persistent(callback)),
+			_slaveobj(slaveobj), _conf(configuration), _ctlport(control_port), _cuk(inputcuk), _auto_rejoin(is_auto_rejoin), _no_giveup_rejoin(is_nogiveup_rejoin), _strprefix(prefix), _strkey(key), _strval(val), _is_fifo(is_fifo_type), _attrchk(is_check_attr), _strpass(pass), _expire(input_expire)
 		{
-			if(!pslaveobj && !is_set_conf){
+			_callbackRef.Ref();
+		}
+
+		~QueuePushWorker() override
+		{
+			if(_callbackRef){
+				_callbackRef.Unref();
+				_callbackRef.Reset();
+			}
+		}
+
+		// Run on worker thread
+		void Execute() override
+		{
+			if(!_slaveobj.GetChmCntrlObject() && _conf.empty()){
 				// onetime connection mode needs configuration
-				this->SetErrorMessage("No configuration is associated to async worker");
+				SetError("No configuration is associated to async worker");
 				return;
 			}
-			if(!is_prefix_set || !is_val_set){
-				this->SetErrorMessage("Specified prefix or value is empty(null)");
+			if(_strprefix.empty() || _strval.empty()){
+				SetError("Specified prefix or value is empty(null)");
 				return;
 			}
 
 			// work
 			K2hdkcComQPush*	pComObj;
-			if(!pslaveobj){
-				pComObj = GetOtSlaveK2hdkcComQPush(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
+			if(!_slaveobj.GetChmCntrlObject()){
+				pComObj = GetOtSlaveK2hdkcComQPush(_conf.c_str(), _ctlport, (_cuk.empty() ? NULL : _cuk.c_str()), _auto_rejoin, _no_giveup_rejoin);
 			}else{
-				pComObj = GetPmSlaveK2hdkcComQPush(pslaveobj);
+				pComObj = GetPmSlaveK2hdkcComQPush(&_slaveobj);
 			}
 			if(!pComObj){
-				this->SetErrorMessage("Internal error: Could not create command object.");
+				SetError("Internal error: Could not create command object.");
 				return;
 			}
 
 			dkcres_type_t	rescode = DKC_NORESTYPE;
 			bool			result	= false;
-			if(is_key_set){
+			if(!_strkey.empty()){
 				// key queue
-				result = pComObj->KeyQueueCommandSend(reinterpret_cast<const unsigned char*>(strprefix.c_str()), strprefix.length() + 1, reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, reinterpret_cast<const unsigned char*>(strval.c_str()), strval.length() + 1, is_fifo, NULL, 0UL, attrchk, (is_pass_set ? strpass.c_str() : NULL), (expire > 0 ? &expire : NULL), &rescode);
+				result = pComObj->KeyQueueCommandSend(reinterpret_cast<const unsigned char*>(_strprefix.c_str()), _strprefix.length() + 1, reinterpret_cast<const unsigned char*>(_strkey.c_str()), _strkey.length() + 1, reinterpret_cast<const unsigned char*>(_strval.c_str()), _strval.length() + 1, _is_fifo, NULL, 0UL, _attrchk, (_strpass.empty() ? NULL : _strpass.c_str()), (_expire > 0 ? &_expire : NULL), &rescode);
 			}else{
 				// queue
-				result = pComObj->QueueCommandSend(reinterpret_cast<const unsigned char*>(strprefix.c_str()), strprefix.length() + 1, reinterpret_cast<const unsigned char*>(strval.c_str()), strval.length() + 1, is_fifo, NULL, 0UL, attrchk, (is_pass_set ? strpass.c_str() : NULL), (expire > 0 ? &expire : NULL), &rescode);
+				result = pComObj->QueueCommandSend(reinterpret_cast<const unsigned char*>(_strprefix.c_str()), _strprefix.length() + 1, reinterpret_cast<const unsigned char*>(_strval.c_str()), _strval.length() + 1, _is_fifo, NULL, 0UL, _attrchk, (_strpass.empty() ? NULL : _strpass.c_str()), (_expire > 0 ? &_expire : NULL), &rescode);
 			}
 			if(!result){
-				this->SetErrorMessage("Failed to push queue.");
+				SetError("Failed to push queue.");
 			}
 			DKC_DELETE(pComObj);
 		}
 
-		void HandleOKCallback()
+		// handler for success
+		void OnOK() override
 		{
-			Nan::HandleScope		scope;
-			const int				argc		= 1;
-			v8::Local<v8::Value>	argv[argc]	= { Nan::Null() };
+			Napi::Env env = Env();
+			Napi::HandleScope scope(env);
 
-			if(callback){
-				callback->Call(argc, argv);
+			if(!_callbackRef.IsEmpty()){
+				_callbackRef.Value().Call({ env.Null() });
 			}else{
-				Nan::ThrowSyntaxError("Internal error in async worker");
-				return;
+				Napi::TypeError::New(env, "Internal error in async worker");
 			}
 		}
 
-        void HandleErrorCallback()
-        {
-			Nan::HandleScope		scope;
-			const int				argc		= 1;
-			v8::Local<v8::Value>	argv[argc]	= { Nan::New<v8::String>(this->ErrorMessage()).ToLocalChecked() };
+		// handler for failure (by calling SetError)
+		void OnError(const Napi::Error& err) override
+		{
+			Napi::Env env = Env();
+			Napi::HandleScope scope(env);
 
-			if(callback){
-				callback->Call(argc, argv);
+			// The first argument is the error message.
+			if(!_callbackRef.IsEmpty()){
+				_callbackRef.Value().Call({ Napi::String::New(env, err.Value().ToString().Utf8Value()) });
 			}else{
-				Nan::ThrowSyntaxError("Internal error in async worker");
-				return;
+				// Throw error
+				err.ThrowAsJavaScriptException();
 			}
-        }
+		}
 
 	private:
-		K2hdkcSlave*	pslaveobj;
+		Napi::FunctionReference	_callbackRef;
+		K2hdkcSlave&			_slaveobj;
+		std::string				_conf;
+		int16_t					_ctlport;
+		std::string				_cuk;
+		bool					_auto_rejoin;
+		bool					_no_giveup_rejoin;
 
-		bool			is_set_conf;
-		std::string		conf;
-		int16_t			ctlport;
-		std::string		cuk;
-		bool			auto_rejoin;
-		bool			no_giveup_rejoin;
-
-		bool			is_prefix_set;
-		std::string		strprefix;
-		bool			is_key_set;
-		std::string		strkey;
-		bool			is_val_set;
-		std::string		strval;
-		bool			is_fifo;
-		bool			attrchk;
-		bool			is_pass_set;
-		std::string		strpass;
-		time_t			expire;
+		std::string				_strprefix;
+		std::string				_strkey;
+		std::string				_strval;
+		bool					_is_fifo;
+		bool					_attrchk;
+		std::string				_strpass;
+		time_t					_expire;
 };
 
 //---------------------------------------------------------
 // QueuePopWorker class
 //
-// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pprefix, bool is_fifo_type, bool is_key_queue_type, const char* ppass)
+// Constructor:			constructor(const Napi::Function& callback, K2hdkcSlave& slaveobj, const std::string& configuration, int control_port, const std::string& inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const std::string& prefix, bool is_fifo_type, bool is_key_queue_type, const std::string& pass)
 // Callback function:	function(string error[[, string key], string value])
 //
 //---------------------------------------------------------
-class QueuePopWorker : public Nan::AsyncWorker
+class QueuePopWorker : public Napi::AsyncWorker
 {
 	public:
-		QueuePopWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, const char* inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pprefix, bool is_fifo_type, bool is_key_queue_type, const char* ppass) :
-			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), cuk(inputcuk ? inputcuk : ""), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
-			is_prefix_set(NULL != pprefix), strprefix(pprefix ? pprefix : ""), is_fifo(is_fifo_type), is_key_queue(is_key_queue_type), is_pass_set(NULL != ppass), strpass(ppass ? ppass : ""),
-			is_res_key_set(false), strreskey(""), is_res_val_set(false), strresval("")
-		{}
-
-		~QueuePopWorker() {}
-
-		void Execute()
+		QueuePopWorker(const Napi::Function& callback, K2hdkcSlave& slaveobj, const std::string& configuration, int control_port, const std::string& inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const std::string& prefix, bool is_fifo_type, bool is_key_queue_type, const std::string& pass) :
+			Napi::AsyncWorker(callback), _callbackRef(Napi::Persistent(callback)),
+			_slaveobj(slaveobj), _conf(configuration), _ctlport(control_port), _cuk(inputcuk), _auto_rejoin(is_auto_rejoin), _no_giveup_rejoin(is_nogiveup_rejoin), _strprefix(prefix), _is_fifo(is_fifo_type), _is_key_queue(is_key_queue_type), _strpass(pass), _is_res_key_set(false), _strreskey(""), _is_res_val_set(false), _strresval("")
 		{
-			if(!pslaveobj && !is_set_conf){
+			_callbackRef.Ref();
+		}
+
+		~QueuePopWorker() override
+		{
+			if(_callbackRef){
+				_callbackRef.Unref();
+				_callbackRef.Reset();
+			}
+		}
+
+		// Run on worker thread
+		void Execute() override
+		{
+			if(!_slaveobj.GetChmCntrlObject() && _conf.empty()){
 				// onetime connection mode needs configuration
-				this->SetErrorMessage("No configuration is associated to async worker");
+				SetError("No configuration is associated to async worker");
 				return;
 			}
-			if(!is_prefix_set){
-				this->SetErrorMessage("Specified prefix is empty(null)");
+			if(_strprefix.empty()){
+				SetError("Specified prefix is empty(null)");
 				return;
 			}
 
 			// work
 			K2hdkcComQPop*	pComObj;
-			if(!pslaveobj){
-				pComObj = GetOtSlaveK2hdkcComQPop(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
+			if(!_slaveobj.GetChmCntrlObject()){
+				pComObj = GetOtSlaveK2hdkcComQPop(_conf.c_str(), _ctlport, (_cuk.empty() ? NULL : _cuk.c_str()), _auto_rejoin, _no_giveup_rejoin);
 			}else{
-				pComObj = GetPmSlaveK2hdkcComQPop(pslaveobj);
+				pComObj = GetPmSlaveK2hdkcComQPop(&_slaveobj);
 			}
 			if(!pComObj){
-				this->SetErrorMessage("Internal error: Could not create command object.");
+				SetError("Internal error: Could not create command object.");
 				return;
 			}
 
 			dkcres_type_t	rescode = DKC_NORESTYPE;
 			bool			result	= false;
-			if(is_key_queue){
+			if(_is_key_queue){
 				// key queue
 				const unsigned char*	pkeytmp		= NULL;
 				size_t					keytmplen	= 0L;
 				const unsigned char*	pvaltmp		= NULL;
 				size_t					valtmplen	= 0L;
-				result = pComObj->KeyQueueCommandSend(reinterpret_cast<const unsigned char*>(strprefix.c_str()), strprefix.length() + 1, is_fifo, true, (is_pass_set ? strpass.c_str() : NULL), &pkeytmp, &keytmplen, &pvaltmp, &valtmplen, &rescode);
+				result = pComObj->KeyQueueCommandSend(reinterpret_cast<const unsigned char*>(_strprefix.c_str()), _strprefix.length() + 1, _is_fifo, true, (_strpass.empty() ? NULL : _strpass.c_str()), &pkeytmp, &keytmplen, &pvaltmp, &valtmplen, &rescode);
 				if(result && (pkeytmp && 0 < keytmplen)){
-					is_res_key_set		= true;
-					strreskey			= std::string(reinterpret_cast<const char*>(pkeytmp), keytmplen);
+					_is_res_key_set		= true;
+					_strreskey			= std::string(reinterpret_cast<const char*>(pkeytmp), ('\0' == pkeytmp[keytmplen - 1] ? keytmplen - 1 : keytmplen));
 					if(pvaltmp && 0 < valtmplen){
-						is_res_val_set	= true;
-						strresval		= std::string(reinterpret_cast<const char*>(pvaltmp), valtmplen);
+						_is_res_val_set	= true;
+						_strresval		= std::string(reinterpret_cast<const char*>(pvaltmp), ('\0' == pvaltmp[valtmplen - 1] ? valtmplen - 1 : valtmplen));
 					}
 				}
 			}else{
 				// queue
 				const unsigned char*	pvaltmp		= NULL;
 				size_t					valtmplen	= 0L;
-				result = pComObj->QueueCommandSend(reinterpret_cast<const unsigned char*>(strprefix.c_str()), strprefix.length() + 1, is_fifo, true, (is_pass_set ? strpass.c_str() : NULL), &pvaltmp, &valtmplen, &rescode);
+				result = pComObj->QueueCommandSend(reinterpret_cast<const unsigned char*>(_strprefix.c_str()), _strprefix.length() + 1, _is_fifo, true, (_strpass.empty() ? NULL : _strpass.c_str()), &pvaltmp, &valtmplen, &rescode);
 
 				if(result && (pvaltmp && 0 < valtmplen)){
-					is_res_val_set	= true;
-					strresval		= std::string(reinterpret_cast<const char*>(pvaltmp), valtmplen);
+					_is_res_val_set	= true;
+					_strresval		= std::string(reinterpret_cast<const char*>(pvaltmp), ('\0' == pvaltmp[valtmplen - 1] ? valtmplen - 1 : valtmplen));
 				}
 			}
 			DKC_DELETE(pComObj);
 		}
 
-		void HandleOKCallback()
+		// handler for success
+		void OnOK() override
 		{
-			Nan::HandleScope		scope;
+			Napi::Env env = Env();
+			Napi::HandleScope scope(env);
 
-			if(!callback){
-				Nan::ThrowSyntaxError("Internal error in async worker");
-				return;
-			}
-			if(is_key_queue){
-				const int						argc		= 3;
-				if(is_res_key_set){
-					if(is_res_val_set){
-						v8::Local<v8::Value>	argv[argc]	= { Nan::Null(), Nan::New<v8::String>(strreskey.c_str()).ToLocalChecked(), Nan::New<v8::String>(strresval.c_str()).ToLocalChecked() };
-						callback->Call(argc, argv);
+			if(!_callbackRef.IsEmpty()){
+				if(_is_key_queue){
+					if(_is_res_key_set){
+						if(_is_res_val_set){
+							Napi::String	res_skey = Napi::String::New(env, _strreskey.c_str(), _strreskey.length());
+							Napi::String	res_sval = Napi::String::New(env, _strresval.c_str(), _strresval.length());
+							_callbackRef.Value().Call({ env.Null(), res_skey, res_sval });
+						}else{
+
+							Napi::String	res_skey = Napi::String::New(env, _strreskey.c_str(), _strreskey.length());
+							_callbackRef.Value().Call({ env.Null(), res_skey });
+						}
 					}else{
-						v8::Local<v8::Value>	argv[argc]	= { Nan::Null(), Nan::New<v8::String>(strreskey.c_str()).ToLocalChecked(), Nan::Null() };
-						callback->Call(argc, argv);
+						_callbackRef.Value().Call({ env.Null(), env.Null(), env.Null() });
 					}
 				}else{
-					v8::Local<v8::Value>		argv[argc]	= { Nan::Null(), Nan::Null(), Nan::Null() };
-					callback->Call(argc, argv);
+					if(_is_res_val_set){
+						Napi::String	res_sval = Napi::String::New(env, _strresval.c_str(), _strresval.length());
+						_callbackRef.Value().Call({ env.Null(), res_sval });
+					}else{
+						_callbackRef.Value().Call({ env.Null(), env.Null() });
+					}
 				}
 			}else{
-				const int						argc		= 2;
-				if(is_res_val_set){
-					v8::Local<v8::Value>		argv[argc]	= { Nan::Null(), Nan::New<v8::String>(strresval.c_str()).ToLocalChecked() };
-					callback->Call(argc, argv);
-				}else{
-					v8::Local<v8::Value>		argv[argc]	= { Nan::Null(), Nan::Null() };
-					callback->Call(argc, argv);
-				}
+				Napi::TypeError::New(env, "Internal error in async worker").ThrowAsJavaScriptException();
 			}
 		}
 
-        void HandleErrorCallback()
-        {
-			Nan::HandleScope		scope;
-			const int				argc		= 1;
-			v8::Local<v8::Value>	argv[argc]	= { Nan::New<v8::String>(this->ErrorMessage()).ToLocalChecked() };
+		// handler for failure (by calling SetError)
+		void OnError(const Napi::Error& err) override
+		{
+			Napi::Env env = Env();
+			Napi::HandleScope scope(env);
 
-			if(callback){
-				callback->Call(argc, argv);
+			// The first argument is the error message.
+			if(!_callbackRef.IsEmpty()){
+				_callbackRef.Value().Call({ Napi::String::New(env, err.Value().ToString().Utf8Value()) });
 			}else{
-				Nan::ThrowSyntaxError("Internal error in async worker");
-				return;
+				// Throw error
+				err.ThrowAsJavaScriptException();
 			}
-        }
+		}
 
 	private:
-		K2hdkcSlave*	pslaveobj;
+		Napi::FunctionReference	_callbackRef;
+		K2hdkcSlave&			_slaveobj;
+		std::string				_conf;
+		int16_t					_ctlport;
+		std::string				_cuk;
+		bool					_auto_rejoin;
+		bool					_no_giveup_rejoin;
 
-		bool			is_set_conf;
-		std::string		conf;
-		int16_t			ctlport;
-		std::string		cuk;
-		bool			auto_rejoin;
-		bool			no_giveup_rejoin;
+		std::string				_strprefix;
+		bool					_is_fifo;
+		bool					_is_key_queue;
+		std::string				_strpass;
 
-		bool			is_prefix_set;
-		std::string		strprefix;
-		bool			is_fifo;
-		bool			is_key_queue;
-		bool			is_pass_set;
-		std::string		strpass;
-
-		bool			is_res_key_set;
-		std::string		strreskey;
-		bool			is_res_val_set;
-		std::string		strresval;
+		bool					_is_res_key_set;
+		std::string				_strreskey;
+		bool					_is_res_val_set;
+		std::string				_strresval;
 };
 
 //---------------------------------------------------------
 // QueueRemoveWorker class
 //
-// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pprefix, int remove_count, bool is_fifo_type, bool is_key_queue_type, const char* ppass)
-// Callback function:	function(string error[[, string key], string value])
+// Constructor:			constructor(const Napi::Function& callback, K2hdkcSlave& slaveobj, const std::string& configuration, int control_port, const std::string& inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const std::string& prefix, int remove_count, bool is_fifo_type, bool is_key_queue_type, const std::string& pass)
+// Callback function:	function(string error)
 //
 //---------------------------------------------------------
-class QueueRemoveWorker : public Nan::AsyncWorker
+class QueueRemoveWorker : public Napi::AsyncWorker
 {
 	public:
-		QueueRemoveWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, const char* inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pprefix, int remove_count, bool is_fifo_type, bool is_key_queue_type, const char* ppass) :
-			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), cuk(inputcuk ? inputcuk : ""), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
-			is_prefix_set(NULL != pprefix), strprefix(pprefix ? pprefix : ""), count(remove_count), is_fifo(is_fifo_type), is_key_queue(is_key_queue_type), is_pass_set(NULL != ppass), strpass(ppass ? ppass : "")
-		{}
-
-		~QueueRemoveWorker() {}
-
-		void Execute()
+		QueueRemoveWorker(const Napi::Function& callback, K2hdkcSlave& slaveobj, const std::string& configuration, int control_port, const std::string& inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const std::string& prefix, int remove_count, bool is_fifo_type, bool is_key_queue_type, const std::string& pass) :
+			Napi::AsyncWorker(callback), _callbackRef(Napi::Persistent(callback)),
+			_slaveobj(slaveobj), _conf(configuration), _ctlport(control_port), _cuk(inputcuk), _auto_rejoin(is_auto_rejoin), _no_giveup_rejoin(is_nogiveup_rejoin), _strprefix(prefix), _rmcount(remove_count), _is_fifo(is_fifo_type), _is_key_queue(is_key_queue_type), _strpass(pass)
 		{
-			if(!pslaveobj && !is_set_conf){
+			_callbackRef.Ref();
+		}
+
+		~QueueRemoveWorker() override
+		{
+			if(_callbackRef){
+				_callbackRef.Unref();
+				_callbackRef.Reset();
+			}
+		}
+
+		// Run on worker thread
+		void Execute() override
+		{
+			if(!_slaveobj.GetChmCntrlObject() && _conf.empty()){
 				// onetime connection mode needs configuration
-				this->SetErrorMessage("No configuration is associated to async worker");
+				SetError("No configuration is associated to async worker");
 				return;
 			}
-			if(!is_prefix_set){
-				this->SetErrorMessage("Specified prefix is empty(null)");
+			if(_strprefix.empty()){
+				SetError("Specified prefix is empty(null)");
 				return;
 			}
 
 			// work
 			K2hdkcComQDel*	pComObj;
-			if(!pslaveobj){
-				pComObj = GetOtSlaveK2hdkcComQDel(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
+			if(!_slaveobj.GetChmCntrlObject()){
+				pComObj = GetOtSlaveK2hdkcComQDel(_conf.c_str(), _ctlport, (_cuk.empty() ? NULL : _cuk.c_str()), _auto_rejoin, _no_giveup_rejoin);
 			}else{
-				pComObj = GetPmSlaveK2hdkcComQDel(pslaveobj);
+				pComObj = GetPmSlaveK2hdkcComQDel(&_slaveobj);
 			}
 			if(!pComObj){
-				this->SetErrorMessage("Internal error: Could not create command object.");
+				SetError("Internal error: Could not create command object.");
 				return;
 			}
 
 			dkcres_type_t	rescode = DKC_NORESTYPE;
 			bool			result	= false;
-			if(is_key_queue){
+			if(_is_key_queue){
 				// key queue
-				result = pComObj->KeyQueueCommandSend(reinterpret_cast<const unsigned char*>(strprefix.c_str()), strprefix.length() + 1, count, is_fifo, true, (is_pass_set ? strpass.c_str() : NULL), &rescode);
+				result = pComObj->KeyQueueCommandSend(reinterpret_cast<const unsigned char*>(_strprefix.c_str()), _strprefix.length() + 1, _rmcount, _is_fifo, true, (_strpass.empty() ? NULL : _strpass.c_str()), &rescode);
 			}else{
 				// queue
-				result = pComObj->QueueCommandSend(reinterpret_cast<const unsigned char*>(strprefix.c_str()), strprefix.length() + 1, count, is_fifo, true, (is_pass_set ? strpass.c_str() : NULL), &rescode);
+				result = pComObj->QueueCommandSend(reinterpret_cast<const unsigned char*>(_strprefix.c_str()), _strprefix.length() + 1, _rmcount, _is_fifo, true, (_strpass.empty() ? NULL : _strpass.c_str()), &rescode);
 			}
 			if(!result){
-				this->SetErrorMessage("Failed to remove queue.");
+				SetError("Failed to remove queue.");
 			}
 			DKC_DELETE(pComObj);
 		}
 
-		void HandleOKCallback()
+		// handler for success
+		void OnOK() override
 		{
-			Nan::HandleScope		scope;
-			const int				argc		= 1;
-			v8::Local<v8::Value>	argv[argc]	= { Nan::Null() };
+			Napi::Env env = Env();
+			Napi::HandleScope scope(env);
 
-			if(callback){
-				callback->Call(argc, argv);
+			if(!_callbackRef.IsEmpty()){
+				_callbackRef.Value().Call({ env.Null() });
 			}else{
-				Nan::ThrowSyntaxError("Internal error in async worker");
-				return;
+				Napi::TypeError::New(env, "Internal error in async worker");
 			}
 		}
 
-        void HandleErrorCallback()
-        {
-			Nan::HandleScope		scope;
-			const int				argc		= 1;
-			v8::Local<v8::Value>	argv[argc]	= { Nan::New<v8::String>(this->ErrorMessage()).ToLocalChecked() };
+		// handler for failure (by calling SetError)
+		void OnError(const Napi::Error& err) override
+		{
+			Napi::Env env = Env();
+			Napi::HandleScope scope(env);
 
-			if(callback){
-				callback->Call(argc, argv);
+			// The first argument is the error message.
+			if(!_callbackRef.IsEmpty()){
+				_callbackRef.Value().Call({ Napi::String::New(env, err.Value().ToString().Utf8Value()) });
 			}else{
-				Nan::ThrowSyntaxError("Internal error in async worker");
-				return;
+				// Throw error
+				err.ThrowAsJavaScriptException();
 			}
-        }
+		}
 
 	private:
-		K2hdkcSlave*	pslaveobj;
+		Napi::FunctionReference	_callbackRef;
+		K2hdkcSlave&			_slaveobj;
+		std::string				_conf;
+		int16_t					_ctlport;
+		std::string				_cuk;
+		bool					_auto_rejoin;
+		bool					_no_giveup_rejoin;
 
-		bool			is_set_conf;
-		std::string		conf;
-		int16_t			ctlport;
-		std::string		cuk;
-		bool			auto_rejoin;
-		bool			no_giveup_rejoin;
-
-		bool			is_prefix_set;
-		std::string		strprefix;
-		int				count;
-		bool			is_fifo;
-		bool			is_key_queue;
-		bool			is_pass_set;
-		std::string		strpass;
+		std::string				_strprefix;
+		int						_rmcount;
+		bool					_is_fifo;
+		bool					_is_key_queue;
+		std::string				_strpass;
 };
 
 //---------------------------------------------------------
 // CasInitWorker class
 //
-// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, uint32_t val, const char* ppass, const time_t* pexpire)
+// Constructor:			constructor(const Napi::Function& callback, K2hdkcSlave& slaveobj, const std::string& configuration, int control_port, const std::string& inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const std::string& key, uint32_t val, const std::string& pass, const time_t input_expire)
 // Callback function:	function(string error)
 //
 //---------------------------------------------------------
-class CasInitWorker : public Nan::AsyncWorker
+class CasInitWorker : public Napi::AsyncWorker
 {
 	public:
-		CasInitWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, const char* inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, uint32_t val, const char* ppass, const time_t* pexpire) :
-			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), cuk(inputcuk ? inputcuk : ""), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
-			is_key_set(NULL != pkey), strkey(pkey ? pkey : ""), value(val), is_pass_set(NULL != ppass), strpass(ppass ? ppass : ""), expire(pexpire ? *pexpire : 0)
-		{}
-		~CasInitWorker() {}
-
-		void Execute()
+		CasInitWorker(const Napi::Function& callback, K2hdkcSlave& slaveobj, const std::string& configuration, int control_port, const std::string& inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const std::string& key, uint32_t val, const std::string& pass, const time_t input_expire) :
+			Napi::AsyncWorker(callback), _callbackRef(Napi::Persistent(callback)),
+			_slaveobj(slaveobj), _conf(configuration), _ctlport(control_port), _cuk(inputcuk), _auto_rejoin(is_auto_rejoin), _no_giveup_rejoin(is_nogiveup_rejoin), _strkey(key), _value(val), _strpass(pass), _expire(input_expire)
 		{
-			if(!pslaveobj && !is_set_conf){
+			_callbackRef.Ref();
+		}
+
+		~CasInitWorker() override
+		{
+			if(_callbackRef){
+				_callbackRef.Unref();
+				_callbackRef.Reset();
+			}
+		}
+
+		// Run on worker thread
+		void Execute() override
+		{
+			if(!_slaveobj.GetChmCntrlObject() && _conf.empty()){
 				// onetime connection mode needs configuration
-				this->SetErrorMessage("No configuration is associated to async worker");
+				SetError("No configuration is associated to async worker");
 				return;
 			}
-			if(!is_key_set){
-				this->SetErrorMessage("Specified key is empty(null)");
+			if(_strkey.empty()){
+				SetError("Specified key is empty(null)");
 				return;
 			}
 
 			// work
 			K2hdkcComCasInit*	pComObj;
-			if(!pslaveobj){
-				pComObj = GetOtSlaveK2hdkcComCasInit(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
+			if(!_slaveobj.GetChmCntrlObject()){
+				pComObj = GetOtSlaveK2hdkcComCasInit(_conf.c_str(), _ctlport, (_cuk.empty() ? NULL : _cuk.c_str()), _auto_rejoin, _no_giveup_rejoin);
 			}else{
-				pComObj = GetPmSlaveK2hdkcComCasInit(pslaveobj);
+				pComObj = GetPmSlaveK2hdkcComCasInit(&_slaveobj);
 			}
 			if(!pComObj){
-				this->SetErrorMessage("Internal error: Could not create command object.");
+				SetError("Internal error: Could not create command object.");
 				return;
 			}
 
 			dkcres_type_t	rescode = DKC_NORESTYPE;
-			if(!pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, reinterpret_cast<const unsigned char*>(&value), sizeof(uint32_t), (is_pass_set ? strpass.c_str() : NULL), (expire > 0 ? &expire : NULL), &rescode)){
-				this->SetErrorMessage("Failed to initialize CAS key and value.");
+			if(!pComObj->CommandSend(reinterpret_cast<const unsigned char*>(_strkey.c_str()), _strkey.length() + 1, reinterpret_cast<const unsigned char*>(&_value), sizeof(uint32_t), (_strpass.empty() ? NULL : _strpass.c_str()), (_expire > 0 ? &_expire : NULL), &rescode)){
+				SetError("Failed to initialize CAS key and value.");
 			}
 			DKC_DELETE(pComObj);
 		}
 
-		void HandleOKCallback()
+		// handler for success
+		void OnOK() override
 		{
-			Nan::HandleScope		scope;
-			const int				argc		= 1;
-			v8::Local<v8::Value>	argv[argc]	= { Nan::Null() };
+			Napi::Env env = Env();
+			Napi::HandleScope scope(env);
 
-			if(callback){
-				callback->Call(argc, argv);
+			if(!_callbackRef.IsEmpty()){
+				_callbackRef.Value().Call({ env.Null() });
 			}else{
-				Nan::ThrowSyntaxError("Internal error in async worker");
-				return;
+				Napi::TypeError::New(env, "Internal error in async worker");
 			}
 		}
 
-        void HandleErrorCallback()
-        {
-			Nan::HandleScope		scope;
-			const int				argc		= 1;
-			v8::Local<v8::Value>	argv[argc]	= { Nan::New<v8::String>(this->ErrorMessage()).ToLocalChecked() };
+		// handler for failure (by calling SetError)
+		void OnError(const Napi::Error& err) override
+		{
+			Napi::Env env = Env();
+			Napi::HandleScope scope(env);
 
-			if(callback){
-				callback->Call(argc, argv);
+			// The first argument is the error message.
+			if(!_callbackRef.IsEmpty()){
+				_callbackRef.Value().Call({ Napi::String::New(env, err.Value().ToString().Utf8Value()) });
 			}else{
-				Nan::ThrowSyntaxError("Internal error in async worker");
-				return;
+				// Throw error
+				err.ThrowAsJavaScriptException();
 			}
-        }
+		}
 
 	private:
-		K2hdkcSlave*	pslaveobj;
+		Napi::FunctionReference	_callbackRef;
+		K2hdkcSlave&			_slaveobj;
+		std::string				_conf;
+		int16_t					_ctlport;
+		std::string				_cuk;
+		bool					_auto_rejoin;
+		bool					_no_giveup_rejoin;
 
-		bool			is_set_conf;
-		std::string		conf;
-		int16_t			ctlport;
-		std::string		cuk;
-		bool			auto_rejoin;
-		bool			no_giveup_rejoin;
-
-		bool			is_key_set;
-		std::string		strkey;
-		uint32_t		value;
-		bool			is_pass_set;
-		std::string		strpass;
-		time_t			expire;
+		std::string				_strkey;
+		uint32_t				_value;
+		std::string				_strpass;
+		time_t					_expire;
 };
 
 //---------------------------------------------------------
 // CasGetWorker class
 //
-// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, const char* ppass)
+// Constructor:			constructor(const Napi::Function& callback, K2hdkcSlave& slaveobj, const std::string& configuration, int control_port, const std::string& inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const std::string& key, const std::string& pass)
 // Callback function:	function(string error[, int value])
 //
 //---------------------------------------------------------
-class CasGetWorker : public Nan::AsyncWorker
+class CasGetWorker : public Napi::AsyncWorker
 {
 	public:
-		CasGetWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, const char* inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, const char* ppass) :
-			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), cuk(inputcuk ? inputcuk : ""), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
-			is_key_set(NULL != pkey), strkey(pkey ? pkey : ""), is_pass_set(NULL != ppass), strpass(ppass ? ppass : ""), resvalue(0)
-		{}
-		~CasGetWorker() {}
-
-		void Execute()
+		CasGetWorker(const Napi::Function& callback, K2hdkcSlave& slaveobj, const std::string& configuration, int control_port, const std::string& inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const std::string& key, const std::string& pass) :
+			Napi::AsyncWorker(callback), _callbackRef(Napi::Persistent(callback)),
+			_slaveobj(slaveobj), _conf(configuration), _ctlport(control_port), _cuk(inputcuk), _auto_rejoin(is_auto_rejoin), _no_giveup_rejoin(is_nogiveup_rejoin), _strkey(key), _strpass(pass), _resvalue(0)
 		{
-			if(!pslaveobj && !is_set_conf){
+			_callbackRef.Ref();
+		}
+
+		~CasGetWorker() override
+		{
+			if(_callbackRef){
+				_callbackRef.Unref();
+				_callbackRef.Reset();
+			}
+		}
+
+		// Run on worker thread
+		void Execute() override
+		{
+			if(!_slaveobj.GetChmCntrlObject() && _conf.empty()){
 				// onetime connection mode needs configuration
-				this->SetErrorMessage("No configuration is associated to async worker");
+				SetError("No configuration is associated to async worker");
 				return;
 			}
-			if(!is_key_set){
-				this->SetErrorMessage("Specified key is empty(null)");
+			if(_strkey.empty()){
+				SetError("Specified key is empty(null)");
 				return;
 			}
 
 			// work
 			K2hdkcComCasGet*	pComObj;
-			if(!pslaveobj){
-				pComObj = GetOtSlaveK2hdkcComCasGet(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
+			if(!_slaveobj.GetChmCntrlObject()){
+				pComObj = GetOtSlaveK2hdkcComCasGet(_conf.c_str(), _ctlport, (_cuk.empty() ? NULL : _cuk.c_str()), _auto_rejoin, _no_giveup_rejoin);
 			}else{
-				pComObj = GetPmSlaveK2hdkcComCasGet(pslaveobj);
+				pComObj = GetPmSlaveK2hdkcComCasGet(&_slaveobj);
 			}
 			if(!pComObj){
-				this->SetErrorMessage("Internal error: Could not create command object.");
+				SetError("Internal error: Could not create command object.");
 				return;
 			}
 
 			dkcres_type_t			rescode		= DKC_NORESTYPE;
 			const unsigned char*	pvaltmp		= NULL;
 			size_t					valtmplen	= 0L;
-			if(pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, true, (is_pass_set ? strpass.c_str() : NULL), &pvaltmp, &valtmplen, &rescode) && (valtmplen == sizeof(uint32_t))){
-				memcpy(reinterpret_cast<unsigned char*>(&resvalue), pvaltmp, valtmplen);
+			if(pComObj->CommandSend(reinterpret_cast<const unsigned char*>(_strkey.c_str()), _strkey.length() + 1, true, (_strpass.empty() ? NULL : _strpass.c_str()), &pvaltmp, &valtmplen, &rescode) && (valtmplen == sizeof(uint32_t))){
+				memcpy(reinterpret_cast<unsigned char*>(&_resvalue), pvaltmp, valtmplen);
 			}else{
-				this->SetErrorMessage("Failed to get CAS value.");
+				SetError("Failed to get CAS value.");
 			}
 			DKC_DELETE(pComObj);
 		}
 
-		void HandleOKCallback()
+		// handler for success
+		void OnOK() override
 		{
-			Nan::HandleScope		scope;
-			const int				argc		= 2;
-			v8::Local<v8::Value>	argv[argc]	= { Nan::Null(), Nan::New(resvalue) };
+			Napi::Env env = Env();
+			Napi::HandleScope scope(env);
 
-			if(callback){
-				callback->Call(argc, argv);
+			if(!_callbackRef.IsEmpty()){
+				Napi::Number	res_val = Napi::Number::New(env, _resvalue);
+				_callbackRef.Value().Call({ env.Null(), res_val });
 			}else{
-				Nan::ThrowSyntaxError("Internal error in async worker");
-				return;
+				Napi::TypeError::New(env, "Internal error in async worker");
 			}
 		}
 
-        void HandleErrorCallback()
-        {
-			Nan::HandleScope		scope;
-			const int				argc		= 1;
-			v8::Local<v8::Value>	argv[argc]	= { Nan::New<v8::String>(this->ErrorMessage()).ToLocalChecked() };
+		// handler for failure (by calling SetError)
+		void OnError(const Napi::Error& err) override
+		{
+			Napi::Env env = Env();
+			Napi::HandleScope scope(env);
 
-			if(callback){
-				callback->Call(argc, argv);
+			// The first argument is the error message.
+			if(!_callbackRef.IsEmpty()){
+				_callbackRef.Value().Call({ Napi::String::New(env, err.Value().ToString().Utf8Value()) });
 			}else{
-				Nan::ThrowSyntaxError("Internal error in async worker");
-				return;
+				// Throw error
+				err.ThrowAsJavaScriptException();
 			}
-        }
+		}
 
 	private:
-		K2hdkcSlave*	pslaveobj;
+		Napi::FunctionReference	_callbackRef;
+		K2hdkcSlave&			_slaveobj;
+		std::string				_conf;
+		int16_t					_ctlport;
+		std::string				_cuk;
+		bool					_auto_rejoin;
+		bool					_no_giveup_rejoin;
+		std::string				_strkey;
+		std::string				_strpass;
 
-		bool			is_set_conf;
-		std::string		conf;
-		int16_t			ctlport;
-		std::string		cuk;
-		bool			auto_rejoin;
-		bool			no_giveup_rejoin;
-
-		bool			is_key_set;
-		std::string		strkey;
-		bool			is_pass_set;
-		std::string		strpass;
-
-		uint32_t		resvalue;
+		uint32_t				_resvalue;
 };
 
 //---------------------------------------------------------
 // CasSetWorker class
 //
-// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, uint32_t oldvalue, uint32_t newvalue, const char* ppass, const time_t* pexpire)
+// Constructor:			constructor(const Napi::Function& callback, K2hdkcSlave& slaveobj, const std::string& configuration, int control_port, const std::string& inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const std::string& key, uint32_t oldvalue, uint32_t newvalue, const std::string& pass, const time_t input_expire)
 // Callback function:	function(string error)
 //
 //---------------------------------------------------------
-class CasSetWorker : public Nan::AsyncWorker
+class CasSetWorker : public Napi::AsyncWorker
 {
 	public:
-		CasSetWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, const char* inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, uint32_t oldvalue, uint32_t newvalue, const char* ppass, const time_t* pexpire) :
-			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), cuk(inputcuk ? inputcuk : ""), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
-			is_key_set(NULL != pkey), strkey(pkey ? pkey : ""), oldval(oldvalue), newval(newvalue), is_pass_set(NULL != ppass), strpass(ppass ? ppass : ""), expire(pexpire ? *pexpire : 0)
-		{}
-		~CasSetWorker() {}
-
-		void Execute()
+		CasSetWorker(const Napi::Function& callback, K2hdkcSlave& slaveobj, const std::string& configuration, int control_port, const std::string& inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const std::string& key, uint32_t oldvalue, uint32_t newvalue, const std::string& pass, const time_t input_expire) :
+			Napi::AsyncWorker(callback), _callbackRef(Napi::Persistent(callback)),
+			_slaveobj(slaveobj), _conf(configuration), _ctlport(control_port), _cuk(inputcuk), _auto_rejoin(is_auto_rejoin), _no_giveup_rejoin(is_nogiveup_rejoin), _strkey(key), _oldval(oldvalue), _newval(newvalue), _strpass(pass), _expire(input_expire)
 		{
-			if(!pslaveobj && !is_set_conf){
+			_callbackRef.Ref();
+		}
+
+		~CasSetWorker() override
+		{
+			if(_callbackRef){
+				_callbackRef.Unref();
+				_callbackRef.Reset();
+			}
+		}
+
+		// Run on worker thread
+		void Execute() override
+		{
+			if(!_slaveobj.GetChmCntrlObject() && _conf.empty()){
 				// onetime connection mode needs configuration
-				this->SetErrorMessage("No configuration is associated to async worker");
+				SetError("No configuration is associated to async worker");
 				return;
 			}
-			if(!is_key_set){
-				this->SetErrorMessage("Specified key is empty(null)");
+			if(_strkey.empty()){
+				SetError("Specified key is empty(null)");
 				return;
 			}
 
 			// work
 			K2hdkcComCasSet*	pComObj;
-			if(!pslaveobj){
-				pComObj = GetOtSlaveK2hdkcComCasSet(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
+			if(!_slaveobj.GetChmCntrlObject()){
+				pComObj = GetOtSlaveK2hdkcComCasSet(_conf.c_str(), _ctlport, (_cuk.empty() ? NULL : _cuk.c_str()), _auto_rejoin, _no_giveup_rejoin);
 			}else{
-				pComObj = GetPmSlaveK2hdkcComCasSet(pslaveobj);
+				pComObj = GetPmSlaveK2hdkcComCasSet(&_slaveobj);
 			}
 			if(!pComObj){
-				this->SetErrorMessage("Internal error: Could not create command object.");
+				SetError("Internal error: Could not create command object.");
 				return;
 			}
 
 			dkcres_type_t	rescode = DKC_NORESTYPE;
-			if(!pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, reinterpret_cast<const unsigned char*>(&oldval), sizeof(uint32_t), reinterpret_cast<const unsigned char*>(&newval), sizeof(uint32_t), true, (is_pass_set ? strpass.c_str() : NULL), (expire > 0 ? &expire : NULL), &rescode)){
-				this->SetErrorMessage("Failed to set CAS value.");
+			if(!pComObj->CommandSend(reinterpret_cast<const unsigned char*>(_strkey.c_str()), _strkey.length() + 1, reinterpret_cast<const unsigned char*>(&_oldval), sizeof(uint32_t), reinterpret_cast<const unsigned char*>(&_newval), sizeof(uint32_t), true, (_strpass.empty() ? NULL : _strpass.c_str()), (_expire > 0 ? &_expire : NULL), &rescode)){
+				SetError("Failed to set CAS value.");
 			}
 			DKC_DELETE(pComObj);
 		}
 
-		void HandleOKCallback()
+		// handler for success
+		void OnOK() override
 		{
-			Nan::HandleScope		scope;
-			const int				argc		= 1;
-			v8::Local<v8::Value>	argv[argc]	= { Nan::Null() };
+			Napi::Env env = Env();
+			Napi::HandleScope scope(env);
 
-			if(callback){
-				callback->Call(argc, argv);
+			if(!_callbackRef.IsEmpty()){
+				_callbackRef.Value().Call({ env.Null() });
 			}else{
-				Nan::ThrowSyntaxError("Internal error in async worker");
-				return;
+				Napi::TypeError::New(env, "Internal error in async worker");
 			}
 		}
 
-        void HandleErrorCallback()
-        {
-			Nan::HandleScope		scope;
-			const int				argc		= 1;
-			v8::Local<v8::Value>	argv[argc]	= { Nan::New<v8::String>(this->ErrorMessage()).ToLocalChecked() };
+		// handler for failure (by calling SetError)
+		void OnError(const Napi::Error& err) override
+		{
+			Napi::Env env = Env();
+			Napi::HandleScope scope(env);
 
-			if(callback){
-				callback->Call(argc, argv);
+			// The first argument is the error message.
+			if(!_callbackRef.IsEmpty()){
+				_callbackRef.Value().Call({ Napi::String::New(env, err.Value().ToString().Utf8Value()) });
 			}else{
-				Nan::ThrowSyntaxError("Internal error in async worker");
-				return;
+				// Throw error
+				err.ThrowAsJavaScriptException();
 			}
-        }
+		}
 
 	private:
-		K2hdkcSlave*	pslaveobj;
+		Napi::FunctionReference	_callbackRef;
+		K2hdkcSlave&			_slaveobj;
+		std::string				_conf;
+		int16_t					_ctlport;
+		std::string				_cuk;
+		bool					_auto_rejoin;
+		bool					_no_giveup_rejoin;
 
-		bool			is_set_conf;
-		std::string		conf;
-		int16_t			ctlport;
-		std::string		cuk;
-		bool			auto_rejoin;
-		bool			no_giveup_rejoin;
-
-		bool			is_key_set;
-		std::string		strkey;
-		uint32_t		oldval;
-		uint32_t		newval;
-		bool			is_pass_set;
-		std::string		strpass;
-		time_t			expire;
+		std::string				_strkey;
+		uint32_t				_oldval;
+		uint32_t				_newval;
+		std::string				_strpass;
+		time_t					_expire;
 };
 
 //---------------------------------------------------------
 // CasIncDecWorker class
 //
-// Constructor:			constructor(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, bool is_increment_type, const char* ppass, const time_t* pexpire)
+// Constructor:			constructor(const Napi::Function& callback, K2hdkcSlave& slaveobj, const std::string& configuration, int control_port, const std::string& inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const std::string& key, bool is_increment_type, const std::string& pass, const time_t input_expire)
 // Callback function:	function(string error)
 //
 //---------------------------------------------------------
-class CasIncDecWorker : public Nan::AsyncWorker
+class CasIncDecWorker : public Napi::AsyncWorker
 {
 	public:
-		CasIncDecWorker(Nan::Callback* callback, K2hdkcSlave* pobj, const char* configuration, int control_port, const char* inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const char* pkey, bool is_increment_type, const char* ppass, const time_t* pexpire) :
-			Nan::AsyncWorker(callback), pslaveobj(pobj),
-			is_set_conf(NULL != configuration), conf(configuration ? configuration : ""), ctlport(control_port), cuk(inputcuk ? inputcuk : ""), auto_rejoin(is_auto_rejoin), no_giveup_rejoin(is_nogiveup_rejoin),
-			is_key_set(NULL != pkey), strkey(pkey ? pkey : ""), is_increment(is_increment_type), is_pass_set(NULL != ppass), strpass(ppass ? ppass : ""), expire(pexpire ? *pexpire : 0)
-		{}
-		~CasIncDecWorker() {}
-
-		void Execute()
+		CasIncDecWorker(const Napi::Function& callback, K2hdkcSlave& slaveobj, const std::string& configuration, int control_port, const std::string& inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const std::string& key, bool is_increment_type, const std::string& pass, const time_t input_expire) :
+			Napi::AsyncWorker(callback), _callbackRef(Napi::Persistent(callback)),
+			_slaveobj(slaveobj), _conf(configuration), _ctlport(control_port), _cuk(inputcuk), _auto_rejoin(is_auto_rejoin), _no_giveup_rejoin(is_nogiveup_rejoin), _strkey(key), _is_increment(is_increment_type), _strpass(pass), _expire(input_expire)
 		{
-			if(!pslaveobj && !is_set_conf){
+			_callbackRef.Ref();
+		}
+
+		~CasIncDecWorker() override
+		{
+			if(_callbackRef){
+				_callbackRef.Unref();
+				_callbackRef.Reset();
+			}
+		}
+
+		// Run on worker thread
+		void Execute() override
+		{
+			if(!_slaveobj.GetChmCntrlObject() && _conf.empty()){
 				// onetime connection mode needs configuration
-				this->SetErrorMessage("No configuration is associated to async worker");
+				SetError("No configuration is associated to async worker");
 				return;
 			}
-			if(!is_key_set){
-				this->SetErrorMessage("Specified key is empty(null)");
+			if(_strkey.empty()){
+				SetError("Specified key is empty(null)");
 				return;
 			}
 
 			// work
 			K2hdkcComCasIncDec*	pComObj;
-			if(!pslaveobj){
-				pComObj = GetOtSlaveK2hdkcComCasIncDec(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
+			if(!_slaveobj.GetChmCntrlObject()){
+				pComObj = GetOtSlaveK2hdkcComCasIncDec(_conf.c_str(), _ctlport, (_cuk.empty() ? NULL : _cuk.c_str()), _auto_rejoin, _no_giveup_rejoin);
 			}else{
-				pComObj = GetPmSlaveK2hdkcComCasIncDec(pslaveobj);
+				pComObj = GetPmSlaveK2hdkcComCasIncDec(&_slaveobj);
 			}
 			if(!pComObj){
-				this->SetErrorMessage("Internal error: Could not create command object.");
+				SetError("Internal error: Could not create command object.");
 				return;
 			}
 
 			dkcres_type_t	rescode = DKC_NORESTYPE;
-			if(!pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, is_increment, true, (is_pass_set ? strpass.c_str() : NULL), (expire > 0 ? &expire : NULL), &rescode)){
-				if(is_increment){
-					this->SetErrorMessage("Failed to increment CAS value.");
+			if(!pComObj->CommandSend(reinterpret_cast<const unsigned char*>(_strkey.c_str()), _strkey.length() + 1, _is_increment, true, (_strpass.empty() ? NULL : _strpass.c_str()), (_expire > 0 ? &_expire : NULL), &rescode)){
+				if(_is_increment){
+					SetError("Failed to increment CAS value.");
 				}else{
-					this->SetErrorMessage("Failed to decrement CAS value.");
+					SetError("Failed to decrement CAS value.");
 				}
 			}
 			DKC_DELETE(pComObj);
 		}
 
-		void HandleOKCallback()
+		// handler for success
+		void OnOK() override
 		{
-			Nan::HandleScope		scope;
-			const int				argc		= 1;
-			v8::Local<v8::Value>	argv[argc]	= { Nan::Null() };
+			Napi::Env env = Env();
+			Napi::HandleScope scope(env);
 
-			if(callback){
-				callback->Call(argc, argv);
+			if(!_callbackRef.IsEmpty()){
+				_callbackRef.Value().Call({ env.Null() });
 			}else{
-				Nan::ThrowSyntaxError("Internal error in async worker");
-				return;
+				Napi::TypeError::New(env, "Internal error in async worker");
 			}
 		}
 
-        void HandleErrorCallback()
-        {
-			Nan::HandleScope		scope;
-			const int				argc		= 1;
-			v8::Local<v8::Value>	argv[argc]	= { Nan::New<v8::String>(this->ErrorMessage()).ToLocalChecked() };
+		// handler for failure (by calling SetError)
+		void OnError(const Napi::Error& err) override
+		{
+			Napi::Env env = Env();
+			Napi::HandleScope scope(env);
 
-			if(callback){
-				callback->Call(argc, argv);
+			// The first argument is the error message.
+			if(!_callbackRef.IsEmpty()){
+				_callbackRef.Value().Call({ Napi::String::New(env, err.Value().ToString().Utf8Value()) });
 			}else{
-				Nan::ThrowSyntaxError("Internal error in async worker");
-				return;
+				// Throw error
+				err.ThrowAsJavaScriptException();
 			}
-        }
+		}
 
 	private:
-		K2hdkcSlave*	pslaveobj;
+		Napi::FunctionReference	_callbackRef;
+		K2hdkcSlave&			_slaveobj;
+		std::string				_conf;
+		int16_t					_ctlport;
+		std::string				_cuk;
+		bool					_auto_rejoin;
+		bool					_no_giveup_rejoin;
 
-		bool			is_set_conf;
-		std::string		conf;
-		int16_t			ctlport;
-		std::string		cuk;
-		bool			auto_rejoin;
-		bool			no_giveup_rejoin;
-
-		bool			is_key_set;
-		std::string		strkey;
-		bool			is_increment;
-		bool			is_pass_set;
-		std::string		strpass;
-		time_t			expire;
+		std::string				_strkey;
+		bool					_is_increment;
+		std::string				_strpass;
+		time_t					_expire;
 };
 
 #endif

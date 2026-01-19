@@ -18,7 +18,6 @@
 #include "k2hdkc_node.h"
 #include "k2hdkc_node_async.h"
 
-using namespace v8;
 using namespace std;
 
 //---------------------------------------------------------
@@ -64,21 +63,72 @@ const char*	stc_emitters[] = {
 inline const char* GetNormalizationEmitter(const char* emitter)
 {
 	if(!emitter){
-		return NULL;
+		return nullptr;
 	}
 	for(const char** ptmp = &stc_emitters[0]; ptmp && *ptmp; ++ptmp){
 		if(0 == strcasecmp(*ptmp, emitter)){
 			return *ptmp;
 		}
 	}
-	return NULL;
+	return nullptr;
 }
 
 //---------------------------------------------------------
-// Utility Macros
+// Utility (using StackEmitCB Class)
+//---------------------------------------------------------
+static Napi::Value SetK2hdkcNodeCallback(const Napi::CallbackInfo& info, size_t pos, const char* pemitter)
+{
+	Napi::Env env = info.Env();
+
+	// Unwrap
+	if(!info.This().IsObject() || !info.This().As<Napi::Object>().InstanceOf(K2hdkcNode::constructor.Value())){
+		Napi::TypeError::New(env, "Invalid this object(K2hdkcNode instance)").ThrowAsJavaScriptException();
+		return env.Undefined();
+	}
+	K2hdkcNode* obj = Napi::ObjectWrap<K2hdkcNode>::Unwrap(info.This().As<Napi::Object>());
+
+	// check parameter
+	if(info.Length() <= pos){
+		Napi::TypeError::New(env, "No callback is specified.").ThrowAsJavaScriptException();
+		return env.Undefined();
+	}
+	if(!info[pos].IsFunction()){
+		Napi::TypeError::New(env, "The parameter is not callback function.").ThrowAsJavaScriptException();
+		return env.Undefined();
+	}
+	Napi::Function cb = info[pos].As<Napi::Function>();
+
+	// set
+	bool result = obj->_cbs.Set(std::string(pemitter), cb);
+	return Napi::Boolean::New(env, result);
+}
+
+static Napi::Value UnsetK2hdkcNodeCallback(const Napi::CallbackInfo& info, const char* pemitter)
+{
+	Napi::Env env = info.Env();
+
+	// Unwrap
+	if(!info.This().IsObject() || !info.This().As<Napi::Object>().InstanceOf(K2hdkcNode::constructor.Value())){
+		Napi::TypeError::New(env, "Invalid this object").ThrowAsJavaScriptException();
+		return env.Undefined();
+	}
+	K2hdkcNode* obj = Napi::ObjectWrap<K2hdkcNode>::Unwrap(info.This().As<Napi::Object>());
+
+	// unset
+	bool result = obj->_cbs.Unset(std::string(pemitter));
+	return Napi::Boolean::New(env, result);
+}
+
+//---------------------------------------------------------
+// K2hdkcNode Class
+//---------------------------------------------------------
+Napi::FunctionReference	K2hdkcNode::constructor;
+
+//---------------------------------------------------------
+// Class method
 //---------------------------------------------------------
 //
-// Parser macros for onetime connection
+// Parser for onetime connection
 //
 // info Arguments are following:
 //	String	conf				configuration(must)
@@ -89,97 +139,134 @@ inline const char* GetNormalizationEmitter(const char* emitter)
 //
 // This macro gets argpos argument, which means next position for info value array.
 //
-#define	ParseArgumentsForOnetime(argpos) \
-		string	conf; \
-		int16_t	ctlport			= CHM_INVALID_PORT; \
-		string	cuk; \
-		bool	auto_rejoin		= false; \
-		bool	no_giveup_rejoin= false; \
-		{ \
-			if(!obj->_k2hdkcslave){ \
-				if(info.Length() < 2){ \
-					Nan::ThrowSyntaxError("There is no enough parameters for onetime connection."); \
-					return; \
-				} \
-				if(!info[argpos]->IsString()){ \
-					Nan::ThrowSyntaxError("First parameter is not string"); \
-					return; \
-				} \
-				Nan::Utf8String	buf(info[argpos++]); \
-				conf							= std::string(*buf); \
-				if(argpos < info.Length()){ \
-					if(info[argpos]->IsNumber()){ \
-						ctlport				= static_cast<int16_t>(Nan::To<int32_t>(info[argpos++]).FromJust()); \
-						if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){ \
-							Nan::Utf8String	buf(info[argpos++]); \
-							cuk						= std::string(*buf); \
-							if(argpos < info.Length() && info[argpos]->IsBoolean()){ \
-								auto_rejoin		= Nan::To<bool>(info[argpos++]).FromJust(); \
-								if(argpos < info.Length() && info[argpos]->IsBoolean()){ \
-									no_giveup_rejoin= Nan::To<bool>(info[argpos++]).FromJust(); \
-								} \
-							} \
-						}else if(argpos < info.Length() && info[argpos]->IsBoolean()){ \
-							auto_rejoin			= Nan::To<bool>(info[argpos++]).FromJust(); \
-							if(argpos < info.Length() && info[argpos]->IsBoolean()){ \
-								no_giveup_rejoin= Nan::To<bool>(info[argpos++]).FromJust(); \
-							} \
-						} \
-					}else if(info[argpos]->IsString() || info[argpos]->IsNull()){ \
-						Nan::Utf8String	buf(info[argpos++]); \
-						cuk						= std::string(*buf); \
-						if(argpos < info.Length() && info[argpos]->IsBoolean()){ \
-							auto_rejoin		= Nan::To<bool>(info[argpos++]).FromJust(); \
-							if(argpos < info.Length() && info[argpos]->IsBoolean()){ \
-								no_giveup_rejoin= Nan::To<bool>(info[argpos++]).FromJust(); \
-							} \
-						} \
-					}else if(argpos < info.Length() && info[argpos]->IsBoolean()){ \
-						auto_rejoin			= Nan::To<bool>(info[argpos++]).FromJust(); \
-						if(argpos < info.Length() && info[argpos]->IsBoolean()){ \
-							no_giveup_rejoin= Nan::To<bool>(info[argpos++]).FromJust(); \
-						} \
-					} \
-				} \
-			} \
-		}
+bool K2hdkcNode::ParseArgumentsForOnetime(const Napi::CallbackInfo& info, K2hdkcNode* obj, size_t& argpos, std::string& conf, int16_t& ctlport, std::string& cuk, bool& auto_rejoin, bool& no_giveup_rejoin)
+{
+	if(obj && obj->IsInitialize()){
+		return true;
+	}
 
-//
-// Set callback emitter
-//
-#define	SetK2hdkcNodeCallback(info, pos, pemitter) \
-		{ \
-			K2hdkcNode*	obj = Nan::ObjectWrap::Unwrap<K2hdkcNode>(info.This()); \
-			if(info.Length() <= pos){ \
-				Nan::ThrowSyntaxError("No callback is specified."); \
-				return; \
-			} \
-			Nan::Callback* cb = new Nan::Callback(); \
-			cb->SetFunction(info[pos].As<v8::Function>()); \
-			bool	result = obj->_cbs.Set(pemitter, cb); \
-			info.GetReturnValue().Set(Nan::New(result)); \
-		}
+	Napi::Env env = info.Env();
 
-//
-// Unset callback emitter
-//
-#define	UnsetK2hdkcNodeCallback(info, pemitter) \
-		{ \
-			K2hdkcNode*	obj		= Nan::ObjectWrap::Unwrap<K2hdkcNode>(info.This()); \
-			bool		result	= obj->_cbs.Unset(pemitter); \
-			info.GetReturnValue().Set(Nan::New(result)); \
-		}
+	if(info.Length() < 2){
+		Napi::TypeError::New(env, "There is no enough parameters for onetime connection.").ThrowAsJavaScriptException();
+		return false;
+	}
 
-//---------------------------------------------------------
-// K2hdkcNode Class
-//---------------------------------------------------------
-Nan::Persistent<Function>	K2hdkcNode::constructor;
+	// initialize
+	conf.clear();
+	ctlport			= static_cast<int16_t>(CHM_INVALID_PORT);
+	cuk.clear();
+	auto_rejoin		= false;
+	no_giveup_rejoin= false;
+
+	// first param must be string
+	if(!info[argpos].IsString()){
+		Napi::TypeError::New(env, "First parameter is not string").ThrowAsJavaScriptException();
+		return false;
+	}
+	conf = info[argpos++].As<Napi::String>().Utf8Value();
+
+	// after first
+	if(argpos < info.Length()){
+		if(info[argpos].IsNumber()){
+			// 2'nd argument is control port
+			ctlport	= static_cast<int16_t>(info[argpos++].As<Napi::Number>().Int32Value());
+
+			if(argpos < info.Length() && (info[argpos].IsString() || info[argpos].IsNull())){
+				// 3'rd argument is cuk
+				if(info[argpos].IsString()){
+					cuk = info[argpos++].As<Napi::String>().Utf8Value();
+				}else{
+					// keep cuk empty
+					++argpos;
+				}
+				if(argpos < info.Length() && info[argpos].IsBoolean()){
+					// 4'th argument is auto_rejoin
+					auto_rejoin = info[argpos++].As<Napi::Boolean>().Value();
+
+					if(argpos < info.Length() && info[argpos].IsBoolean()){
+						// 5'th argument is no_giveup_rejoin
+						no_giveup_rejoin = info[argpos++].As<Napi::Boolean>().Value();
+					}
+				}
+			}else if(argpos < info.Length() && info[argpos].IsBoolean()){
+				// 3'rd argument is auto_rejoin
+				auto_rejoin = info[argpos++].As<Napi::Boolean>().Value();
+
+				if(argpos < info.Length() && info[argpos].IsBoolean()){
+					// 4'th argument is no_giveup_rejoin
+					no_giveup_rejoin = info[argpos++].As<Napi::Boolean>().Value();
+				}
+
+			// cppcheck-suppress unmatchedSuppression
+			// cppcheck-suppress multiCondition
+			}else if(argpos < info.Length() && info[argpos].IsBoolean()){
+				// 3'rd argument is no_giveup_rejoin
+				no_giveup_rejoin = info[argpos++].As<Napi::Boolean>().Value();
+			}
+		}else if(info[argpos].IsString() || info[argpos].IsNull()){
+			// 2'nd argument is cuk
+			if(info[argpos].IsString()){
+				cuk = info[argpos++].As<Napi::String>().Utf8Value();
+			}else{
+				// keep cuk empty
+				++argpos;
+			}
+			if(argpos < info.Length() && info[argpos].IsBoolean()){
+				// 3'rd argument is auto_rejoin
+				auto_rejoin = info[argpos++].As<Napi::Boolean>().Value();
+
+				if(argpos < info.Length() && info[argpos].IsBoolean()){
+					// 4'th argument is no_giveup_rejoin
+					no_giveup_rejoin = info[argpos++].As<Napi::Boolean>().Value();
+				}
+			}
+		}else if(argpos < info.Length() && info[argpos].IsBoolean()){
+			// 2'nd argument is auto_rejoin
+			auto_rejoin = info[argpos++].As<Napi::Boolean>().Value();
+
+			if(argpos < info.Length() && info[argpos].IsBoolean()){
+				// 3'rd argument is no_giveup_rejoin
+				no_giveup_rejoin = info[argpos++].As<Napi::Boolean>().Value();
+			}
+
+		// cppcheck-suppress unmatchedSuppression
+		// cppcheck-suppress multiCondition
+		}else if(argpos < info.Length() && info[argpos].IsBoolean()){
+			// 2'nd argument is no_giveup_rejoin
+			no_giveup_rejoin = info[argpos++].As<Napi::Boolean>().Value();
+		}
+	}
+	return true;
+}
 
 //---------------------------------------------------------
 // K2hdkcNode Methods
 //---------------------------------------------------------
-K2hdkcNode::K2hdkcNode() : _k2hdkcslave(NULL), _cbs()
+K2hdkcNode::K2hdkcNode(const Napi::CallbackInfo& info) : Napi::ObjectWrap<K2hdkcNode>(info), _cbs(), _k2hdkcslave()
 {
+	// [NOTE]
+	// Perhaps due to an initialization order issue, these
+	// chmpx debug environment variable settings don't work.
+	// So, load the environment variables and set the debug
+	// mode/file settings here.
+	//
+	const char* k2hdkcdbgmode = std::getenv("DKCDBGMODE");
+	const char* k2hdkcdbgfile = std::getenv("DKCDBGFILE");
+	if(k2hdkcdbgmode && k2hdkcdbgfile){
+		if(0 == strcasecmp(k2hdkcdbgmode, "SLT") || 0 == strcasecmp(k2hdkcdbgmode, "SILENT")){
+			k2hdkc_set_debug_level_silent();
+		}else if(0 == strcasecmp(k2hdkcdbgmode, "ERR") || 0 == strcasecmp(k2hdkcdbgmode, "ERROR")){
+			k2hdkc_set_debug_level_error();
+		}else if(0 == strcasecmp(k2hdkcdbgmode, "WARNING") || 0 == strcasecmp(k2hdkcdbgmode, "WARN") || 0 == strcasecmp(k2hdkcdbgmode, "WAN")){
+			k2hdkc_set_debug_level_warning();
+		}else if(0 == strcasecmp(k2hdkcdbgmode, "INFO") || 0 == strcasecmp(k2hdkcdbgmode, "INF") || 0 == strcasecmp(k2hdkcdbgmode, "MSG")){
+			k2hdkc_set_debug_level_message();
+		}else if(0 == strcasecmp(k2hdkcdbgmode, "DUMP") || 0 == strcasecmp(k2hdkcdbgmode, "DMP")){
+			k2hdkc_set_debug_level_dump();
+		}
+		k2hdkc_set_debug_file(k2hdkcdbgfile);		// Ignore any errors that occur.
+	}
 }
 
 K2hdkcNode::~K2hdkcNode()
@@ -189,238 +276,151 @@ K2hdkcNode::~K2hdkcNode()
 
 void K2hdkcNode::Clean()
 {
-	if(_k2hdkcslave){
-		_k2hdkcslave->Clean(true);
-	}
-	K2H_Delete(_k2hdkcslave);
+	_k2hdkcslave.Clean(true);
 }
 
-void K2hdkcNode::Init()
+bool K2hdkcNode::IsInitialize()
 {
-	// Prepare constructor template
-	Local<FunctionTemplate>	tpl = Nan::New<FunctionTemplate>(New); 
-	tpl->SetClassName(Nan::New("K2hdkcNode").ToLocalChecked()); 
-	tpl->InstanceTemplate()->SetInternalFieldCount(1); 
-
-	Nan::SetPrototypeMethod(tpl, "on",				On);
-	Nan::SetPrototypeMethod(tpl, "onInit",			OnInit);
-	Nan::SetPrototypeMethod(tpl, "onGet",			OnGet);
-	Nan::SetPrototypeMethod(tpl, "onGetSubkeys",	OnGetSubkeys);
-	Nan::SetPrototypeMethod(tpl, "onGetAttrs",		OnGetAttrs);
-	Nan::SetPrototypeMethod(tpl, "onSet",			OnSet);
-	Nan::SetPrototypeMethod(tpl, "onSetSubkeys",	OnSetSubkeys);
-	Nan::SetPrototypeMethod(tpl, "onSetAll",		OnSetAll);
-	Nan::SetPrototypeMethod(tpl, "onRemove",		OnRemove);
-	Nan::SetPrototypeMethod(tpl, "onRename",		OnRename);
-	Nan::SetPrototypeMethod(tpl, "onQueuePush",		OnQueuePush);
-	Nan::SetPrototypeMethod(tpl, "onQueuePop",		OnQueuePop);
-	Nan::SetPrototypeMethod(tpl, "onQueueRemove",	OnQueueRemove);
-	Nan::SetPrototypeMethod(tpl, "onQueueDel",		OnQueueRemove);
-	Nan::SetPrototypeMethod(tpl, "onCasInit",		OnCasInit);
-	Nan::SetPrototypeMethod(tpl, "onCasGet",		OnCasGet);
-	Nan::SetPrototypeMethod(tpl, "onCasSet",		OnCasSet);
-	Nan::SetPrototypeMethod(tpl, "onCasIncDec",		OnCasIncDec);
-	Nan::SetPrototypeMethod(tpl, "off",				Off);
-	Nan::SetPrototypeMethod(tpl, "offInit",			OffInit);
-	Nan::SetPrototypeMethod(tpl, "offGet",			OffGet);
-	Nan::SetPrototypeMethod(tpl, "offGetSubkeys",	OffGetSubkeys);
-	Nan::SetPrototypeMethod(tpl, "offGetAttrs",		OffGetAttrs);
-	Nan::SetPrototypeMethod(tpl, "offSet",			OffSet);
-	Nan::SetPrototypeMethod(tpl, "offSetSubkeys",	OffSetSubkeys);
-	Nan::SetPrototypeMethod(tpl, "offSetAll",		OffSetAll);
-	Nan::SetPrototypeMethod(tpl, "offRemove",		OffRemove);
-	Nan::SetPrototypeMethod(tpl, "offRename",		OffRename);
-	Nan::SetPrototypeMethod(tpl, "offQueuePush",	OffQueuePush);
-	Nan::SetPrototypeMethod(tpl, "offQueuePop",		OffQueuePop);
-	Nan::SetPrototypeMethod(tpl, "offQueueRemove",	OffQueueRemove);
-	Nan::SetPrototypeMethod(tpl, "offQueueDel",		OffQueueRemove);
-	Nan::SetPrototypeMethod(tpl, "offCasInit",		OffCasInit);
-	Nan::SetPrototypeMethod(tpl, "offCasGet",		OffCasGet);
-	Nan::SetPrototypeMethod(tpl, "offCasSet",		OffCasSet);
-	Nan::SetPrototypeMethod(tpl, "offCasIncDec",	OffCasIncDec);
-
-	Nan::SetPrototypeMethod(tpl, "init",			Init);
-	Nan::SetPrototypeMethod(tpl, "clean",			Clean);
-	Nan::SetPrototypeMethod(tpl, "clear",			Clean);
-	Nan::SetPrototypeMethod(tpl, "isPermanent",		IsPermanent);
-	Nan::SetPrototypeMethod(tpl, "getValue",		GetValue);
-	Nan::SetPrototypeMethod(tpl, "getSubkeys",		GetSubkeys);
-	Nan::SetPrototypeMethod(tpl, "getAttrs",		GetAttrs);
-	Nan::SetPrototypeMethod(tpl, "setValue",		SetValue);
-	Nan::SetPrototypeMethod(tpl, "setSubkeys",		SetSubkeys);
-	Nan::SetPrototypeMethod(tpl, "addSubkey",		SetValue);
-	Nan::SetPrototypeMethod(tpl, "clearSubkeys",	SetSubkeys);
-	Nan::SetPrototypeMethod(tpl, "setAll",			SetAll);
-	Nan::SetPrototypeMethod(tpl, "remove",			Remove);
-	Nan::SetPrototypeMethod(tpl, "rename",			Rename);
-	Nan::SetPrototypeMethod(tpl, "queuePush",		QueuePush);
-	Nan::SetPrototypeMethod(tpl, "queuePop",		QueuePop);
-	Nan::SetPrototypeMethod(tpl, "queueRemove",		QueueRemove);
-	Nan::SetPrototypeMethod(tpl, "queueDel",		QueueRemove);
-	Nan::SetPrototypeMethod(tpl, "casInit",			CasInit);
-	Nan::SetPrototypeMethod(tpl, "casGet",			CasGet);
-	Nan::SetPrototypeMethod(tpl, "casSet",			CasSet);
-	Nan::SetPrototypeMethod(tpl, "casIncDec",		CasIncDec);
-	Nan::SetPrototypeMethod(tpl, "printVersion",	PrintVersion);
-
-	// Reset
-	constructor.Reset(Nan::GetFunction(tpl).ToLocalChecked());
+	// [NOTE]
+	// Should use K2hdkcSlave::IsInitialize(), but it's protected,
+	// so we use GetChmCntrlObject() instead.
+	//
+	return (NULL != _k2hdkcslave.GetChmCntrlObject());
 }
 
-NAN_METHOD(K2hdkcNode::New)
+void K2hdkcNode::Init(Napi::Env env, Napi::Object exports)
 {
-	if(info.IsConstructCall()){
-		// Invoked as constructor: new K2hdkcNode()
-		K2hdkcNode*	obj = new K2hdkcNode();
-		obj->Wrap(info.This()); 
+	Napi::Function funcs = DefineClass(env, "K2hdkcNode", {
+		// DefineClass normally handles the constructor internally. Therefore, there is no need
+		// to include a static wrapper New() in the class prototype, which works the same way as
+		// when using NAN.
+		// For reference, the following example shows how to declare New as a static method.
+		// (Registration is not normally required.)
+		//
+		//	K2hdkcNode::InstanceMethod("new", 			&K2hdkcNode::New),
 
+		K2hdkcNode::InstanceMethod("on",				&K2hdkcNode::On),
+		K2hdkcNode::InstanceMethod("onInit",			&K2hdkcNode::OnInit),
+		K2hdkcNode::InstanceMethod("onGet",				&K2hdkcNode::OnGet),
+		K2hdkcNode::InstanceMethod("onGetSubkeys",		&K2hdkcNode::OnGetSubkeys),
+		K2hdkcNode::InstanceMethod("onGetAttrs",		&K2hdkcNode::OnGetAttrs),
+		K2hdkcNode::InstanceMethod("onSet",				&K2hdkcNode::OnSet),
+		K2hdkcNode::InstanceMethod("onSetSubkeys",		&K2hdkcNode::OnSetSubkeys),
+		K2hdkcNode::InstanceMethod("onSetAll",			&K2hdkcNode::OnSetAll),
+		K2hdkcNode::InstanceMethod("onRemove",			&K2hdkcNode::OnRemove),
+		K2hdkcNode::InstanceMethod("onRename",			&K2hdkcNode::OnRename),
+		K2hdkcNode::InstanceMethod("onQueuePush",		&K2hdkcNode::OnQueuePush),
+		K2hdkcNode::InstanceMethod("onQueuePop",		&K2hdkcNode::OnQueuePop),
+		K2hdkcNode::InstanceMethod("onQueueRemove",		&K2hdkcNode::OnQueueRemove),
+		K2hdkcNode::InstanceMethod("onQueueDel",		&K2hdkcNode::OnQueueRemove),
+		K2hdkcNode::InstanceMethod("onCasInit",			&K2hdkcNode::OnCasInit),
+		K2hdkcNode::InstanceMethod("onCasGet",			&K2hdkcNode::OnCasGet),
+		K2hdkcNode::InstanceMethod("onCasSet",			&K2hdkcNode::OnCasSet),
+		K2hdkcNode::InstanceMethod("onCasIncDec",		&K2hdkcNode::OnCasIncDec),
+		K2hdkcNode::InstanceMethod("off",				&K2hdkcNode::Off),
+		K2hdkcNode::InstanceMethod("offInit",			&K2hdkcNode::OffInit),
+		K2hdkcNode::InstanceMethod("offGet",			&K2hdkcNode::OffGet),
+		K2hdkcNode::InstanceMethod("offGetSubkeys",		&K2hdkcNode::OffGetSubkeys),
+		K2hdkcNode::InstanceMethod("offGetAttrs",		&K2hdkcNode::OffGetAttrs),
+		K2hdkcNode::InstanceMethod("offSet",			&K2hdkcNode::OffSet),
+		K2hdkcNode::InstanceMethod("offSetSubkeys",		&K2hdkcNode::OffSetSubkeys),
+		K2hdkcNode::InstanceMethod("offSetAll",			&K2hdkcNode::OffSetAll),
+		K2hdkcNode::InstanceMethod("offRemove",			&K2hdkcNode::OffRemove),
+		K2hdkcNode::InstanceMethod("offRename",			&K2hdkcNode::OffRename),
+		K2hdkcNode::InstanceMethod("offQueuePush",		&K2hdkcNode::OffQueuePush),
+		K2hdkcNode::InstanceMethod("offQueuePop",		&K2hdkcNode::OffQueuePop),
+		K2hdkcNode::InstanceMethod("offQueueRemove",	&K2hdkcNode::OffQueueRemove),
+		K2hdkcNode::InstanceMethod("offQueueDel",		&K2hdkcNode::OffQueueRemove),
+		K2hdkcNode::InstanceMethod("offCasInit",		&K2hdkcNode::OffCasInit),
+		K2hdkcNode::InstanceMethod("offCasGet",			&K2hdkcNode::OffCasGet),
+		K2hdkcNode::InstanceMethod("offCasSet",			&K2hdkcNode::OffCasSet),
+		K2hdkcNode::InstanceMethod("offCasIncDec",		&K2hdkcNode::OffCasIncDec),
+
+		K2hdkcNode::InstanceMethod("init",				&K2hdkcNode::Init),
+		K2hdkcNode::InstanceMethod("clean",				&K2hdkcNode::Clean),
+		K2hdkcNode::InstanceMethod("clear",				&K2hdkcNode::Clean),
+		K2hdkcNode::InstanceMethod("isPermanent",		&K2hdkcNode::IsPermanent),
+		K2hdkcNode::InstanceMethod("getValue",			&K2hdkcNode::GetValue),
+		K2hdkcNode::InstanceMethod("getSubkeys",		&K2hdkcNode::GetSubkeys),
+		K2hdkcNode::InstanceMethod("getAttrs",			&K2hdkcNode::GetAttrs),
+		K2hdkcNode::InstanceMethod("setValue",			&K2hdkcNode::SetValue),
+		K2hdkcNode::InstanceMethod("setSubkeys",		&K2hdkcNode::SetSubkeys),
+		K2hdkcNode::InstanceMethod("addSubkey",			&K2hdkcNode::SetValue),
+		K2hdkcNode::InstanceMethod("clearSubkeys",		&K2hdkcNode::SetSubkeys),
+		K2hdkcNode::InstanceMethod("setAll",			&K2hdkcNode::SetAll),
+		K2hdkcNode::InstanceMethod("remove",			&K2hdkcNode::Remove),
+		K2hdkcNode::InstanceMethod("rename",			&K2hdkcNode::Rename),
+		K2hdkcNode::InstanceMethod("queuePush",			&K2hdkcNode::QueuePush),
+		K2hdkcNode::InstanceMethod("queuePop",			&K2hdkcNode::QueuePop),
+		K2hdkcNode::InstanceMethod("queueRemove",		&K2hdkcNode::QueueRemove),
+		K2hdkcNode::InstanceMethod("queueDel",			&K2hdkcNode::QueueRemove),
+		K2hdkcNode::InstanceMethod("casInit",			&K2hdkcNode::CasInit),
+		K2hdkcNode::InstanceMethod("casGet",			&K2hdkcNode::CasGet),
+		K2hdkcNode::InstanceMethod("casSet",			&K2hdkcNode::CasSet),
+		K2hdkcNode::InstanceMethod("casIncDec",			&K2hdkcNode::CasIncDec),
+		K2hdkcNode::InstanceMethod("printVersion",		&K2hdkcNode::PrintVersion)
+	});
+
+	constructor = Napi::Persistent(funcs);
+	constructor.SuppressDestruct();
+
+	// [NOTE]
+	// do NOT do exports.Set("K2hdkcNode", func) here if InitAll will return createFn.
+	//
+}
+
+Napi::Object K2hdkcNode::NewInstance(const Napi::CallbackInfo& info)
+{
+	Napi::Env env = info.Env();
+	Napi::EscapableHandleScope scope(env);
+
+    Napi::Object	obj			= constructor.Value().New({}).As<Napi::Object>();
+	K2hdkcNode*		pk2hdkcobj	= K2hdkcNode::Unwrap(obj.As<Napi::Object>());
+
+	if(0 < info.Length()){
 		// called with arguments
 		//
 		// [NOTE] this logic as same as Init() except callback function parameter
 		//
-		if(0 < info.Length()){
-			// create permanent connection at initializing
-			int				argpos			= 0;
-			int16_t			ctlport			= CHM_INVALID_PORT;
+		size_t		argpos			= 0;
+		std::string	conf;
+		int16_t		ctlport			= static_cast<int16_t>(CHM_INVALID_PORT);
+		std::string	cuk;
+		bool		auto_rejoin		= false;
+		bool		no_giveup_rejoin= false;
 
-			if(!info[argpos]->IsString()){
-				Nan::ThrowSyntaxError("First parameter is not configuration");
-			}else{
-				// 1'st argument is conf
-				Nan::Utf8String	buf(info[argpos++]);
-				std::string		conf			= std::string(*buf);
-				std::string		cuk("");
-				bool			auto_rejoin		= false;
-				bool			no_giveup_rejoin= false;
-				if(argpos < info.Length() && info[argpos]->IsNumber()){
-					// 2'nd argument is port
-					ctlport					= static_cast<int16_t>(Nan::To<int32_t>(info[argpos++]).FromJust());
-					if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
-						// 3'rd argument is cuk
-						Nan::Utf8String	buf2(info[argpos++]);
-						cuk				= std::string(*buf2);
-						if(argpos < info.Length() && info[argpos]->IsBoolean()){
-							// 4'th argument is auto rejoin
-							auto_rejoin			= Nan::To<bool>(info[argpos++]).FromJust();
-							if(argpos < info.Length() && info[argpos]->IsBoolean()){
-								// 5'th argument is no giveup rejoin
-								no_giveup_rejoin= Nan::To<bool>(info[argpos++]).FromJust();
-							}
-						}else if(argpos < info.Length() && info[argpos]->IsBoolean()){
-							// 4'th argument is no giveup rejoin
-							no_giveup_rejoin	= Nan::To<bool>(info[argpos++]).FromJust();
-						}
-					}else if(argpos < info.Length() && info[argpos]->IsBoolean()){
-						// 3'rd argument is auto rejoin
-						auto_rejoin			= Nan::To<bool>(info[argpos++]).FromJust();
-						if(argpos < info.Length() && info[argpos]->IsBoolean()){
-							// 4'th argument is no giveup rejoin
-							no_giveup_rejoin= Nan::To<bool>(info[argpos++]).FromJust();
-						}
-					}else if(argpos < info.Length() && info[argpos]->IsBoolean()){
-						// 3'rd argument is no giveup rejoin
-						no_giveup_rejoin	= Nan::To<bool>(info[argpos++]).FromJust();
-					}
-
-				}else if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
-					// 2'nd argument is cuk
-					Nan::Utf8String	buf3(info[argpos++]);
-					cuk				= std::string(*buf3);
-					if(argpos < info.Length() && info[argpos]->IsBoolean()){
-						// 3'rd argument is auto rejoin
-						auto_rejoin			= Nan::To<bool>(info[argpos++]).FromJust();
-						if(argpos < info.Length() && info[argpos]->IsBoolean()){
-							// 4'th argument is no giveup rejoin
-							no_giveup_rejoin= Nan::To<bool>(info[argpos++]).FromJust();
-						}
-					}else if(argpos < info.Length() && info[argpos]->IsBoolean()){
-						// 3'rd argument is no giveup rejoin
-						no_giveup_rejoin	= Nan::To<bool>(info[argpos++]).FromJust();
-					}
-
-				}else if(argpos < info.Length() && info[argpos]->IsBoolean()){
-					// 2'nd argument is auto rejoin
-					auto_rejoin				= Nan::To<bool>(info[argpos++]).FromJust();
-					if(argpos < info.Length() && info[argpos]->IsBoolean()){
-						// 3'rd argument is no giveup rejoin
-						no_giveup_rejoin	= Nan::To<bool>(info[argpos++]).FromJust();
-					}
-				}else if(argpos < info.Length() && info[argpos]->IsBoolean()){
-					// 2'nd argument is no giveup rejoin
-					no_giveup_rejoin		= Nan::To<bool>(info[argpos++]).FromJust();
-				}
-
-				// check over arguments
-				if(argpos < info.Length()){
-					Nan::ThrowSyntaxError("Too many parameter.");
-				}else{
-					// build permanent connection object
-					obj->_k2hdkcslave = new K2hdkcSlave();
-					if(!obj->_k2hdkcslave->Initialize(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin)){
-						obj->Clean();
-						Nan::ThrowError("Could not initialize k2hdkc slave object");
-					}else{
-						if(!obj->_k2hdkcslave->Open(no_giveup_rejoin)){
-							obj->Clean();
-							Nan::ThrowError("Could not open msgid by k2hdkc slave object");
-						}
-					}
-				}
-			}
+		// parse arguments
+		if(!K2hdkcNode::ParseArgumentsForOnetime(info, pk2hdkcobj, argpos, conf, ctlport, cuk, auto_rejoin, no_giveup_rejoin)){
+		    return scope.Escape(obj).As<Napi::Object>();
 		}
-		info.GetReturnValue().Set(info.This());
-
-	}else{ 
-		// Invoked as plain function K2hdkcNode(), turn into construct call.
-		Local<Function>	cons		= Nan::New<Function>(constructor);
-		const unsigned	argc		= info.Length();
-		const unsigned	arraysize	= (0 < argc ? argc : 1);
-		Local<Value>	argv[arraysize];
-		if(0 < argc){
-			for(unsigned cnt = 0; cnt < argc; ++cnt){
-				argv[cnt]			= info[cnt];
-			}
-		}else{
-			argv[0]					= Nan::Null();		// dummy
+		// check over arguments
+		if(argpos < info.Length()){
+			Napi::TypeError::New(env, "Too many parameter.").ThrowAsJavaScriptException();
+		    return scope.Escape(obj).As<Napi::Object>();
 		}
-		info.GetReturnValue().Set(Nan::NewInstance(cons, argc, argv).ToLocalChecked()); 
+
+		// build permanent connection object
+		if(!pk2hdkcobj->_k2hdkcslave.Initialize(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin)){
+			pk2hdkcobj->Clean();
+			Napi::Error::New(env, "Could not initialize k2hdkc slave object").ThrowAsJavaScriptException();
+		    return scope.Escape(obj).As<Napi::Object>();
+		}
+		if(!pk2hdkcobj->_k2hdkcslave.Open(no_giveup_rejoin)){
+			pk2hdkcobj->Clean();
+			Napi::Error::New(env, "Could not open msgid by k2hdkc slave object").ThrowAsJavaScriptException();
+		    return scope.Escape(obj).As<Napi::Object>();
+		}
 	}
+    return scope.Escape(obj).As<Napi::Object>();
 }
 
-NAN_METHOD(K2hdkcNode::NewInstance)
+Napi::Object K2hdkcNode::GetInstance(const Napi::CallbackInfo& info)
 {
-	Local<Function>	cons		= Nan::New<Function>(constructor);
-	const unsigned	argc		= info.Length();
-	const unsigned	arraysize	= (0 < argc ? argc : 1);
-	Local<Value>	argv[arraysize];
-	if(0 < argc){
-		for(unsigned cnt = 0; cnt < argc; ++cnt){
-			argv[cnt]			= info[cnt];
-		}
+	if(0 < info.Length()){
+		return K2hdkcNode::constructor.New({info[0]});
 	}else{
-		argv[0]					= Nan::Null();		// dummy
+		return K2hdkcNode::constructor.New({});
 	}
-	info.GetReturnValue().Set(Nan::NewInstance(cons, argc, argv).ToLocalChecked()); 
-}
-
-Local<Object> K2hdkcNode::GetInstance(Nan::NAN_METHOD_ARGS_TYPE info)
-{
-	Nan::EscapableHandleScope	scope;
-
-	Local<Function>	cons		= Nan::New<Function>(constructor);
-	const unsigned	argc		= info.Length();
-	const unsigned	arraysize	= (0 < argc ? argc : 1);
-	Local<Value>	argv[arraysize];
-	if(0 < argc){
-		for(unsigned cnt = 0; cnt < argc; ++cnt){
-			argv[cnt]			= info[cnt];
-		}
-	}else{
-		argv[0]					= Nan::Null();		// dummy
-	}
-	Local<Object> 	instance	= Nan::NewInstance(cons, argc, argv).ToLocalChecked();
-
-	return scope.Escape(instance);
 }
 
 /**
@@ -445,44 +445,47 @@ Local<Object> K2hdkcNode::GetInstance(Nan::NAN_METHOD_ARGS_TYPE info)
  * @return return true for success, false for failure
  */
 
-NAN_METHOD(K2hdkcNode::On)
+Napi::Value K2hdkcNode::On(const Napi::CallbackInfo& info)
 {
+	Napi::Env env = info.Env();
+
 	if(info.Length() < 1){
-		Nan::ThrowSyntaxError("No handle emitter name is specified.");
-		return;
+		Napi::TypeError::New(env, "No handle emitter name is specified.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}else if(info.Length() < 2){
-		Nan::ThrowSyntaxError("No callback is specified.");
-		return;
+		Napi::TypeError::New(env, "No callback is specified.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
 
 	// check emitter name
-	Nan::Utf8String	emitter(info[0]);
-	const char*		pemitter;
-	if(NULL == (pemitter = GetNormalizationEmitter(*emitter))){
-		string	msg = "Unknown ";
-		msg			+= *emitter;
-		msg			+= " emitter";
-		Nan::ThrowSyntaxError(msg.c_str());
-		return;
+	std::string emitter  = info[0].ToString().Utf8Value();
+	const char* pemitter = GetNormalizationEmitter(emitter.c_str());
+	if(!pemitter){
+		std::string	msg	= "Unknown ";
+		msg				+= emitter;
+		msg				+= " emitter";
+		Napi::TypeError::New(env, msg).ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
+
 	// add callback
-	SetK2hdkcNodeCallback(info, 1, pemitter);
+	return SetK2hdkcNodeCallback(info, 1, pemitter);
 }
 
 /**
  * @memberof K2hdkcNode
  * @fn void OnInit(void)
  *
- * @brief	set callback handling for initializing chmpx object
+ * @brief	set callback handling for initializing k2hdkc object
  *
  * @param[in] cbfunc			callback function.
  *
  * @return return true for success, false for failure
  */
 
-NAN_METHOD(K2hdkcNode::OnInit)
+Napi::Value K2hdkcNode::OnInit(const Napi::CallbackInfo& info)
 {
-	SetK2hdkcNodeCallback(info, 0, stc_emitters[EMITTER_POS_INIT]);
+	return SetK2hdkcNodeCallback(info, 0, stc_emitters[EMITTER_POS_INIT]);
 }
 
 /**
@@ -496,233 +499,233 @@ NAN_METHOD(K2hdkcNode::OnInit)
  * @return return true for success, false for failure
  */
 
-NAN_METHOD(K2hdkcNode::OnGet)
+Napi::Value K2hdkcNode::OnGet(const Napi::CallbackInfo& info)
 {
-	SetK2hdkcNodeCallback(info, 0, stc_emitters[EMITTER_POS_GET]);
+	return SetK2hdkcNodeCallback(info, 0, stc_emitters[EMITTER_POS_GET]);
 }
 
 /**
  * @memberof K2hdkcNode
  * @fn void OnGetSubkeys(void)
  *
- * @brief	set callback handling for initializing chmpx object
+ * @brief	set callback handling for getting value
  *
  * @param[in] cbfunc			callback function.
  *
  * @return return true for success, false for failure
  */
 
-NAN_METHOD(K2hdkcNode::OnGetSubkeys)
+Napi::Value K2hdkcNode::OnGetSubkeys(const Napi::CallbackInfo& info)
 {
-	SetK2hdkcNodeCallback(info, 0, stc_emitters[EMITTER_POS_GETSUBKEYS]);
+	return SetK2hdkcNodeCallback(info, 0, stc_emitters[EMITTER_POS_GETSUBKEYS]);
 }
 
 /**
  * @memberof K2hdkcNode
  * @fn void OnGetAttrs(void)
  *
- * @brief	set callback handling for initializing chmpx object
+ * @brief	set callback handling for getting attributes
  *
  * @param[in] cbfunc			callback function.
  *
  * @return return true for success, false for failure
  */
 
-NAN_METHOD(K2hdkcNode::OnGetAttrs)
+Napi::Value K2hdkcNode::OnGetAttrs(const Napi::CallbackInfo& info)
 {
-	SetK2hdkcNodeCallback(info, 0, stc_emitters[EMITTER_POS_GETATTRS]);
+	return SetK2hdkcNodeCallback(info, 0, stc_emitters[EMITTER_POS_GETATTRS]);
 }
 
 /**
  * @memberof K2hdkcNode
  * @fn void OnSet(void)
  *
- * @brief	set callback handling for initializing chmpx object
+ * @brief	set callback handling for setting value
  *
  * @param[in] cbfunc			callback function.
  *
  * @return return true for success, false for failure
  */
 
-NAN_METHOD(K2hdkcNode::OnSet)
+Napi::Value K2hdkcNode::OnSet(const Napi::CallbackInfo& info)
 {
-	SetK2hdkcNodeCallback(info, 0, stc_emitters[EMITTER_POS_SET]);
+	return SetK2hdkcNodeCallback(info, 0, stc_emitters[EMITTER_POS_SET]);
 }
 
 /**
  * @memberof K2hdkcNode
  * @fn void OnSetSubkeys(void)
  *
- * @brief	set callback handling for initializing chmpx object
+ * @brief	set callback handling for setting subkeys
  *
  * @param[in] cbfunc			callback function.
  *
  * @return return true for success, false for failure
  */
 
-NAN_METHOD(K2hdkcNode::OnSetSubkeys)
+Napi::Value K2hdkcNode::OnSetSubkeys(const Napi::CallbackInfo& info)
 {
-	SetK2hdkcNodeCallback(info, 0, stc_emitters[EMITTER_POS_SETSUBKEYS]);
+	return SetK2hdkcNodeCallback(info, 0, stc_emitters[EMITTER_POS_SETSUBKEYS]);
 }
 
 /**
  * @memberof K2hdkcNode
  * @fn void OnSetAll(void)
  *
- * @brief	set callback handling for initializing chmpx object
+ * @brief	set callback handling for setting all value
  *
  * @param[in] cbfunc			callback function.
  *
  * @return return true for success, false for failure
  */
 
-NAN_METHOD(K2hdkcNode::OnSetAll)
+Napi::Value K2hdkcNode::OnSetAll(const Napi::CallbackInfo& info)
 {
-	SetK2hdkcNodeCallback(info, 0, stc_emitters[EMITTER_POS_SETALL]);
+	return SetK2hdkcNodeCallback(info, 0, stc_emitters[EMITTER_POS_SETALL]);
 }
 
 /**
  * @memberof K2hdkcNode
  * @fn void OnRemove(void)
  *
- * @brief	set callback handling for initializing chmpx object
+ * @brief	set callback handling for removing
  *
  * @param[in] cbfunc			callback function.
  *
  * @return return true for success, false for failure
  */
 
-NAN_METHOD(K2hdkcNode::OnRemove)
+Napi::Value K2hdkcNode::OnRemove(const Napi::CallbackInfo& info)
 {
-	SetK2hdkcNodeCallback(info, 0, stc_emitters[EMITTER_POS_REMOVE]);
+	return SetK2hdkcNodeCallback(info, 0, stc_emitters[EMITTER_POS_REMOVE]);
 }
 
 /**
  * @memberof K2hdkcNode
  * @fn void OnRename(void)
  *
- * @brief	set callback handling for initializing chmpx object
+ * @brief	set callback handling for renaming
  *
  * @param[in] cbfunc			callback function.
  *
  * @return return true for success, false for failure
  */
 
-NAN_METHOD(K2hdkcNode::OnRename)
+Napi::Value K2hdkcNode::OnRename(const Napi::CallbackInfo& info)
 {
-	SetK2hdkcNodeCallback(info, 0, stc_emitters[EMITTER_POS_RENAME]);
+	return SetK2hdkcNodeCallback(info, 0, stc_emitters[EMITTER_POS_RENAME]);
 }
 
 /**
  * @memberof K2hdkcNode
  * @fn void OnQueuePush(void)
  *
- * @brief	set callback handling for initializing chmpx object
+ * @brief	set callback handling for pushing queue
  *
  * @param[in] cbfunc			callback function.
  *
  * @return return true for success, false for failure
  */
 
-NAN_METHOD(K2hdkcNode::OnQueuePush)
+Napi::Value K2hdkcNode::OnQueuePush(const Napi::CallbackInfo& info)
 {
-	SetK2hdkcNodeCallback(info, 0, stc_emitters[EMITTER_POS_QUEUEPUSH]);
+	return SetK2hdkcNodeCallback(info, 0, stc_emitters[EMITTER_POS_QUEUEPUSH]);
 }
 
 /**
  * @memberof K2hdkcNode
  * @fn void OnQueuePop(void)
  *
- * @brief	set callback handling for initializing chmpx object
+ * @brief	set callback handling for popping queue
  *
  * @param[in] cbfunc			callback function.
  *
  * @return return true for success, false for failure
  */
 
-NAN_METHOD(K2hdkcNode::OnQueuePop)
+Napi::Value K2hdkcNode::OnQueuePop(const Napi::CallbackInfo& info)
 {
-	SetK2hdkcNodeCallback(info, 0, stc_emitters[EMITTER_POS_QUEUEPOP]);
+	return SetK2hdkcNodeCallback(info, 0, stc_emitters[EMITTER_POS_QUEUEPOP]);
 }
 
 /**
  * @memberof K2hdkcNode
  * @fn void OnQueueRemove(void)
  *
- * @brief	set callback handling for initializing chmpx object
+ * @brief	set callback handling for removing queue
  *
  * @param[in] cbfunc			callback function.
  *
  * @return return true for success, false for failure
  */
 
-NAN_METHOD(K2hdkcNode::OnQueueRemove)
+Napi::Value K2hdkcNode::OnQueueRemove(const Napi::CallbackInfo& info)
 {
-	SetK2hdkcNodeCallback(info, 0, stc_emitters[EMITTER_POS_QUEUEREMOVE]);
+	return SetK2hdkcNodeCallback(info, 0, stc_emitters[EMITTER_POS_QUEUEREMOVE]);
 }
 
 /**
  * @memberof K2hdkcNode
  * @fn void OnCasInit(void)
  *
- * @brief	set callback handling for initializing chmpx object
+ * @brief	set callback handling for initializing CAS
  *
  * @param[in] cbfunc			callback function.
  *
  * @return return true for success, false for failure
  */
 
-NAN_METHOD(K2hdkcNode::OnCasInit)
+Napi::Value K2hdkcNode::OnCasInit(const Napi::CallbackInfo& info)
 {
-	SetK2hdkcNodeCallback(info, 0, stc_emitters[EMITTER_POS_CASINIT]);
+	return SetK2hdkcNodeCallback(info, 0, stc_emitters[EMITTER_POS_CASINIT]);
 }
 
 /**
  * @memberof K2hdkcNode
  * @fn void OnCasGet(void)
  *
- * @brief	set callback handling for initializing chmpx object
+ * @brief	set callback handling for getting CAS
  *
  * @param[in] cbfunc			callback function.
  *
  * @return return true for success, false for failure
  */
 
-NAN_METHOD(K2hdkcNode::OnCasGet)
+Napi::Value K2hdkcNode::OnCasGet(const Napi::CallbackInfo& info)
 {
-	SetK2hdkcNodeCallback(info, 0, stc_emitters[EMITTER_POS_CASGET]);
+	return SetK2hdkcNodeCallback(info, 0, stc_emitters[EMITTER_POS_CASGET]);
 }
 
 /**
  * @memberof K2hdkcNode
  * @fn void OnCasSet(void)
  *
- * @brief	set callback handling for initializing chmpx object
+ * @brief	set callback handling for setting CAS
  *
  * @param[in] cbfunc			callback function.
  *
  * @return return true for success, false for failure
  */
 
-NAN_METHOD(K2hdkcNode::OnCasSet)
+Napi::Value K2hdkcNode::OnCasSet(const Napi::CallbackInfo& info)
 {
-	SetK2hdkcNodeCallback(info, 0, stc_emitters[EMITTER_POS_CASSET]);
+	return SetK2hdkcNodeCallback(info, 0, stc_emitters[EMITTER_POS_CASSET]);
 }
 
 /**
  * @memberof K2hdkcNode
  * @fn void OnCasIncDec(void)
  *
- * @brief	set callback handling for initializing chmpx object
+ * @brief	set callback handling for increment/decrement CAS
  *
  * @param[in] cbfunc			callback function.
  *
  * @return return true for success, false for failure
  */
 
-NAN_METHOD(K2hdkcNode::OnCasIncDec)
+Napi::Value K2hdkcNode::OnCasIncDec(const Napi::CallbackInfo& info)
 {
-	SetK2hdkcNodeCallback(info, 0, stc_emitters[EMITTER_POS_CASINCDEC]);
+	return SetK2hdkcNodeCallback(info, 0, stc_emitters[EMITTER_POS_CASINCDEC]);
 }
 
 /**
@@ -739,249 +742,252 @@ NAN_METHOD(K2hdkcNode::OnCasIncDec)
  * @return return true for success, false for failure
  */
 
-NAN_METHOD(K2hdkcNode::Off)
+Napi::Value K2hdkcNode::Off(const Napi::CallbackInfo& info)
 {
+	Napi::Env env = info.Env();
+
 	if(info.Length() < 1){
-		Nan::ThrowSyntaxError("No handle emitter name is specified.");
-		return;
+		Napi::TypeError::New(env, "No handle emitter name is specified.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
 
 	// check emitter name
-	Nan::Utf8String	emitter(info[0]);
-	const char*		pemitter;
-	if(NULL == (pemitter = GetNormalizationEmitter(*emitter))){
-		string	msg = "Unknown ";
-		msg			+= *emitter;
-		msg			+= " emitter";
-		Nan::ThrowSyntaxError(msg.c_str());
-		return;
+	std::string	emitter  = info[0].ToString().Utf8Value();
+	const char*	pemitter = GetNormalizationEmitter(emitter.c_str());
+	if (nullptr == pemitter) {
+		std::string msg	= "Unknown ";
+		msg				+= emitter;
+		msg				+= " emitter";
+		Napi::TypeError::New(env, msg).ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
+
 	// unset callback
-	UnsetK2hdkcNodeCallback(info, pemitter);
+	return UnsetK2hdkcNodeCallback(info, pemitter);
 }
 
 /**
  * @memberof K2hdkcNode
  * @fn void OffInit(void)
  *
- * @brief	set callback handling for initializing chmpx object
+ * @brief	unset callback handling for initializing k2hdkc object
  *
  * @return return true for success, false for failure
  */
 
-NAN_METHOD(K2hdkcNode::OffInit)
+Napi::Value K2hdkcNode::OffInit(const Napi::CallbackInfo& info)
 {
-	UnsetK2hdkcNodeCallback(info, stc_emitters[EMITTER_POS_INIT]);
+	return UnsetK2hdkcNodeCallback(info, stc_emitters[EMITTER_POS_INIT]);
 }
 
 /**
  * @memberof K2hdkcNode
  * @fn void OffGet(void)
  *
- * @brief	set callback handling for initializing chmpx object
+ * @brief	unset callback handling for getting value
  *
  * @return return true for success, false for failure
  */
 
-NAN_METHOD(K2hdkcNode::OffGet)
+Napi::Value K2hdkcNode::OffGet(const Napi::CallbackInfo& info)
 {
-	UnsetK2hdkcNodeCallback(info, stc_emitters[EMITTER_POS_GET]);
+	return UnsetK2hdkcNodeCallback(info, stc_emitters[EMITTER_POS_GET]);
 }
 
 /**
  * @memberof K2hdkcNode
  * @fn void OffGetSubkeys(void)
  *
- * @brief	set callback handling for initializing chmpx object
+ * @brief	unset callback handling for getting subkeys
  *
  * @return return true for success, false for failure
  */
 
-NAN_METHOD(K2hdkcNode::OffGetSubkeys)
+Napi::Value K2hdkcNode::OffGetSubkeys(const Napi::CallbackInfo& info)
 {
-	UnsetK2hdkcNodeCallback(info, stc_emitters[EMITTER_POS_GETSUBKEYS]);
+	return UnsetK2hdkcNodeCallback(info, stc_emitters[EMITTER_POS_GETSUBKEYS]);
 }
 
 /**
  * @memberof K2hdkcNode
  * @fn void OffGetAttrs(void)
  *
- * @brief	set callback handling for initializing chmpx object
+ * @brief	unset callback handling for getting attributes
  *
  * @return return true for success, false for failure
  */
 
-NAN_METHOD(K2hdkcNode::OffGetAttrs)
+Napi::Value K2hdkcNode::OffGetAttrs(const Napi::CallbackInfo& info)
 {
-	UnsetK2hdkcNodeCallback(info, stc_emitters[EMITTER_POS_GETATTRS]);
+	return UnsetK2hdkcNodeCallback(info, stc_emitters[EMITTER_POS_GETATTRS]);
 }
 
 /**
  * @memberof K2hdkcNode
  * @fn void OffSet(void)
  *
- * @brief	set callback handling for initializing chmpx object
+ * @brief	unset callback handling for setting value
  *
  * @return return true for success, false for failure
  */
 
-NAN_METHOD(K2hdkcNode::OffSet)
+Napi::Value K2hdkcNode::OffSet(const Napi::CallbackInfo& info)
 {
-	UnsetK2hdkcNodeCallback(info, stc_emitters[EMITTER_POS_SET]);
+	return UnsetK2hdkcNodeCallback(info, stc_emitters[EMITTER_POS_SET]);
 }
 
 /**
  * @memberof K2hdkcNode
  * @fn void OffSetSubkeys(void)
  *
- * @brief	set callback handling for initializing chmpx object
+ * @brief	unset callback handling for setting subkeys
  *
  * @return return true for success, false for failure
  */
 
-NAN_METHOD(K2hdkcNode::OffSetSubkeys)
+Napi::Value K2hdkcNode::OffSetSubkeys(const Napi::CallbackInfo& info)
 {
-	UnsetK2hdkcNodeCallback(info, stc_emitters[EMITTER_POS_SETSUBKEYS]);
+	return UnsetK2hdkcNodeCallback(info, stc_emitters[EMITTER_POS_SETSUBKEYS]);
 }
 
 /**
  * @memberof K2hdkcNode
  * @fn void OffSetAll(void)
  *
- * @brief	set callback handling for initializing chmpx object
+ * @brief	unset callback handling for setting all values
  *
  * @return return true for success, false for failure
  */
 
-NAN_METHOD(K2hdkcNode::OffSetAll)
+Napi::Value K2hdkcNode::OffSetAll(const Napi::CallbackInfo& info)
 {
-	UnsetK2hdkcNodeCallback(info, stc_emitters[EMITTER_POS_SETALL]);
+	return UnsetK2hdkcNodeCallback(info, stc_emitters[EMITTER_POS_SETALL]);
 }
 
 /**
  * @memberof K2hdkcNode
  * @fn void OffRemove(void)
  *
- * @brief	set callback handling for initializing chmpx object
+ * @brief	unset callback handling for removing
  *
  * @return return true for success, false for failure
  */
 
-NAN_METHOD(K2hdkcNode::OffRemove)
+Napi::Value K2hdkcNode::OffRemove(const Napi::CallbackInfo& info)
 {
-	UnsetK2hdkcNodeCallback(info, stc_emitters[EMITTER_POS_REMOVE]);
+	return UnsetK2hdkcNodeCallback(info, stc_emitters[EMITTER_POS_REMOVE]);
 }
 
 /**
  * @memberof K2hdkcNode
  * @fn void OffRename(void)
  *
- * @brief	set callback handling for initializing chmpx object
+ * @brief	unset callback handling for renaming
  *
  * @return return true for success, false for failure
  */
 
-NAN_METHOD(K2hdkcNode::OffRename)
+Napi::Value K2hdkcNode::OffRename(const Napi::CallbackInfo& info)
 {
-	UnsetK2hdkcNodeCallback(info, stc_emitters[EMITTER_POS_RENAME]);
+	return UnsetK2hdkcNodeCallback(info, stc_emitters[EMITTER_POS_RENAME]);
 }
 
 /**
  * @memberof K2hdkcNode
  * @fn void OffQueuePush(void)
  *
- * @brief	set callback handling for initializing chmpx object
+ * @brief	unset callback handling for pushing queue
  *
  * @return return true for success, false for failure
  */
 
-NAN_METHOD(K2hdkcNode::OffQueuePush)
+Napi::Value K2hdkcNode::OffQueuePush(const Napi::CallbackInfo& info)
 {
-	UnsetK2hdkcNodeCallback(info, stc_emitters[EMITTER_POS_QUEUEPUSH]);
+	return UnsetK2hdkcNodeCallback(info, stc_emitters[EMITTER_POS_QUEUEPUSH]);
 }
 
 /**
  * @memberof K2hdkcNode
  * @fn void OffQueuePop(void)
  *
- * @brief	set callback handling for initializing chmpx object
+ * @brief	unset callback handling for popping queue
  *
  * @return return true for success, false for failure
  */
 
-NAN_METHOD(K2hdkcNode::OffQueuePop)
+Napi::Value K2hdkcNode::OffQueuePop(const Napi::CallbackInfo& info)
 {
-	UnsetK2hdkcNodeCallback(info, stc_emitters[EMITTER_POS_QUEUEPOP]);
+	return UnsetK2hdkcNodeCallback(info, stc_emitters[EMITTER_POS_QUEUEPOP]);
 }
 
 /**
  * @memberof K2hdkcNode
  * @fn void OffQueueRemove(void)
  *
- * @brief	set callback handling for initializing chmpx object
+ * @brief	unset callback handling for removing queue
  *
  * @return return true for success, false for failure
  */
 
-NAN_METHOD(K2hdkcNode::OffQueueRemove)
+Napi::Value K2hdkcNode::OffQueueRemove(const Napi::CallbackInfo& info)
 {
-	UnsetK2hdkcNodeCallback(info, stc_emitters[EMITTER_POS_QUEUEREMOVE]);
+	return UnsetK2hdkcNodeCallback(info, stc_emitters[EMITTER_POS_QUEUEREMOVE]);
 }
 
 /**
  * @memberof K2hdkcNode
  * @fn void OffCasInit(void)
  *
- * @brief	set callback handling for initializing chmpx object
+ * @brief	unset callback handling for initializing CAS
  *
  * @return return true for success, false for failure
  */
 
-NAN_METHOD(K2hdkcNode::OffCasInit)
+Napi::Value K2hdkcNode::OffCasInit(const Napi::CallbackInfo& info)
 {
-	UnsetK2hdkcNodeCallback(info, stc_emitters[EMITTER_POS_CASINIT]);
+	return UnsetK2hdkcNodeCallback(info, stc_emitters[EMITTER_POS_CASINIT]);
 }
 
 /**
  * @memberof K2hdkcNode
  * @fn void OffCasGet(void)
  *
- * @brief	set callback handling for initializing chmpx object
+ * @brief	unset callback handling for getting CAS
  *
  * @return return true for success, false for failure
  */
 
-NAN_METHOD(K2hdkcNode::OffCasGet)
+Napi::Value K2hdkcNode::OffCasGet(const Napi::CallbackInfo& info)
 {
-	UnsetK2hdkcNodeCallback(info, stc_emitters[EMITTER_POS_CASGET]);
+	return UnsetK2hdkcNodeCallback(info, stc_emitters[EMITTER_POS_CASGET]);
 }
 
 /**
  * @memberof K2hdkcNode
  * @fn void OffCasSet(void)
  *
- * @brief	set callback handling for initializing chmpx object
+ * @brief	unset callback handling for setting CAS
  *
  * @return return true for success, false for failure
  */
 
-NAN_METHOD(K2hdkcNode::OffCasSet)
+Napi::Value K2hdkcNode::OffCasSet(const Napi::CallbackInfo& info)
 {
-	UnsetK2hdkcNodeCallback(info, stc_emitters[EMITTER_POS_CASSET]);
+	return UnsetK2hdkcNodeCallback(info, stc_emitters[EMITTER_POS_CASSET]);
 }
 
 /**
  * @memberof K2hdkcNode
  * @fn void OffCasIncDec(void)
  *
- * @brief	set callback handling for initializing chmpx object
+ * @brief	unset callback handling for increment/decrement CAS
  *
  * @return return true for success, false for failure
  */
 
-NAN_METHOD(K2hdkcNode::OffCasIncDec)
+Napi::Value K2hdkcNode::OffCasIncDec(const Napi::CallbackInfo& info)
 {
-	UnsetK2hdkcNodeCallback(info, stc_emitters[EMITTER_POS_CASINCDEC]);
+	return UnsetK2hdkcNodeCallback(info, stc_emitters[EMITTER_POS_CASINCDEC]);
 }
 
 /**
@@ -1019,196 +1025,82 @@ NAN_METHOD(K2hdkcNode::OffCasIncDec)
  *
  */
 
-NAN_METHOD(K2hdkcNode::Init)
+Napi::Value K2hdkcNode::Init(const Napi::CallbackInfo& info)
 {
-	K2hdkcNode*		obj	= Nan::ObjectWrap::Unwrap<K2hdkcNode>(info.This());
+	Napi::Env env = info.Env();
+
+	// Unwrap
+	if(!info.This().IsObject() || !info.This().As<Napi::Object>().InstanceOf(K2hdkcNode::constructor.Value())){
+		Napi::TypeError::New(env, "Invalid this object(K2hdkcNode instance)").ThrowAsJavaScriptException();
+		return env.Undefined();
+	}
+	K2hdkcNode*	obj	= Napi::ObjectWrap<K2hdkcNode>::Unwrap(info.This().As<Napi::Object>());
+
+	// initial callback comes from emitter map if set
+	Napi::Function				maybeCallback;
+	bool						hasCallback		= false;
+	Napi::FunctionReference*	emitterCbRef	= obj->_cbs.Find(stc_emitters[EMITTER_POS_INIT]);
+	if(emitterCbRef){
+		maybeCallback	= emitterCbRef->Value();
+		hasCallback		= true;
+	}
 
 	// reinitialize at first
 	obj->Clean();
 
-	// check arguments
+	// default values
+	std::string		conf("");
+	int16_t			ctlport = static_cast<int16_t>(CHM_INVALID_PORT);
+	std::string		cuk("");
+
 	if(0 == info.Length()){
-		Nan::Callback*	callback = obj->_cbs.Find(stc_emitters[EMITTER_POS_INIT]);
-		if(callback){
+		if(hasCallback){
 			// [NOTE]
 			// If callback is set, it calls worker. But it returns error,
 			// because no configuration is specified.
 			//
-			Nan::AsyncQueueWorker(new InitWorker(callback, obj->_k2hdkcslave, NULL, 0, NULL, false, false));
+			InitWorker*	worker = new InitWorker(maybeCallback, obj->_k2hdkcslave, conf, ctlport, cuk, false, false);
+			worker->Queue();
 		}
-		// onetime connection type : nothing to do
-		info.GetReturnValue().Set(Nan::True());
+		return Napi::Boolean::New(env, true);
+
 	}else{
 		// permanent connection type
-		Nan::Callback*	callback		= obj->_cbs.Find(stc_emitters[EMITTER_POS_INIT]);
-		int				argpos			= 0;
-		std::string		conf("");
-		int16_t			ctlport			= CHM_INVALID_PORT;
-		std::string		cuk("");
-		bool			auto_rejoin		= false;
-		bool			no_giveup_rejoin= false;
+		size_t	argpos			= 0;
+		bool	auto_rejoin		= false;
+		bool	no_giveup_rejoin= false;
 
-		if(info[argpos]->IsString()){
-			// 1'st argument is conf
-			Nan::Utf8String	buf(info[argpos++]);
-			conf						= std::string(*buf);
-
-			if(argpos < info.Length() && info[argpos]->IsNumber()){
-				// 2'nd argument is port
-				ctlport					= static_cast<int16_t>(Nan::To<int32_t>(info[argpos++]).FromJust());
-
-				if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
-					// 3'rd argument is cuk
-					Nan::Utf8String	buf2(info[argpos++]);
-					cuk					= std::string(*buf2);
-					if(argpos < info.Length() && info[argpos]->IsBoolean()){
-						// 4'th argument is auto rejoin
-						auto_rejoin			= Nan::To<bool>(info[argpos++]).FromJust();
-
-						if(argpos < info.Length() && info[argpos]->IsBoolean()){
-							// 5'th argument is no giveup rejoin
-							no_giveup_rejoin= Nan::To<bool>(info[argpos++]).FromJust();
-
-							if(argpos < info.Length() && info[argpos]->IsFunction()){
-								// 6'th argument is callback
-								callback	= new Nan::Callback(info[argpos++].As<v8::Function>());
-							}
-						}else if(argpos < info.Length() && info[argpos]->IsFunction()){
-							// 5'th argument is callback
-							callback		= new Nan::Callback(info[argpos++].As<v8::Function>());
-						}
-					}else if(argpos < info.Length() && info[argpos]->IsBoolean()){
-						// 4'th argument is no giveup rejoin
-						no_giveup_rejoin	= Nan::To<bool>(info[argpos++]).FromJust();
-
-						if(argpos < info.Length() && info[argpos]->IsFunction()){
-							// 5'th argument is callback
-							callback		= new Nan::Callback(info[argpos++].As<v8::Function>());
-						}
-					}else if(argpos < info.Length() && info[argpos]->IsFunction()){
-						// 4'th argument is callback
-						callback			= new Nan::Callback(info[argpos++].As<v8::Function>());
-					}
-
-				}else if(argpos < info.Length() && info[argpos]->IsBoolean()){
-					// 3'rd argument is auto rejoin
-					auto_rejoin			= Nan::To<bool>(info[argpos++]).FromJust();
-
-					if(argpos < info.Length() && info[argpos]->IsBoolean()){
-						// 4'th argument is no giveup rejoin
-						no_giveup_rejoin= Nan::To<bool>(info[argpos++]).FromJust();
-
-						if(argpos < info.Length() && info[argpos]->IsFunction()){
-							// 5'th argument is callback
-							callback	= new Nan::Callback(info[argpos++].As<v8::Function>());
-						}
-					}else if(argpos < info.Length() && info[argpos]->IsFunction()){
-						// 4'th argument is callback
-						callback		= new Nan::Callback(info[argpos++].As<v8::Function>());
-					}
-				}else if(argpos < info.Length() && info[argpos]->IsBoolean()){
-					// 3'rd argument is no giveup rejoin
-					no_giveup_rejoin	= Nan::To<bool>(info[argpos++]).FromJust();
-
-					if(argpos < info.Length() && info[argpos]->IsFunction()){
-						// 4'th argument is callback
-						callback		= new Nan::Callback(info[argpos++].As<v8::Function>());
-					}
-				}else if(argpos < info.Length() && info[argpos]->IsFunction()){
-					// 3'rd argument is callback
-					callback			= new Nan::Callback(info[argpos++].As<v8::Function>());
-				}
-
-			}else if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
-				// 2'nd argument is cuk
-				Nan::Utf8String	buf3(info[argpos++]);
-				cuk					= std::string(*buf3);
-				if(argpos < info.Length() && info[argpos]->IsBoolean()){
-					// 3'rd argument is auto rejoin
-					auto_rejoin			= Nan::To<bool>(info[argpos++]).FromJust();
-
-					if(argpos < info.Length() && info[argpos]->IsBoolean()){
-						// 4'th argument is no giveup rejoin
-						no_giveup_rejoin= Nan::To<bool>(info[argpos++]).FromJust();
-
-						if(argpos < info.Length() && info[argpos]->IsFunction()){
-							// 5'th argument is callback
-							callback	= new Nan::Callback(info[argpos++].As<v8::Function>());
-						}
-					}else if(argpos < info.Length() && info[argpos]->IsFunction()){
-						// 4'th argument is callback
-						callback		= new Nan::Callback(info[argpos++].As<v8::Function>());
-					}
-				}else if(argpos < info.Length() && info[argpos]->IsBoolean()){
-					// 3'rd argument is no giveup rejoin
-					no_giveup_rejoin	= Nan::To<bool>(info[argpos++]).FromJust();
-
-					if(argpos < info.Length() && info[argpos]->IsFunction()){
-						// 4'th argument is callback
-						callback		= new Nan::Callback(info[argpos++].As<v8::Function>());
-					}
-				}else if(argpos < info.Length() && info[argpos]->IsFunction()){
-					// 3'rd argument is callback
-					callback			= new Nan::Callback(info[argpos++].As<v8::Function>());
-				}
-
-			}else if(argpos < info.Length() && info[argpos]->IsBoolean()){
-				// 2'nd argument is auto rejoin
-				auto_rejoin				= Nan::To<bool>(info[argpos++]).FromJust();
-
-				if(argpos < info.Length() && info[argpos]->IsBoolean()){
-					// 3'rd argument is no giveup rejoin
-					no_giveup_rejoin	= Nan::To<bool>(info[argpos++]).FromJust();
-
-					if(argpos < info.Length() && info[argpos]->IsFunction()){
-						// 4'th argument is callback
-						callback		= new Nan::Callback(info[argpos++].As<v8::Function>());
-					}
-				}else if(argpos < info.Length() && info[argpos]->IsFunction()){
-					// 3'rd argument is callback
-					callback			= new Nan::Callback(info[argpos++].As<v8::Function>());
-				}
-			}else if(argpos < info.Length() && info[argpos]->IsBoolean()){
-				// 2'nd argument is no giveup rejoin
-				no_giveup_rejoin		= Nan::To<bool>(info[argpos++]).FromJust();
-
-				if(argpos < info.Length() && info[argpos]->IsFunction()){
-					// 3'rd argument is callback
-					callback			= new Nan::Callback(info[argpos++].As<v8::Function>());
-				}
-			}else if(argpos < info.Length() && info[argpos]->IsFunction()){
-				// 2'nd argument is callback
-				callback				= new Nan::Callback(info[argpos++].As<v8::Function>());
-			}
-		}else{
-			Nan::ThrowSyntaxError("First parameter is not configuration");
-			return;
+		// parse arguments
+		if(!K2hdkcNode::ParseArgumentsForOnetime(info, obj, argpos, conf, ctlport, cuk, auto_rejoin, no_giveup_rejoin)){
+			return env.Undefined();
 		}
-
+		if(argpos < info.Length() && info[argpos].IsFunction()){
+			// last argument is callback
+			maybeCallback	= info[argpos++].As<Napi::Function>();
+			hasCallback		= true;
+		}
 		// check over arguments
 		if(argpos < info.Length()){
-			Nan::ThrowSyntaxError("Last parameter is not callback function.");
-			return;
+			Napi::TypeError::New(env, "Last parameter is not callback function.").ThrowAsJavaScriptException();
+			return env.Undefined();
 		}
 
 		// work
-		obj->_k2hdkcslave	= new K2hdkcSlave();
-		if(callback){
-			Nan::AsyncQueueWorker(new InitWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, cuk.c_str(), auto_rejoin, no_giveup_rejoin));
+		if(hasCallback){
+			InitWorker*	worker = new InitWorker(maybeCallback, obj->_k2hdkcslave, conf, ctlport, cuk, auto_rejoin, no_giveup_rejoin);
+			worker->Queue();
 		}else{
 			// build permanent connection object
-			if(!obj->_k2hdkcslave->Initialize(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin)){
+			if(!obj->_k2hdkcslave.Initialize(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin)){
 				obj->Clean();
-				info.GetReturnValue().Set(Nan::False());
-				return;
+				return Napi::Boolean::New(env, false);
 			}
-			if(!obj->_k2hdkcslave->Open(no_giveup_rejoin)){
+			if(!obj->_k2hdkcslave.Open(no_giveup_rejoin)){
 				obj->Clean();
-				info.GetReturnValue().Set(Nan::False());
-				return;
+				return Napi::Boolean::New(env, false);
 			}
 		}
-		info.GetReturnValue().Set(Nan::True());
+		return Napi::Boolean::New(env, true);
 	}
 }
 
@@ -1220,18 +1112,25 @@ NAN_METHOD(K2hdkcNode::Init)
  * )
  *
  * @brief	Deinitialize object for K2hdkcNode.
- *			If it has K2hdkcSlave object and open connection, close and destruct it. 
+ *			If it has K2hdkcSlave object and open connection, close and destruct it.
  *
  * @return	returns always true.
  *
  */
 
-NAN_METHOD(K2hdkcNode::Clean)
+Napi::Value K2hdkcNode::Clean(const Napi::CallbackInfo& info)
 {
-	K2hdkcNode*		obj = Nan::ObjectWrap::Unwrap<K2hdkcNode>(info.This());
+	Napi::Env env = info.Env();
+
+	// Unwrap
+	if(!info.This().IsObject() || !info.This().As<Napi::Object>().InstanceOf(K2hdkcNode::constructor.Value())){
+		Napi::TypeError::New(env, "Invalid this object(K2hdkcNode instance)").ThrowAsJavaScriptException();
+		return env.Undefined();
+	}
+	K2hdkcNode*	obj	= Napi::ObjectWrap<K2hdkcNode>::Unwrap(info.This().As<Napi::Object>());
 
 	obj->Clean();
-	info.GetReturnValue().Set(Nan::True());
+	return Napi::Boolean::New(env, true);
 }
 
 /**
@@ -1247,15 +1146,19 @@ NAN_METHOD(K2hdkcNode::Clean)
  *
  */
 
-NAN_METHOD(K2hdkcNode::IsPermanent)
+Napi::Value K2hdkcNode::IsPermanent(const Napi::CallbackInfo& info)
 {
-	const K2hdkcNode*	obj = Nan::ObjectWrap::Unwrap<K2hdkcNode>(info.This());
+	Napi::Env env = info.Env();
 
-	if(obj->_k2hdkcslave){
-		info.GetReturnValue().Set(Nan::True());
-	}else{
-		info.GetReturnValue().Set(Nan::False());
+	// Unwrap
+	if(!info.This().IsObject() || !info.This().As<Napi::Object>().InstanceOf(K2hdkcNode::constructor.Value())){
+		Napi::TypeError::New(env, "Invalid this object(K2hdkcNode instance)").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
+	K2hdkcNode*	obj	= Napi::ObjectWrap<K2hdkcNode>::Unwrap(info.This().As<Napi::Object>());
+
+	bool result = obj->IsInitialize();
+	return Napi::Boolean::New(env, result);
 }
 
 /**
@@ -1314,154 +1217,172 @@ NAN_METHOD(K2hdkcNode::IsPermanent)
  *
  */
 
-NAN_METHOD(K2hdkcNode::GetValue)
+Napi::Value K2hdkcNode::GetValue(const Napi::CallbackInfo& info)
 {
-	K2hdkcNode*		obj		= Nan::ObjectWrap::Unwrap<K2hdkcNode>(info.This());
-	Nan::Callback*	callback= obj->_cbs.Find(stc_emitters[EMITTER_POS_GET]);
-	int				argpos	= 0;
+	Napi::Env env = info.Env();
 
-	// for onetime connection
-	ParseArgumentsForOnetime(argpos);
+	// Unwrap
+	if(!info.This().IsObject() || !info.This().As<Napi::Object>().InstanceOf(K2hdkcNode::constructor.Value())){
+		Napi::TypeError::New(env, "Invalid this object(K2hdkcNode instance)").ThrowAsJavaScriptException();
+		return env.Undefined();
+	}
+	K2hdkcNode*		obj		= Napi::ObjectWrap<K2hdkcNode>::Unwrap(info.This().As<Napi::Object>());
+
+	// initial callback comes from emitter map if set
+	Napi::Function				maybeCallback;
+	bool						hasCallback		= false;
+	Napi::FunctionReference*	emitterCbRef	= obj->_cbs.Find(stc_emitters[EMITTER_POS_GET]);
+	if(emitterCbRef){
+		maybeCallback	= emitterCbRef->Value();
+		hasCallback		= true;
+	}
+
+	// For onetime connection
+	size_t		argpos			= 0;
+	std::string	conf;
+	int16_t		ctlport			= static_cast<int16_t>(CHM_INVALID_PORT);
+	std::string	cuk;
+	bool		auto_rejoin		= false;
+	bool		no_giveup_rejoin= false;
+	if(!K2hdkcNode::ParseArgumentsForOnetime(info, obj, argpos, conf, ctlport, cuk, auto_rejoin, no_giveup_rejoin)){
+		return env.Undefined();
+	}
 
 	// target arguments
-	string	strkey;
-	bool	is_subkey_set	= false;
-	string	strsubkey;
-	bool	attrchk			= true;
-	bool	is_pass_set		= false;
-	string	strpass;
+	std::string	strkey;
+	std::string	strsubkey;
+	bool		attrchk			= true;
+	std::string	strpass;
 
 	// target arguments(for both ontime and permanent connection)
 	if(info.Length() <= argpos){
-		Nan::ThrowSyntaxError("There is no key name parameter.");
-		return;
+		Napi::TypeError::New(env, "There is no key name parameter.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
-	if(!info[argpos]->IsString()){
-		Nan::ThrowSyntaxError("The key name must be string");
-		return;
+	if(!info[argpos].IsString()){
+		Napi::TypeError::New(env, "The key name must be string").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
-	Nan::Utf8String	buf2(info[argpos++]);
-	strkey					= std::string(*buf2);
+	if(info[argpos].IsString()){
+		strkey = info[argpos].As<Napi::String>().Utf8Value();
+	}
+	++argpos;
 
 	// other arguments for target
-	if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
+	if(argpos < info.Length() && (info[argpos].IsString() || info[argpos].IsNull())){
 		// target 2'nd parameter is subkey(string or null)
-		if(info[argpos]->IsNull()){
+		if(info[argpos].IsNull()){
 			argpos++;
-			is_subkey_set	= false;
 		}else{
-			Nan::Utf8String	buf3(info[argpos++]);
-			strsubkey		= std::string(*buf3);
-			is_subkey_set	= true;
+			strsubkey		= info[argpos++].As<Napi::String>().Utf8Value();
 		}
 
-		if(argpos < info.Length() && info[argpos]->IsBoolean()){
+		if(argpos < info.Length() && info[argpos].IsBoolean()){
 			// target 3'rd parameter is attrchk
-			attrchk			= Nan::To<bool>(info[argpos++]).FromJust();
+			attrchk = info[argpos++].As<Napi::Boolean>().Value();
 
-			if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
+			if(argpos < info.Length() && (info[argpos].IsString() || info[argpos].IsNull())){
 				// target 4'th parameter is pass
-				if(info[argpos]->IsNull()){
+				if(info[argpos].IsNull()){
 					argpos++;
-					is_pass_set	= false;
 				}else{
-					Nan::Utf8String	buf3(info[argpos++]);
-					strpass		= std::string(*buf3);
-					is_pass_set	= true;
+					strpass		= info[argpos++].As<Napi::String>().Utf8Value();
 				}
 
-				if(argpos < info.Length() && info[argpos]->IsFunction()){
+				if(argpos < info.Length() && info[argpos].IsFunction()){
 					// target 5'th parameter is callback
-					callback= new Nan::Callback(info[argpos++].As<v8::Function>());
+					maybeCallback	= info[argpos++].As<Napi::Function>();
+					hasCallback		= true;
 				}
 
-			}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+			}else if(argpos < info.Length() && info[argpos].IsFunction()){
 				// target 4'th parameter is callback
-				callback	= new Nan::Callback(info[argpos++].As<v8::Function>());
+				maybeCallback	= info[argpos++].As<Napi::Function>();
+				hasCallback		= true;
 			}
 
-		}else if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
+		}else if(argpos < info.Length() && (info[argpos].IsString() || info[argpos].IsNull())){
 			// target 3'rd parameter is pass
-			if(info[argpos]->IsNull()){
+			if(info[argpos].IsNull()){
 				argpos++;
-				is_pass_set	= false;
 			}else{
-				Nan::Utf8String	buf3(info[argpos++]);
-				strpass		= std::string(*buf3);
-				is_pass_set	= true;
+				strpass		= info[argpos++].As<Napi::String>().Utf8Value();
 			}
 
-			if(argpos < info.Length() && info[argpos]->IsFunction()){
+			if(argpos < info.Length() && info[argpos].IsFunction()){
 				// target 4'th parameter is callback
-				callback	= new Nan::Callback(info[argpos++].As<v8::Function>());
+				maybeCallback	= info[argpos++].As<Napi::Function>();
+				hasCallback		= true;
 			}
 
-		}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+		}else if(argpos < info.Length() && info[argpos].IsFunction()){
 			// target 3'rd parameter is callback
-			callback		= new Nan::Callback(info[argpos++].As<v8::Function>());
+			maybeCallback	= info[argpos++].As<Napi::Function>();
+			hasCallback		= true;
 		}
 
-	}else if(argpos < info.Length() && info[argpos]->IsBoolean()){
+	}else if(argpos < info.Length() && info[argpos].IsBoolean()){
 		// target 2'nd parameter is attrchk
-		attrchk				= Nan::To<bool>(info[argpos++]).FromJust();
+		attrchk = info[argpos++].As<Napi::Boolean>().Value();
 
-		if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
+		if(argpos < info.Length() && (info[argpos].IsString() || info[argpos].IsNull())){
 			// target 3'rd parameter is pass
-			if(info[argpos]->IsNull()){
+			if(info[argpos].IsNull()){
 				argpos++;
-				is_pass_set	= false;
 			}else{
-				Nan::Utf8String	buf3(info[argpos++]);
-				strpass		= std::string(*buf3);
-				is_pass_set	= true;
+				strpass		= info[argpos++].As<Napi::String>().Utf8Value();
 			}
 
-			if(argpos < info.Length() && info[argpos]->IsFunction()){
+			if(argpos < info.Length() && info[argpos].IsFunction()){
 				// target 4'th parameter is callback
-				callback	= new Nan::Callback(info[argpos++].As<v8::Function>());
+				maybeCallback	= info[argpos++].As<Napi::Function>();
+				hasCallback		= true;
 			}
 
-		}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+		}else if(argpos < info.Length() && info[argpos].IsFunction()){
 			// target 3'rd parameter is callback
-			callback		= new Nan::Callback(info[argpos++].As<v8::Function>());
+			maybeCallback	= info[argpos++].As<Napi::Function>();
+			hasCallback		= true;
 		}
 
-	}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+	}else if(argpos < info.Length() && info[argpos].IsFunction()){
 		// target 2'nd parameter is callback
-		callback			= new Nan::Callback(info[argpos++].As<v8::Function>());
+		maybeCallback	= info[argpos++].As<Napi::Function>();
+		hasCallback		= true;
 	}
 
 	// check over arguments
 	if(argpos < info.Length()){
-		Nan::ThrowSyntaxError("Last parameter is not callback function.");
-		return;
+		Napi::TypeError::New(env, "Last parameter is not callback function.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
 
 	// work
-	if(callback){
-		Nan::AsyncQueueWorker(new GetValueWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, cuk.c_str(), auto_rejoin, no_giveup_rejoin, strkey.c_str(), (is_subkey_set ? strsubkey.c_str() : NULL), attrchk, (is_pass_set ? strpass.c_str() : NULL)));
-		info.GetReturnValue().Set(Nan::True());
+	if(hasCallback){
+		GetValueWorker*	worker = new GetValueWorker(maybeCallback, obj->_k2hdkcslave, conf, ctlport, cuk, auto_rejoin, no_giveup_rejoin, strkey, strsubkey, attrchk, strpass);
+		worker->Queue();
+		return Napi::Boolean::New(env, true);
 	}else{
 		dkcres_type_t	rescode = DKC_NORESTYPE;
-		if(is_subkey_set){
+		if(!strsubkey.empty()){
 			// subkey is specified, thus need to check the key has it.
 			K2hdkcComGetSubkeys*	pSubComObj;
-			if(!obj->_k2hdkcslave){
+			if(!obj->IsInitialize()){
 				pSubComObj = GetOtSlaveK2hdkcComGetSubkeys(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 			}else{
-				pSubComObj = GetPmSlaveK2hdkcComGetSubkeys(obj->_k2hdkcslave);
+				pSubComObj = GetPmSlaveK2hdkcComGetSubkeys(&(obj->_k2hdkcslave));
 			}
 			if(!pSubComObj){
-				Nan::ThrowSyntaxError("Internal error: Could not create command object.");
-				return;
+				Napi::TypeError::New(env, "Internal error: Could not create command object.").ThrowAsJavaScriptException();
+				return env.Undefined();
 			}
+
 			// get subkey list in key
 			K2HSubKeys*	pSubKeys= NULL;
 			if(!pSubComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, attrchk, &pSubKeys, &rescode) || !pSubKeys){
 				// key does not have any subkey
 				DKC_DELETE(pSubComObj);
-				info.GetReturnValue().Set(Nan::Null());
-				return;
+				return env.Null();
 			}
 
 			// convert subkey binary data to string array
@@ -1480,8 +1401,7 @@ NAN_METHOD(K2hdkcNode::GetValue)
 			}
 			if(!found){
 				// not found subkey in key
-				info.GetReturnValue().Set(Nan::Null());
-				return;
+				return env.Null();
 			}
 			// switch key to subkey
 			strkey = strsubkey;
@@ -1489,25 +1409,27 @@ NAN_METHOD(K2hdkcNode::GetValue)
 
 		// get value
 		K2hdkcComGet*	pComObj;
-		if(!obj->_k2hdkcslave){
+		if(!obj->IsInitialize()){
 			pComObj = GetOtSlaveK2hdkcComGet(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 		}else{
-			pComObj = GetPmSlaveK2hdkcComGet(obj->_k2hdkcslave);
+			pComObj = GetPmSlaveK2hdkcComGet(&(obj->_k2hdkcslave));
 		}
 		if(!pComObj){
-			Nan::ThrowSyntaxError("Internal error: Could not create command object.");
-			return;
+			Napi::TypeError::New(env, "Internal error: Could not create command object.").ThrowAsJavaScriptException();
+			return env.Undefined();
 		}
+
 		const unsigned char*	pvaltmp		= NULL;
 		size_t					valtmplen	= 0L;
-		bool					result		= pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, attrchk, (is_pass_set ? strpass.c_str() : NULL), &pvaltmp, &valtmplen, &rescode);
+		bool					result		= pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, attrchk, (strpass.empty() ? NULL : strpass.c_str()), &pvaltmp, &valtmplen, &rescode);
 		if(result && (pvaltmp && 0 < valtmplen)){
-			string	strresult(reinterpret_cast<const char*>(pvaltmp), valtmplen);
-			info.GetReturnValue().Set(Nan::New<String>(strresult.c_str()).ToLocalChecked());
+			std::string	strresult(reinterpret_cast<const char*>(pvaltmp), ('\0' == pvaltmp[valtmplen - 1] ? valtmplen - 1 : valtmplen));
+			DKC_DELETE(pComObj);
+			return Napi::String::New(env, strresult);
 		}else{
-			info.GetReturnValue().Set(Nan::Null());
+			DKC_DELETE(pComObj);
+			return env.Null();
 		}
-		DKC_DELETE(pComObj);
 	}
 }
 
@@ -1559,86 +1481,121 @@ NAN_METHOD(K2hdkcNode::GetValue)
  *
  */
 
-NAN_METHOD(K2hdkcNode::GetSubkeys)
+Napi::Value K2hdkcNode::GetSubkeys(const Napi::CallbackInfo& info)
 {
-	K2hdkcNode*		obj		= Nan::ObjectWrap::Unwrap<K2hdkcNode>(info.This());
-	Nan::Callback*	callback= obj->_cbs.Find(stc_emitters[EMITTER_POS_GETSUBKEYS]);
-	int				argpos	= 0;
+	Napi::Env env = info.Env();
 
-	// for onetime connection
-	ParseArgumentsForOnetime(argpos);
+	// Unwrap
+	if(!info.This().IsObject() || !info.This().As<Napi::Object>().InstanceOf(K2hdkcNode::constructor.Value())){
+		Napi::TypeError::New(env, "Invalid this object(K2hdkcNode instance)").ThrowAsJavaScriptException();
+		return env.Undefined();
+	}
+	K2hdkcNode*		obj		= Napi::ObjectWrap<K2hdkcNode>::Unwrap(info.This().As<Napi::Object>());
+
+	// initial callback comes from emitter map if set
+	Napi::Function				maybeCallback;
+	bool						hasCallback		= false;
+	Napi::FunctionReference*	emitterCbRef	= obj->_cbs.Find(stc_emitters[EMITTER_POS_GETSUBKEYS]);
+	if(emitterCbRef){
+		maybeCallback	= emitterCbRef->Value();
+		hasCallback		= true;
+	}
+
+	// For onetime connection
+	size_t		argpos			= 0;
+	std::string	conf;
+	int16_t		ctlport			= static_cast<int16_t>(CHM_INVALID_PORT);
+	std::string	cuk;
+	bool		auto_rejoin		= false;
+	bool		no_giveup_rejoin= false;
+	if(!K2hdkcNode::ParseArgumentsForOnetime(info, obj, argpos, conf, ctlport, cuk, auto_rejoin, no_giveup_rejoin)){
+		return env.Undefined();
+	}
 
 	// target arguments
-	string	strkey;
-	bool	attrchk			= true;
+	std::string	strkey;
+	bool		attrchk	= true;
 
 	// target arguments(for both ontime and permanent connection)
 	if(info.Length() <= argpos){
-		Nan::ThrowSyntaxError("There is no key name parameter.");
-		return;
+		Napi::TypeError::New(env, "There is no key name parameter.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
-	if(!info[argpos]->IsString()){
-		Nan::ThrowSyntaxError("The key name must be string");
-		return;
+	if(!info[argpos].IsString()){
+		Napi::TypeError::New(env, "The key name must be string.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
-	Nan::Utf8String	buf2(info[argpos++]);
-	strkey					= std::string(*buf2);
+	strkey = info[argpos++].As<Napi::String>().Utf8Value();
 
 	// other arguments for target
-	if(argpos < info.Length() && info[argpos]->IsBoolean()){
+	if(argpos < info.Length() && info[argpos].IsBoolean()){
 		// target 2'nd parameter is attrchk
-		attrchk				= Nan::To<bool>(info[argpos++]).FromJust();
+		attrchk = info[argpos++].As<Napi::Boolean>().Value();
 
-		if(argpos < info.Length() && info[argpos]->IsFunction()){
+		if(argpos < info.Length() && info[argpos].IsFunction()){
 			// target 3'rd parameter is callback
-			callback		= new Nan::Callback(info[argpos++].As<v8::Function>());
+			maybeCallback	= info[argpos++].As<Napi::Function>();
+			hasCallback		= true;
 		}
 
-	}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+	}else if(argpos < info.Length() && info[argpos].IsFunction()){
 		// target 2'nd parameter is callback
-		callback			= new Nan::Callback(info[argpos++].As<v8::Function>());
+		maybeCallback	= info[argpos++].As<Napi::Function>();
+		hasCallback		= true;
 	}
 	// check over arguments
 	if(argpos < info.Length()){
-		Nan::ThrowSyntaxError("Last parameter is not callback function.");
-		return;
+		Napi::TypeError::New(env, "Last parameter is not callback function.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
 
 	// work
-	if(callback){
-		Nan::AsyncQueueWorker(new GetSubkeysWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, cuk.c_str(), auto_rejoin, no_giveup_rejoin, strkey.c_str(), attrchk));
-		info.GetReturnValue().Set(Nan::True());
+	if(hasCallback){
+		GetSubkeysWorker*	worker = new GetSubkeysWorker(maybeCallback, obj->_k2hdkcslave, conf, ctlport, cuk, auto_rejoin, no_giveup_rejoin, strkey, attrchk);
+		worker->Queue();
+		return Napi::Boolean::New(env, true);
 	}else{
 		K2hdkcComGetSubkeys*	pComObj;
-		if(!obj->_k2hdkcslave){
+		if(!obj->IsInitialize()){
 			pComObj = GetOtSlaveK2hdkcComGetSubkeys(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 		}else{
-			pComObj = GetPmSlaveK2hdkcComGetSubkeys(obj->_k2hdkcslave);
+			pComObj = GetPmSlaveK2hdkcComGetSubkeys(&(obj->_k2hdkcslave));
 		}
 		if(!pComObj){
-			Nan::ThrowSyntaxError("Internal error: Could not create command object.");
-			return;
+			Napi::TypeError::New(env, "Internal error: Could not create command object.").ThrowAsJavaScriptException();
+			return env.Undefined();
 		}
+
 		// get subkey list in key
 		dkcres_type_t	rescode = DKC_NORESTYPE;
 		K2HSubKeys*		pSubKeys= NULL;
 		if(!pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, attrchk, &pSubKeys, &rescode) || !pSubKeys){
 			// key does not have any subkey
-			info.GetReturnValue().Set(Nan::Null());
+			DKC_DELETE(pComObj);
+			return env.Null();
 		}else{
 			// convert subkey binary data to string array
 			strarr_t	strarr;
 			pSubKeys->StringArray(strarr);
 			DKC_DELETE(pSubKeys);
 
-			Local<Array>	retarr	= Nan::New<Array>();
-			int				pos		= 0 ;
-			for(strarr_t::const_iterator iter = strarr.begin(); iter != strarr.end(); ++iter, ++pos){
-				Nan::Set(retarr, pos, Nan::New<String>(iter->c_str()).ToLocalChecked());
+			Napi::Array retarr	= Napi::Array::New(env, strarr.size());
+			uint32_t	pos		= 0;
+			for(const auto& str: strarr){
+				std::string	strtmp(str);
+				while(!strtmp.empty()){
+					unsigned char tmpch = static_cast<unsigned char>(strtmp.back());
+					if('\0' != tmpch && !std::isspace(tmpch)){
+						break;
+					}
+					strtmp.pop_back();
+				}
+				retarr.Set(pos++, Napi::String::New(env, strtmp));
 			}
-			info.GetReturnValue().Set(retarr);
+
+			DKC_DELETE(pComObj);
+			return retarr;
 		}
-		DKC_DELETE(pComObj);
 	}
 }
 
@@ -1686,55 +1643,78 @@ NAN_METHOD(K2hdkcNode::GetSubkeys)
  *
  */
 
-NAN_METHOD(K2hdkcNode::GetAttrs)
+Napi::Value K2hdkcNode::GetAttrs(const Napi::CallbackInfo& info)
 {
-	K2hdkcNode*		obj		= Nan::ObjectWrap::Unwrap<K2hdkcNode>(info.This());
-	Nan::Callback*	callback= obj->_cbs.Find(stc_emitters[EMITTER_POS_GETATTRS]);
-	int				argpos	= 0;
+	Napi::Env env = info.Env();
 
-	// for onetime connection
-	ParseArgumentsForOnetime(argpos);
+	// Unwrap
+	if(!info.This().IsObject() || !info.This().As<Napi::Object>().InstanceOf(K2hdkcNode::constructor.Value())){
+		Napi::TypeError::New(env, "Invalid this object(K2hdkcNode instance)").ThrowAsJavaScriptException();
+		return env.Undefined();
+	}
+	K2hdkcNode*		obj		= Napi::ObjectWrap<K2hdkcNode>::Unwrap(info.This().As<Napi::Object>());
+
+	// initial callback comes from emitter map if set
+	Napi::Function				maybeCallback;
+	bool						hasCallback		= false;
+	Napi::FunctionReference*	emitterCbRef	= obj->_cbs.Find(stc_emitters[EMITTER_POS_GETATTRS]);
+	if(emitterCbRef){
+		maybeCallback	= emitterCbRef->Value();
+		hasCallback		= true;
+	}
+
+	// For onetime connection
+	size_t		argpos			= 0;
+	std::string	conf;
+	int16_t		ctlport			= static_cast<int16_t>(CHM_INVALID_PORT);
+	std::string	cuk;
+	bool		auto_rejoin		= false;
+	bool		no_giveup_rejoin= false;
+	if(!K2hdkcNode::ParseArgumentsForOnetime(info, obj, argpos, conf, ctlport, cuk, auto_rejoin, no_giveup_rejoin)){
+		return env.Undefined();
+	}
 
 	// target arguments
-	string	strkey;
+	std::string	strkey;
 
 	// target arguments(for both ontime and permanent connection)
 	if(info.Length() <= argpos){
-		Nan::ThrowSyntaxError("There is no key name parameter.");
-		return;
+		Napi::TypeError::New(env, "There is no key name parameter.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
-	if(!info[argpos]->IsString()){
-		Nan::ThrowSyntaxError("The key name must be string");
-		return;
+	if(!info[argpos].IsString()){
+		Napi::TypeError::New(env, "The key name must be string.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
-	Nan::Utf8String	buf(info[argpos++]);
-	strkey			= std::string(*buf);
+	strkey = info[argpos++].As<Napi::String>().Utf8Value();
 
 	// other arguments for target
-	if(argpos < info.Length() && info[argpos]->IsFunction()){
+	if(argpos < info.Length() && info[argpos].IsFunction()){
 		// target 2'nd parameter is callback
-		callback			= new Nan::Callback(info[argpos++].As<v8::Function>());
+		maybeCallback	= info[argpos++].As<Napi::Function>();
+		hasCallback		= true;
 	}
 	// check over arguments
 	if(argpos < info.Length()){
-		Nan::ThrowSyntaxError("Last parameter is not callback function.");
-		return;
+		Napi::TypeError::New(env, "Last parameter is not callback function.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
 
 	// work
-	if(callback){
-		Nan::AsyncQueueWorker(new GetAttrsWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, cuk.c_str(), auto_rejoin, no_giveup_rejoin, strkey.c_str()));
-		info.GetReturnValue().Set(Nan::True());
+	if(hasCallback){
+		GetAttrsWorker*	worker = new GetAttrsWorker(maybeCallback, obj->_k2hdkcslave, conf, ctlport, cuk, auto_rejoin, no_giveup_rejoin, strkey);
+		worker->Queue();
+		return Napi::Boolean::New(env, true);
 	}else{
 		K2hdkcComGetAttrs*	pComObj;
-		if(!obj->_k2hdkcslave){
+		if(!obj->IsInitialize()){
 			pComObj = GetOtSlaveK2hdkcComGetAttrs(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 		}else{
-			pComObj = GetPmSlaveK2hdkcComGetAttrs(obj->_k2hdkcslave);
+			pComObj = GetPmSlaveK2hdkcComGetAttrs(&(obj->_k2hdkcslave));
 		}
 		if(!pComObj){
-			Nan::ThrowSyntaxError("Internal error: Could not create command object.");
-			return;
+			Napi::TypeError::New(env, "Internal error: Could not create command object.").ThrowAsJavaScriptException();
+			return env.Undefined();
 		}
 
 		// get attribute list in key
@@ -1742,21 +1722,31 @@ NAN_METHOD(K2hdkcNode::GetAttrs)
 		K2HAttrs*		pAttrs	= NULL;
 		if(!pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, &pAttrs, &rescode) || !pAttrs){
 			// key does not have any attribute key
-			info.GetReturnValue().Set(Nan::Null());
+			DKC_DELETE(pComObj);
+			return env.Null();
 		}else{
 			// convert attribute key binary data to string array
 			strarr_t	strarr;
 			pAttrs->KeyStringArray(strarr);
 			DKC_DELETE(pAttrs);
 
-			Local<Array>	retarr	= Nan::New<Array>();
-			int				pos		= 0 ;
-			for(strarr_t::const_iterator iter = strarr.begin(); iter != strarr.end(); ++iter, ++pos){
-				Nan::Set(retarr, pos, Nan::New<String>(iter->c_str()).ToLocalChecked());
+			Napi::Array retarr	= Napi::Array::New(env, strarr.size());
+			uint32_t	pos		= 0;
+			for(const auto& str: strarr){
+				std::string	strtmp(str);
+				while(!strtmp.empty()){
+					unsigned char tmpch = static_cast<unsigned char>(strtmp.back());
+					if('\0' != tmpch && !std::isspace(tmpch)){
+						break;
+					}
+					strtmp.pop_back();
+				}
+				retarr.Set(pos++, Napi::String::New(env, strtmp));
 			}
-			info.GetReturnValue().Set(retarr);
+
+			DKC_DELETE(pComObj);
+			return retarr;
 		}
-		DKC_DELETE(pComObj);
 	}
 }
 
@@ -1830,153 +1820,169 @@ NAN_METHOD(K2hdkcNode::GetAttrs)
  *
  */
 
-NAN_METHOD(K2hdkcNode::SetValue)
+Napi::Value K2hdkcNode::SetValue(const Napi::CallbackInfo& info)
 {
-	K2hdkcNode*		obj		= Nan::ObjectWrap::Unwrap<K2hdkcNode>(info.This());
-	Nan::Callback*	callback= obj->_cbs.Find(stc_emitters[EMITTER_POS_SET]);
-	int				argpos	= 0;
+	Napi::Env env = info.Env();
 
-	// for onetime connection
-	ParseArgumentsForOnetime(argpos);
+	// Unwrap
+	if(!info.This().IsObject() || !info.This().As<Napi::Object>().InstanceOf(K2hdkcNode::constructor.Value())){
+		Napi::TypeError::New(env, "Invalid this object(K2hdkcNode instance)").ThrowAsJavaScriptException();
+		return env.Undefined();
+	}
+	K2hdkcNode*		obj		= Napi::ObjectWrap<K2hdkcNode>::Unwrap(info.This().As<Napi::Object>());
+
+	// initial callback comes from emitter map if set
+	Napi::Function				maybeCallback;
+	bool						hasCallback		= false;
+	Napi::FunctionReference*	emitterCbRef	= obj->_cbs.Find(stc_emitters[EMITTER_POS_SET]);
+	if(emitterCbRef){
+		maybeCallback	= emitterCbRef->Value();
+		hasCallback		= true;
+	}
+
+	// For onetime connection
+	size_t		argpos			= 0;
+	std::string	conf;
+	int16_t		ctlport			= static_cast<int16_t>(CHM_INVALID_PORT);
+	std::string	cuk;
+	bool		auto_rejoin		= false;
+	bool		no_giveup_rejoin= false;
+	if(!K2hdkcNode::ParseArgumentsForOnetime(info, obj, argpos, conf, ctlport, cuk, auto_rejoin, no_giveup_rejoin)){
+		return env.Undefined();
+	}
 
 	// target arguments
-	string	strkey;
-	bool	is_val_set		= false;
-	string	strval;
-	bool	is_subkey_set	= false;
-	string	strsubkey;
-	bool	is_pass_set		= false;
-	string	strpass;
-	time_t	expire			= 0;
+	std::string	strkey;
+	std::string	strval;
+	std::string	strsubkey;
+	std::string	strpass;
+	time_t		expire = 0;
 
 	// target key arguments(for both ontime and permanent connection)
 	if(info.Length() <= (argpos + 1)){
-		Nan::ThrowSyntaxError("There is no key name nor value parameter.");
-		return;
+		Napi::TypeError::New(env, "There is no key name nor value parameter.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
-	if(!info[argpos]->IsString()){
-		Nan::ThrowSyntaxError("The key name must be string");
-		return;
-	}else{
-		Nan::Utf8String	buf(info[argpos++]);
-		strkey					= std::string(*buf);
+	if(!info[argpos].IsString()){
+		Napi::TypeError::New(env, "The key name must be string.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
+	strkey = info[argpos++].As<Napi::String>().Utf8Value();
+
 	// target value arguments(for both ontime and permanent connection)
-	if(info[argpos]->IsString()){
-		Nan::Utf8String	buf(info[argpos++]);
-		strval					= std::string(*buf);
-		is_val_set				= true;
-	}else if(info[argpos]->IsNull()){
+	if(info[argpos].IsString()){
+		strval = info[argpos++].As<Napi::String>().Utf8Value();
+	}else{
 		argpos++;
-		is_val_set				= false;
 	}
 
 	// other arguments for target
-	if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
+	if(argpos < info.Length() && (info[argpos].IsString() || info[argpos].IsNull())){
 		// target 2'nd parameter is subkey(string or null)
-		if(info[argpos]->IsNull()){
+		if(info[argpos].IsNull()){
 			argpos++;
-			is_subkey_set	= false;
 		}else{
-			Nan::Utf8String	buf(info[argpos++]);
-			strsubkey		= std::string(*buf);
-			is_subkey_set	= true;
+			strsubkey = info[argpos++].As<Napi::String>().Utf8Value();
 		}
 
-		if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
+		if(argpos < info.Length() && (info[argpos].IsString() || info[argpos].IsNull())){
 			// target 3'rd parameter is pass
-			if(info[argpos]->IsNull()){
+			if(info[argpos].IsNull()){
 				argpos++;
-				is_pass_set		= false;
 			}else{
-				Nan::Utf8String	buf(info[argpos++]);
-				strpass			= std::string(*buf);
-				is_pass_set		= true;
+				strpass = info[argpos++].As<Napi::String>().Utf8Value();
 			}
 
-			if(argpos < info.Length() && info[argpos]->IsInt32()){
+			if(argpos < info.Length() && info[argpos].IsNumber()){
 				// target 4'th parameter is expire
-				int32_t	nexpire	= Nan::To<int32_t>(info[argpos++]).FromJust();
+				int32_t	nexpire = static_cast<int32_t>(info[argpos++].As<Napi::Number>().Int32Value());
 				expire			= static_cast<time_t>(nexpire);
 
-				if(argpos < info.Length() && info[argpos]->IsFunction()){
+				if(argpos < info.Length() && info[argpos].IsFunction()){
 					// target 5'th parameter is callback
-					callback= new Nan::Callback(info[argpos++].As<v8::Function>());
+					maybeCallback	= info[argpos++].As<Napi::Function>();
+					hasCallback		= true;
 				}
-			}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+			}else if(argpos < info.Length() && info[argpos].IsFunction()){
 				// target 4'th parameter is callback
-				callback	= new Nan::Callback(info[argpos++].As<v8::Function>());
+				maybeCallback	= info[argpos++].As<Napi::Function>();
+				hasCallback		= true;
 			}
-		}else if(argpos < info.Length() && info[argpos]->IsInt32()){
+		}else if(argpos < info.Length() && info[argpos].IsNumber()){
 			// target 3'rd parameter is expire
-			int32_t	nexpire		= Nan::To<int32_t>(info[argpos++]).FromJust();
-			expire				= static_cast<time_t>(nexpire);
+			int32_t	nexpire = static_cast<int32_t>(info[argpos++].As<Napi::Number>().Int32Value());
+			expire			= static_cast<time_t>(nexpire);
 
-			if(argpos < info.Length() && info[argpos]->IsFunction()){
+			if(argpos < info.Length() && info[argpos].IsFunction()){
 				// target 4'th parameter is callback
-				callback	= new Nan::Callback(info[argpos++].As<v8::Function>());
+				maybeCallback	= info[argpos++].As<Napi::Function>();
+				hasCallback		= true;
 			}
-		}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+		}else if(argpos < info.Length() && info[argpos].IsFunction()){
 			// target 3'rd parameter is callback
-			callback		= new Nan::Callback(info[argpos++].As<v8::Function>());
+			maybeCallback	= info[argpos++].As<Napi::Function>();
+			hasCallback		= true;
 		}
-	}else if(argpos < info.Length() && info[argpos]->IsInt32()){
+	}else if(argpos < info.Length() && info[argpos].IsNumber()){
 		// target 2'nd parameter is expire
-		int32_t	nexpire		= Nan::To<int32_t>(info[argpos++]).FromJust();
-		expire				= static_cast<time_t>(nexpire);
+		int32_t	nexpire = static_cast<int32_t>(info[argpos++].As<Napi::Number>().Int32Value());
+		expire			= static_cast<time_t>(nexpire);
 
-		if(argpos < info.Length() && info[argpos]->IsFunction()){
+		if(argpos < info.Length() && info[argpos].IsFunction()){
 			// target 3'rd parameter is callback
-			callback	= new Nan::Callback(info[argpos++].As<v8::Function>());
+			maybeCallback	= info[argpos++].As<Napi::Function>();
+			hasCallback		= true;
 		}
-	}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+	}else if(argpos < info.Length() && info[argpos].IsFunction()){
 		// target 2'nd parameter is callback
-		callback			= new Nan::Callback(info[argpos++].As<v8::Function>());
+		maybeCallback	= info[argpos++].As<Napi::Function>();
+		hasCallback		= true;
 	}
 
 	// check over arguments
 	if(argpos < info.Length()){
-		Nan::ThrowSyntaxError("Last parameter is not callback function.");
-		return;
+		Napi::TypeError::New(env, "Last parameter is not callback function.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
 
 	// work
-	if(callback){
-		Nan::AsyncQueueWorker(new SetValueWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, cuk.c_str(), auto_rejoin, no_giveup_rejoin, strkey.c_str(), (is_val_set ? strval.c_str() : NULL), (is_subkey_set ? strsubkey.c_str() : NULL), (is_pass_set ? strpass.c_str() : NULL), (expire > 0 ? &expire : NULL)));
-		info.GetReturnValue().Set(Nan::True());
+	if(hasCallback){
+		SetValueWorker*	worker = new SetValueWorker(maybeCallback, obj->_k2hdkcslave, conf, ctlport, cuk, auto_rejoin, no_giveup_rejoin, strkey, strval, strsubkey, strpass, expire);
+		worker->Queue();
+		return Napi::Boolean::New(env, true);
 	}else{
 		dkcres_type_t	rescode = DKC_NORESTYPE;
 		bool			result	= false;
-		if(is_subkey_set){
+		if(!strsubkey.empty()){
 			// subkey is specified, set value into subkey
 			K2hdkcComAddSubkey*	pComObj;
-			if(!obj->_k2hdkcslave){
+			if(!obj->IsInitialize()){
 				pComObj = GetOtSlaveK2hdkcComAddSubkey(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 			}else{
-				pComObj = GetPmSlaveK2hdkcComAddSubkey(obj->_k2hdkcslave);
+				pComObj = GetPmSlaveK2hdkcComAddSubkey(&(obj->_k2hdkcslave));
 			}
 			if(!pComObj){
-				Nan::ThrowSyntaxError("Internal error: Could not create command object.");
-				return;
+				Napi::TypeError::New(env, "Internal error: Could not create command object.").ThrowAsJavaScriptException();
+				return env.Undefined();
 			}
-			result = pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, reinterpret_cast<const unsigned char*>(strsubkey.c_str()), strsubkey.length() + 1, (is_val_set ? reinterpret_cast<const unsigned char*>(strval.c_str()) : NULL), (is_val_set ? strval.length() + 1 : 0), true, (is_pass_set ? strpass.c_str() : NULL), (expire > 0 ? &expire : NULL), &rescode);
+			result = pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, reinterpret_cast<const unsigned char*>(strsubkey.c_str()), strsubkey.length() + 1, (strval.empty() ? NULL : reinterpret_cast<const unsigned char*>(strval.c_str())), (strval.empty() ? 0 : strval.length() + 1), true, (strpass.empty() ? NULL : strpass.c_str()), (expire > 0 ? &expire : NULL), &rescode);
 			DKC_DELETE(pComObj);
 		}else{
 			// set value to key
 			K2hdkcComSet*	pComObj;
-			if(!obj->_k2hdkcslave){
+			if(!obj->IsInitialize()){
 				pComObj = GetOtSlaveK2hdkcComSet(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 			}else{
-				pComObj = GetPmSlaveK2hdkcComSet(obj->_k2hdkcslave);
+				pComObj = GetPmSlaveK2hdkcComSet(&(obj->_k2hdkcslave));
 			}
 			if(!pComObj){
-				Nan::ThrowSyntaxError("Internal error: Could not create command object.");
-				return;
+				Napi::TypeError::New(env, "Internal error: Could not create command object.").ThrowAsJavaScriptException();
+				return env.Undefined();
 			}
-			result = pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, (is_val_set ? reinterpret_cast<const unsigned char*>(strval.c_str()) : NULL), (is_val_set ? strval.length() + 1 : 0), false, (is_pass_set ? strpass.c_str() : NULL), (expire > 0 ? &expire : NULL), &rescode);
+			result = pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, (strval.empty() ? NULL : reinterpret_cast<const unsigned char*>(strval.c_str())), (strval.empty() ? 0 : strval.length() + 1), false, (strpass.empty() ? NULL : strpass.c_str()), (expire > 0 ? &expire : NULL), &rescode);
 			DKC_DELETE(pComObj);
 		}
-		info.GetReturnValue().Set(Nan::New(result));
+		return Napi::Boolean::New(env, result);
 	}
 }
 
@@ -2028,94 +2034,118 @@ NAN_METHOD(K2hdkcNode::SetValue)
  *
  */
 
-NAN_METHOD(K2hdkcNode::SetSubkeys)
+Napi::Value K2hdkcNode::SetSubkeys(const Napi::CallbackInfo& info)
 {
-	K2hdkcNode*		obj		= Nan::ObjectWrap::Unwrap<K2hdkcNode>(info.This());
-	Nan::Callback*	callback= obj->_cbs.Find(stc_emitters[EMITTER_POS_SETSUBKEYS]);
-	int				argpos	= 0;
+	Napi::Env env = info.Env();
 
-	// for onetime connection
-	ParseArgumentsForOnetime(argpos);
+	// Unwrap
+	if(!info.This().IsObject() || !info.This().As<Napi::Object>().InstanceOf(K2hdkcNode::constructor.Value())){
+		Napi::TypeError::New(env, "Invalid this object(K2hdkcNode instance)").ThrowAsJavaScriptException();
+		return env.Undefined();
+	}
+	K2hdkcNode*		obj		= Napi::ObjectWrap<K2hdkcNode>::Unwrap(info.This().As<Napi::Object>());
+
+	// initial callback comes from emitter map if set
+	Napi::Function				maybeCallback;
+	bool						hasCallback		= false;
+	Napi::FunctionReference*	emitterCbRef	= obj->_cbs.Find(stc_emitters[EMITTER_POS_SETSUBKEYS]);
+	if(emitterCbRef){
+		maybeCallback	= emitterCbRef->Value();
+		hasCallback		= true;
+	}
+
+	// For onetime connection
+	size_t		argpos			= 0;
+	std::string	conf;
+	int16_t		ctlport			= static_cast<int16_t>(CHM_INVALID_PORT);
+	std::string	cuk;
+	bool		auto_rejoin		= false;
+	bool		no_giveup_rejoin= false;
+	if(!K2hdkcNode::ParseArgumentsForOnetime(info, obj, argpos, conf, ctlport, cuk, auto_rejoin, no_giveup_rejoin)){
+		return env.Undefined();
+	}
 
 	// target arguments
-	string			strkey;
+	std::string		strkey;
 	unsigned char*	bysubkeys	= NULL;
 	size_t			skeylen		= 0UL;
 
 	// target key arguments(for both ontime and permanent connection)
 	if(info.Length() <= argpos){
-		Nan::ThrowSyntaxError("There is no key name parameter.");
-		return;
+		Napi::TypeError::New(env, "There is no key name parameter.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
-	if(!info[argpos]->IsString()){
-		Nan::ThrowSyntaxError("The key name must be string");
-		return;
-	}else{
-		Nan::Utf8String	buf(info[argpos++]);
-		strkey					= std::string(*buf);
+	if(!info[argpos].IsString()){
+		Napi::TypeError::New(env, "The key name must be string.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
+	strkey = info[argpos++].As<Napi::String>().Utf8Value();
 
 	// other arguments for target
-	if(argpos < info.Length() && (info[argpos]->IsArray() || info[argpos]->IsNull())){
+	if(argpos < info.Length() && (info[argpos].IsArray() || info[argpos].IsNull())){
 		// target 2'nd parameter is subkeys(array or null)
-		if(info[argpos]->IsNull()){
+		if(info[argpos].IsNull()){
 			argpos++;
 		}else{
 			// Array to binary
-			Local<Array>	inSubkeys = Local<Array>::Cast(info[argpos++]);
-			K2HSubKeys		Subkeys;
-			for(int pos = 0; pos < static_cast<int>(inSubkeys->Length()); ++pos){
-				string		tmpkey;
-				{
-					Nan::Utf8String	buf(Nan::Get(inSubkeys, pos).ToLocalChecked());
-					tmpkey = std::string(*buf);
+			Napi::Array	inSubkeys = info[argpos++].As<Napi::Array>();
+			K2HSubKeys	Subkeys;
+			for(uint32_t pos = 0; pos < static_cast<uint32_t>(inSubkeys.Length()); ++pos){
+				Napi::Value	oneVal = inSubkeys.Get(pos);
+				if(!oneVal.IsString()){
+					Napi::TypeError::New(env, "subkey element must be string").ThrowAsJavaScriptException();
+					return env.Undefined();
 				}
+				std::string	tmpkey = oneVal.As<Napi::String>().Utf8Value();
+
 				if(Subkeys.end() == Subkeys.insert(tmpkey.c_str())){
 					// failed to set subkey
-					info.GetReturnValue().Set(Nan::False());
-					return;
+					return Napi::Boolean::New(env, false);
 				}
 			}
+
 			// serialize
 			if(0UL < Subkeys.size()){
 				if(!Subkeys.Serialize(&bysubkeys, skeylen)){
 					// failed to set subkey
-					info.GetReturnValue().Set(Nan::False());
-					return;
+					return Napi::Boolean::New(env, false);
 				}
 			}
 		}
 
-		if(argpos < info.Length() && info[argpos]->IsFunction()){
+		if(argpos < info.Length() && info[argpos].IsFunction()){
 			// target 3'rd parameter is callback
-			callback		= new Nan::Callback(info[argpos++].As<v8::Function>());
+			maybeCallback	= info[argpos++].As<Napi::Function>();
+			hasCallback		= true;
 		}
 
-	}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+	}else if(argpos < info.Length() && info[argpos].IsFunction()){
 		// target 2'nd parameter is callback
-		callback			= new Nan::Callback(info[argpos++].As<v8::Function>());
+		maybeCallback	= info[argpos++].As<Napi::Function>();
+		hasCallback		= true;
 	}
 
 	// check over arguments
 	if(argpos < info.Length()){
-		Nan::ThrowSyntaxError("Last parameter is not callback function.");
-		return;
+		Napi::TypeError::New(env, "Last parameter is not callback function.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
 
 	// work
-	if(callback){
-		Nan::AsyncQueueWorker(new SetSubkeysWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, cuk.c_str(), auto_rejoin, no_giveup_rejoin, strkey.c_str(), bysubkeys, skeylen));
-		info.GetReturnValue().Set(Nan::True());
+	if(hasCallback){
+		SetSubkeysWorker*	worker = new SetSubkeysWorker(maybeCallback, obj->_k2hdkcslave, conf, ctlport, cuk, auto_rejoin, no_giveup_rejoin, strkey, bysubkeys, skeylen);
+		worker->Queue();
+		return Napi::Boolean::New(env, true);
 	}else{
 		K2hdkcComSetSubkeys*	pComObj;
-		if(!obj->_k2hdkcslave){
+		if(!obj->IsInitialize()){
 			pComObj = GetOtSlaveK2hdkcComSetSubkeys(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 		}else{
-			pComObj = GetPmSlaveK2hdkcComSetSubkeys(obj->_k2hdkcslave);
+			pComObj = GetPmSlaveK2hdkcComSetSubkeys(&(obj->_k2hdkcslave));
 		}
 		if(!pComObj){
-			Nan::ThrowSyntaxError("Internal error: Could not create command object.");
-			return;
+			Napi::TypeError::New(env, "Internal error: Could not create command object.").ThrowAsJavaScriptException();
+			return env.Undefined();
 		}
 
 		bool			result	= false;
@@ -2127,8 +2157,8 @@ NAN_METHOD(K2hdkcNode::SetSubkeys)
 			// clear subkeys
 			result = pComObj->ClearSubkeysCommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, &rescode);
 		}
-		info.GetReturnValue().Set(Nan::New(result));
 		DKC_DELETE(pComObj);
+		return Napi::Boolean::New(env, result);
 	}
 }
 
@@ -2202,176 +2232,196 @@ NAN_METHOD(K2hdkcNode::SetSubkeys)
  *
  */
 
-NAN_METHOD(K2hdkcNode::SetAll)
+Napi::Value K2hdkcNode::SetAll(const Napi::CallbackInfo& info)
 {
-	K2hdkcNode*		obj		= Nan::ObjectWrap::Unwrap<K2hdkcNode>(info.This());
-	Nan::Callback*	callback= obj->_cbs.Find(stc_emitters[EMITTER_POS_SETALL]);
-	int				argpos	= 0;
+	Napi::Env env = info.Env();
 
-	// for onetime connection
-	ParseArgumentsForOnetime(argpos);
+	// Unwrap
+	if(!info.This().IsObject() || !info.This().As<Napi::Object>().InstanceOf(K2hdkcNode::constructor.Value())){
+		Napi::TypeError::New(env, "Invalid this object(K2hdkcNode instance)").ThrowAsJavaScriptException();
+		return env.Undefined();
+	}
+	K2hdkcNode*		obj		= Napi::ObjectWrap<K2hdkcNode>::Unwrap(info.This().As<Napi::Object>());
+
+	// initial callback comes from emitter map if set
+	Napi::Function				maybeCallback;
+	bool						hasCallback		= false;
+	Napi::FunctionReference*	emitterCbRef	= obj->_cbs.Find(stc_emitters[EMITTER_POS_SETALL]);
+	if(emitterCbRef){
+		maybeCallback	= emitterCbRef->Value();
+		hasCallback		= true;
+	}
+
+	// For onetime connection
+	size_t		argpos			= 0;
+	std::string	conf;
+	int16_t		ctlport			= static_cast<int16_t>(CHM_INVALID_PORT);
+	std::string	cuk;
+	bool		auto_rejoin		= false;
+	bool		no_giveup_rejoin= false;
+	if(!K2hdkcNode::ParseArgumentsForOnetime(info, obj, argpos, conf, ctlport, cuk, auto_rejoin, no_giveup_rejoin)){
+		return env.Undefined();
+	}
 
 	// target arguments
-	string			strkey;
-	bool			is_val_set	= false;
-	string			strval;
+	std::string		strkey;
+	std::string		strval;
 	unsigned char*	bysubkeys	= NULL;
 	size_t			skeylen		= 0UL;
-	bool			is_pass_set	= false;
-	string			strpass;
+	std::string		strpass;
 	time_t			expire		= 0;
 
 	// target key arguments(for both ontime and permanent connection)
 	if(info.Length() <= (argpos + 1)){
-		Nan::ThrowSyntaxError("There is no key name nor value parameter.");
-		return;
+		Napi::TypeError::New(env, "There is no key name nor value parameter.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
-	if(!info[argpos]->IsString()){
-		Nan::ThrowSyntaxError("The key name must be string");
-		return;
-	}else{
-		Nan::Utf8String	buf(info[argpos++]);
-		strkey					= std::string(*buf);
+	if(!info[argpos].IsString()){
+		Napi::TypeError::New(env, "The key name must be string.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
+	strkey = info[argpos++].As<Napi::String>().Utf8Value();
+
 	// target value arguments(for both ontime and permanent connection)
-	if(info[argpos]->IsString()){
-		Nan::Utf8String	buf(info[argpos++]);
-		strval					= std::string(*buf);
-		is_val_set				= true;
-	}else if(info[argpos]->IsNull()){
+	if(info[argpos].IsString()){
+		strval = info[argpos++].As<Napi::String>().Utf8Value();
+	}else if(info[argpos].IsNull()){
 		argpos++;
-		is_val_set				= false;
 	}
 
 	// other arguments for target
-	if(argpos < info.Length() && (info[argpos]->IsArray() || info[argpos]->IsNull())){
+	if(argpos < info.Length() && (info[argpos].IsArray() || info[argpos].IsNull())){
 		// target 2'nd parameter is subkeys(array or null)
-		if(info[argpos]->IsNull()){
+		if(info[argpos].IsNull()){
 			argpos++;
 		}else{
 			// Array to binary
-			Local<Array>	inSubkeys = Local<Array>::Cast(info[argpos++]);
-			K2HSubKeys		Subkeys;
-			for(int pos = 0; pos < static_cast<int>(inSubkeys->Length()); ++pos){
-				string		tmpkey;
-				{
-					Nan::Utf8String	buf(Nan::Get(inSubkeys, pos).ToLocalChecked());
-					tmpkey = std::string(*buf);
+			Napi::Array	inSubkeys = info[argpos++].As<Napi::Array>();
+			K2HSubKeys	Subkeys;
+			for(uint32_t pos = 0; pos < static_cast<uint32_t>(inSubkeys.Length()); ++pos){
+				Napi::Value	oneVal = inSubkeys.Get(pos);
+				if(!oneVal.IsString()){
+					Napi::TypeError::New(env, "subkey element must be string").ThrowAsJavaScriptException();
+					return env.Undefined();
 				}
+				std::string	tmpkey = oneVal.As<Napi::String>().Utf8Value();
+
 				if(Subkeys.end() == Subkeys.insert(tmpkey.c_str())){
 					// failed to set subkey
-					info.GetReturnValue().Set(Nan::False());
-					return;
+					return Napi::Boolean::New(env, false);
 				}
 			}
+
 			// serialize
 			if(0UL < Subkeys.size()){
 				if(!Subkeys.Serialize(&bysubkeys, skeylen)){
 					// failed to set subkey
-					info.GetReturnValue().Set(Nan::False());
-					return;
+					return Napi::Boolean::New(env, false);
 				}
 			}
 		}
 
-		if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
+		if(argpos < info.Length() && (info[argpos].IsString() || info[argpos].IsNull())){
 			// target 3'rd parameter is pass
-			if(info[argpos]->IsNull()){
+			if(info[argpos].IsNull()){
 				argpos++;
-				is_pass_set		= false;
 			}else{
-				Nan::Utf8String	buf(info[argpos++]);
-				strpass			= std::string(*buf);
-				is_pass_set		= true;
+				strpass = info[argpos++].As<Napi::String>().Utf8Value();
 			}
 
-			if(argpos < info.Length() && info[argpos]->IsInt32()){
+			if(argpos < info.Length() && info[argpos].IsNumber()){
 				// target 4'th parameter is expire
-				int32_t	nexpire	= Nan::To<int32_t>(info[argpos++]).FromJust();
+				int32_t	nexpire = static_cast<int32_t>(info[argpos++].As<Napi::Number>().Int32Value());
 				expire			= static_cast<time_t>(nexpire);
 
-				if(argpos < info.Length() && info[argpos]->IsFunction()){
+				if(argpos < info.Length() && info[argpos].IsFunction()){
 					// target 5'th parameter is callback
-					callback= new Nan::Callback(info[argpos++].As<v8::Function>());
+					maybeCallback	= info[argpos++].As<Napi::Function>();
+					hasCallback		= true;
 				}
 
-			}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+			}else if(argpos < info.Length() && info[argpos].IsFunction()){
 				// target 4'th parameter is callback
-				callback	= new Nan::Callback(info[argpos++].As<v8::Function>());
+				maybeCallback	= info[argpos++].As<Napi::Function>();
+				hasCallback		= true;
 			}
 
-		}else if(argpos < info.Length() && info[argpos]->IsInt32()){
+		}else if(argpos < info.Length() && info[argpos].IsNumber()){
 			// target 3'rd parameter is expire
-			int32_t	nexpire		= Nan::To<int32_t>(info[argpos++]).FromJust();
-			expire				= static_cast<time_t>(nexpire);
+			int32_t	nexpire = static_cast<int32_t>(info[argpos++].As<Napi::Number>().Int32Value());
+			expire			= static_cast<time_t>(nexpire);
 
-			if(argpos < info.Length() && info[argpos]->IsFunction()){
+			if(argpos < info.Length() && info[argpos].IsFunction()){
 				// target 4'th parameter is callback
-				callback	= new Nan::Callback(info[argpos++].As<v8::Function>());
+				maybeCallback	= info[argpos++].As<Napi::Function>();
+				hasCallback		= true;
 			}
 
-		}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+		}else if(argpos < info.Length() && info[argpos].IsFunction()){
 			// target 3'rd parameter is callback
-			callback		= new Nan::Callback(info[argpos++].As<v8::Function>());
+			maybeCallback	= info[argpos++].As<Napi::Function>();
+			hasCallback		= true;
 		}
 
-	}else if(argpos < info.Length() && info[argpos]->IsInt32()){
+	}else if(argpos < info.Length() && info[argpos].IsNumber()){
 		// target 2'nd parameter is expire
-		int32_t	nexpire		= Nan::To<int32_t>(info[argpos++]).FromJust();
-		expire				= static_cast<time_t>(nexpire);
+		int32_t	nexpire = static_cast<int32_t>(info[argpos++].As<Napi::Number>().Int32Value());
+		expire			= static_cast<time_t>(nexpire);
 
-		if(argpos < info.Length() && info[argpos]->IsFunction()){
+		if(argpos < info.Length() && info[argpos].IsFunction()){
 			// target 3'rd parameter is callback
-			callback	= new Nan::Callback(info[argpos++].As<v8::Function>());
+			maybeCallback	= info[argpos++].As<Napi::Function>();
+			hasCallback		= true;
 		}
 
-	}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+	}else if(argpos < info.Length() && info[argpos].IsFunction()){
 		// target 2'nd parameter is callback
-		callback			= new Nan::Callback(info[argpos++].As<v8::Function>());
+		maybeCallback	= info[argpos++].As<Napi::Function>();
+		hasCallback		= true;
 	}
 
 	// check over arguments
 	if(argpos < info.Length()){
-		Nan::ThrowSyntaxError("Last parameter is not callback function.");
-		return;
+		Napi::TypeError::New(env, "Last parameter is not callback function.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
 
 	// work
-	if(callback){
-		Nan::AsyncQueueWorker(new SetAllWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, cuk.c_str(), auto_rejoin, no_giveup_rejoin, strkey.c_str(), (is_val_set ? strval.c_str() : NULL), bysubkeys, skeylen, (is_pass_set ? strpass.c_str() : NULL), (expire > 0 ? &expire : NULL)));
-		info.GetReturnValue().Set(Nan::True());
+	if(hasCallback){
+		SetAllWorker*	worker = new SetAllWorker(maybeCallback, obj->_k2hdkcslave, conf, ctlport, cuk, auto_rejoin, no_giveup_rejoin, strkey, strval, bysubkeys, skeylen, strpass, expire);
+		worker->Queue();
+		return Napi::Boolean::New(env, true);
 	}else{
 		bool			result	= false;
 		dkcres_type_t	rescode = DKC_NORESTYPE;
-		if(is_pass_set && 0 < expire){
+		if(!strpass.empty() && 0 < expire){
 			// set value with passphrase and expire, then the operation is separated.
 			K2hdkcComSet*	pComObj;
-			if(!obj->_k2hdkcslave){
+			if(!obj->IsInitialize()){
 				pComObj = GetOtSlaveK2hdkcComSet(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 			}else{
-				pComObj = GetPmSlaveK2hdkcComSet(obj->_k2hdkcslave);
+				pComObj = GetPmSlaveK2hdkcComSet(&(obj->_k2hdkcslave));
 			}
 			if(!pComObj){
-				Nan::ThrowSyntaxError("Internal error: Could not create command object.");
-				return;
+				Napi::TypeError::New(env, "Internal error: Could not create command object.").ThrowAsJavaScriptException();
+				return env.Undefined();
 			}
 
 			// set value to key
-			result = pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, (is_val_set ? reinterpret_cast<const unsigned char*>(strval.c_str()) : NULL), (is_val_set ? strval.length() + 1 : 0), false, strpass.c_str(), &expire, &rescode);
+			result = pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, (strval.empty() ? NULL : reinterpret_cast<const unsigned char*>(strval.c_str())), (strval.empty() ? 0 : strval.length() + 1), false, strpass.c_str(), &expire, &rescode);
 			DKC_DELETE(pComObj);
 
 			// set subkeys
 			if(result && bysubkeys && 0UL < skeylen){
-
 				K2hdkcComSetSubkeys*	pSubComObj;
-				if(!obj->_k2hdkcslave){
+				if(!obj->IsInitialize()){
 					pSubComObj = GetOtSlaveK2hdkcComSetSubkeys(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 				}else{
-					pSubComObj = GetPmSlaveK2hdkcComSetSubkeys(obj->_k2hdkcslave);
+					pSubComObj = GetPmSlaveK2hdkcComSetSubkeys(&(obj->_k2hdkcslave));
 				}
 				if(!pSubComObj){
-					Nan::ThrowSyntaxError("Internal error: Could not create command object.");
-					return;
+					Napi::TypeError::New(env, "Internal error: Could not create command object.").ThrowAsJavaScriptException();
+					return env.Undefined();
 				}
 
 				// set subkeys to key
@@ -2382,20 +2432,20 @@ NAN_METHOD(K2hdkcNode::SetAll)
 		}else{
 			// no passphrase and no expire, then one action
 			K2hdkcComSetAll*	pComObj;
-			if(!obj->_k2hdkcslave){
+			if(!obj->IsInitialize()){
 				pComObj = GetOtSlaveK2hdkcComSetAll(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 			}else{
-				pComObj = GetPmSlaveK2hdkcComSetAll(obj->_k2hdkcslave);
+				pComObj = GetPmSlaveK2hdkcComSetAll(&(obj->_k2hdkcslave));
 			}
 			if(!pComObj){
-				Nan::ThrowSyntaxError("Internal error: Could not create command object.");
-				return;
+				Napi::TypeError::New(env, "Internal error: Could not create command object.").ThrowAsJavaScriptException();
+				return env.Undefined();
 			}
 			// set value and subkeys
-			result = pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, (is_val_set ? reinterpret_cast<const unsigned char*>(strval.c_str()) : NULL), (is_val_set ? strval.length() + 1 : 0), bysubkeys, skeylen, NULL, 0UL, &rescode);
+			result = pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, (strval.empty() ? NULL : reinterpret_cast<const unsigned char*>(strval.c_str())), (strval.empty() ? 0 : strval.length() + 1), bysubkeys, skeylen, NULL, 0UL, &rescode);
 			DKC_DELETE(pComObj);
 		}
-		info.GetReturnValue().Set(Nan::New(result));
+		return Napi::Boolean::New(env, result);
 	}
 }
 
@@ -2449,74 +2499,97 @@ NAN_METHOD(K2hdkcNode::SetAll)
  *
  */
 
-NAN_METHOD(K2hdkcNode::Remove)
+Napi::Value K2hdkcNode::Remove(const Napi::CallbackInfo& info)
 {
-	K2hdkcNode*		obj		= Nan::ObjectWrap::Unwrap<K2hdkcNode>(info.This());
-	Nan::Callback*	callback= obj->_cbs.Find(stc_emitters[EMITTER_POS_REMOVE]);
-	int				argpos	= 0;
+	Napi::Env env = info.Env();
 
-	// for onetime connection
-	ParseArgumentsForOnetime(argpos);
+	// Unwrap
+	if(!info.This().IsObject() || !info.This().As<Napi::Object>().InstanceOf(K2hdkcNode::constructor.Value())){
+		Napi::TypeError::New(env, "Invalid this object(K2hdkcNode instance)").ThrowAsJavaScriptException();
+		return env.Undefined();
+	}
+	K2hdkcNode*		obj		= Napi::ObjectWrap<K2hdkcNode>::Unwrap(info.This().As<Napi::Object>());
+
+	// initial callback comes from emitter map if set
+	Napi::Function				maybeCallback;
+	bool						hasCallback		= false;
+	Napi::FunctionReference*	emitterCbRef	= obj->_cbs.Find(stc_emitters[EMITTER_POS_REMOVE]);
+	if(emitterCbRef){
+		maybeCallback	= emitterCbRef->Value();
+		hasCallback		= true;
+	}
+
+	// For onetime connection
+	size_t		argpos			= 0;
+	std::string	conf;
+	int16_t		ctlport			= static_cast<int16_t>(CHM_INVALID_PORT);
+	std::string	cuk;
+	bool		auto_rejoin		= false;
+	bool		no_giveup_rejoin= false;
+	if(!K2hdkcNode::ParseArgumentsForOnetime(info, obj, argpos, conf, ctlport, cuk, auto_rejoin, no_giveup_rejoin)){
+		return env.Undefined();
+	}
 
 	// target arguments
-	string			strkey;
-	bool			is_subkeys	= false;
+	std::string	strkey;
+	bool		is_subkeys = false;
 
 	// target key arguments(for both ontime and permanent connection)
 	if(info.Length() <= argpos){
-		Nan::ThrowSyntaxError("There is no key name parameter.");
-		return;
+		Napi::TypeError::New(env, "There is no key name parameter.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
-	if(!info[argpos]->IsString()){
-		Nan::ThrowSyntaxError("The key name must be string");
-		return;
-	}else{
-		Nan::Utf8String	buf(info[argpos++]);
-		strkey					= std::string(*buf);
+	if(!info[argpos].IsString()){
+		Napi::TypeError::New(env, "The key name must be string.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
+	strkey = info[argpos++].As<Napi::String>().Utf8Value();
 
 	// other arguments for target
-	if(argpos < info.Length() && info[argpos]->IsBoolean()){
+	if(argpos < info.Length() && info[argpos].IsBoolean()){
 		// target 2'nd parameter is subkey flag
-		is_subkeys				= Nan::To<bool>(info[argpos++]).FromJust();
+		is_subkeys = info[argpos++].As<Napi::Boolean>().Value();
 
-		if(argpos < info.Length() && info[argpos]->IsFunction()){
+		if(argpos < info.Length() && info[argpos].IsFunction()){
 			// target 3'rd parameter is callback
-			callback		= new Nan::Callback(info[argpos++].As<v8::Function>());
+			maybeCallback	= info[argpos++].As<Napi::Function>();
+			hasCallback		= true;
 		}
-	}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+	}else if(argpos < info.Length() && info[argpos].IsFunction()){
 		// target 2'nd parameter is callback
-		callback			= new Nan::Callback(info[argpos++].As<v8::Function>());
+		maybeCallback	= info[argpos++].As<Napi::Function>();
+		hasCallback		= true;
 	}
 
 	// check over arguments
 	if(argpos < info.Length()){
-		Nan::ThrowSyntaxError("Last parameter is not callback function.");
-		return;
+		Napi::TypeError::New(env, "Last parameter is not callback function.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
 
 	// work
-	if(callback){
-		Nan::AsyncQueueWorker(new RemoveWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, cuk.c_str(), auto_rejoin, no_giveup_rejoin, strkey.c_str(), is_subkeys));
-		info.GetReturnValue().Set(Nan::True());
+	if(hasCallback){
+		RemoveWorker*	worker = new RemoveWorker(maybeCallback, obj->_k2hdkcslave, conf, ctlport, cuk, auto_rejoin, no_giveup_rejoin, strkey, is_subkeys);
+		worker->Queue();
+		return Napi::Boolean::New(env, true);
 	}else{
 		K2hdkcComDel*	pComObj;
-		if(!obj->_k2hdkcslave){
+		if(!obj->IsInitialize()){
 			pComObj = GetOtSlaveK2hdkcComDel(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 		}else{
-			pComObj = GetPmSlaveK2hdkcComDel(obj->_k2hdkcslave);
+			pComObj = GetPmSlaveK2hdkcComDel(&(obj->_k2hdkcslave));
 		}
 		if(!pComObj){
-			Nan::ThrowSyntaxError("Internal error: Could not create command object.");
-			return;
+			Napi::TypeError::New(env, "Internal error: Could not create command object.").ThrowAsJavaScriptException();
+			return env.Undefined();
 		}
 
 		// remove key
 		dkcres_type_t	rescode = DKC_NORESTYPE;
-		info.GetReturnValue().Set(Nan::New(
-			pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, is_subkeys, true, &rescode)
-		));
+		bool			result	= pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, is_subkeys, true, &rescode);
+
 		DKC_DELETE(pComObj);
+		return Napi::Boolean::New(env, result);
 	}
 }
 
@@ -2586,218 +2659,238 @@ NAN_METHOD(K2hdkcNode::Remove)
  *
  */
 
-NAN_METHOD(K2hdkcNode::Rename)
+Napi::Value K2hdkcNode::Rename(const Napi::CallbackInfo& info)
 {
-	K2hdkcNode*		obj		= Nan::ObjectWrap::Unwrap<K2hdkcNode>(info.This());
-	Nan::Callback*	callback= obj->_cbs.Find(stc_emitters[EMITTER_POS_RENAME]);
-	int				argpos	= 0;
+	Napi::Env env = info.Env();
 
-	// for onetime connection
-	ParseArgumentsForOnetime(argpos);
+	// Unwrap
+	if(!info.This().IsObject() || !info.This().As<Napi::Object>().InstanceOf(K2hdkcNode::constructor.Value())){
+		Napi::TypeError::New(env, "Invalid this object(K2hdkcNode instance)").ThrowAsJavaScriptException();
+		return env.Undefined();
+	}
+	K2hdkcNode*		obj		= Napi::ObjectWrap<K2hdkcNode>::Unwrap(info.This().As<Napi::Object>());
+
+	// initial callback comes from emitter map if set
+	Napi::Function				maybeCallback;
+	bool						hasCallback		= false;
+	Napi::FunctionReference*	emitterCbRef	= obj->_cbs.Find(stc_emitters[EMITTER_POS_RENAME]);
+	if(emitterCbRef){
+		maybeCallback	= emitterCbRef->Value();
+		hasCallback		= true;
+	}
+
+	// For onetime connection
+	size_t		argpos			= 0;
+	std::string	conf;
+	int16_t		ctlport			= static_cast<int16_t>(CHM_INVALID_PORT);
+	std::string	cuk;
+	bool		auto_rejoin		= false;
+	bool		no_giveup_rejoin= false;
+	if(!K2hdkcNode::ParseArgumentsForOnetime(info, obj, argpos, conf, ctlport, cuk, auto_rejoin, no_giveup_rejoin)){
+		return env.Undefined();
+	}
 
 	// target arguments
-	string			strold;
-	string			strnew;
-	bool			is_parent_set	= false;
-	string			strparent;
-	bool			is_pass_set		= false;
-	string			strpass;
-	bool			attrchk			= true;
-	time_t			expire			= 0;
+	std::string	strold;
+	std::string	strnew;
+	std::string	strparent;
+	std::string	strpass;
+	bool		attrchk	= true;
+	time_t		expire	= 0;
 
 	// target old key arguments(for both ontime and permanent connection)
 	if(info.Length() <= (argpos + 1)){
-		Nan::ThrowSyntaxError("There is no key name nor value parameter.");
-		return;
+		Napi::TypeError::New(env, "There is no key name nor value parameter.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
-	if(!info[argpos]->IsString()){
-		Nan::ThrowSyntaxError("The old key name must be string");
-		return;
-	}else{
-		Nan::Utf8String	buf(info[argpos++]);
-		strold					= std::string(*buf);
+	if(!info[argpos].IsString()){
+		Napi::TypeError::New(env, "The key name must be string.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
+	strold = info[argpos++].As<Napi::String>().Utf8Value();
+
 	// target new key arguments(for both ontime and permanent connection)
-	if(!info[argpos]->IsString()){
-		Nan::ThrowSyntaxError("The new key name must be string");
-		return;
-	}else{
-		Nan::Utf8String	buf(info[argpos++]);
-		strnew					= std::string(*buf);
+	if(!info[argpos].IsString()){
+		Napi::TypeError::New(env, "The key name must be string.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
+	strnew = info[argpos++].As<Napi::String>().Utf8Value();
 
 	// other arguments for target
-	if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
+	if(argpos < info.Length() && (info[argpos].IsString() || info[argpos].IsNull())){
 		// target 3'rd parameter is parent key
-		if(info[argpos]->IsNull()){
+		if(info[argpos].IsNull()){
 			argpos++;
-			is_parent_set		= false;
 		}else{
-			Nan::Utf8String	buf(info[argpos++]);
-			strparent			= std::string(*buf);
-			is_parent_set		= true;
+			strparent = info[argpos++].As<Napi::String>().Utf8Value();
 		}
 
-		if(argpos < info.Length() && info[argpos]->IsBoolean()){
+		if(argpos < info.Length() && info[argpos].IsBoolean()){
 			// target 4'th parameter is attrchk
-			attrchk				= Nan::To<bool>(info[argpos++]).FromJust();
+			attrchk = info[argpos++].As<Napi::Boolean>().Value();
 
-			if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
+			if(argpos < info.Length() && (info[argpos].IsString() || info[argpos].IsNull())){
 				// target 5'th parameter is pass
-				if(info[argpos]->IsNull()){
+				if(info[argpos].IsNull()){
 					argpos++;
-					is_pass_set	= false;
 				}else{
-					Nan::Utf8String	buf2(info[argpos++]);
-					strpass		= std::string(*buf2);
-					is_pass_set	= true;
+					strpass = info[argpos++].As<Napi::String>().Utf8Value();
 				}
 
-				if(argpos < info.Length() && info[argpos]->IsInt32()){
+				if(argpos < info.Length() && info[argpos].IsNumber()){
 					// target 6'th parameter is expire
-					int32_t	nexpire		= Nan::To<int32_t>(info[argpos++]).FromJust();
-					expire				= static_cast<time_t>(nexpire);
+					int32_t	nexpire = static_cast<int32_t>(info[argpos++].As<Napi::Number>().Int32Value());
+					expire			= static_cast<time_t>(nexpire);
 
-					if(argpos < info.Length() && info[argpos]->IsFunction()){
+					if(argpos < info.Length() && info[argpos].IsFunction()){
 						// target 7'th parameter is callback
-						callback= new Nan::Callback(info[argpos++].As<v8::Function>());
+						maybeCallback	= info[argpos++].As<Napi::Function>();
+						hasCallback		= true;
 					}
-				}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+				}else if(argpos < info.Length() && info[argpos].IsFunction()){
 					// target 6'th parameter is callback
-					callback= new Nan::Callback(info[argpos++].As<v8::Function>());
+					maybeCallback	= info[argpos++].As<Napi::Function>();
+					hasCallback		= true;
 				}
-			}else if(argpos < info.Length() && info[argpos]->IsInt32()){
+			}else if(argpos < info.Length() && info[argpos].IsNumber()){
 				// target 5'th parameter is expire
-				int32_t	nexpire		= Nan::To<int32_t>(info[argpos++]).FromJust();
-				expire				= static_cast<time_t>(nexpire);
+				int32_t	nexpire = static_cast<int32_t>(info[argpos++].As<Napi::Number>().Int32Value());
+				expire			= static_cast<time_t>(nexpire);
 
-				if(argpos < info.Length() && info[argpos]->IsFunction()){
+				if(argpos < info.Length() && info[argpos].IsFunction()){
 					// target 6'th parameter is callback
-					callback= new Nan::Callback(info[argpos++].As<v8::Function>());
+					maybeCallback	= info[argpos++].As<Napi::Function>();
+					hasCallback		= true;
 				}
-			}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+			}else if(argpos < info.Length() && info[argpos].IsFunction()){
 				// target 5'th parameter is callback
-				callback= new Nan::Callback(info[argpos++].As<v8::Function>());
+				maybeCallback	= info[argpos++].As<Napi::Function>();
+				hasCallback		= true;
 			}
-		}else if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
+		}else if(argpos < info.Length() && (info[argpos].IsString() || info[argpos].IsNull())){
 			// target 4'th parameter is pass
-			if(info[argpos]->IsNull()){
+			if(info[argpos].IsNull()){
 				argpos++;
-				is_pass_set	= false;
 			}else{
-				Nan::Utf8String	buf2(info[argpos++]);
-				strpass		= std::string(*buf2);
-				is_pass_set	= true;
+				strpass = info[argpos++].As<Napi::String>().Utf8Value();
 			}
 
-			if(argpos < info.Length() && info[argpos]->IsInt32()){
+			if(argpos < info.Length() && info[argpos].IsNumber()){
 				// target 5'th parameter is expire
-				int32_t	nexpire		= Nan::To<int32_t>(info[argpos++]).FromJust();
-				expire				= static_cast<time_t>(nexpire);
+				int32_t	nexpire = static_cast<int32_t>(info[argpos++].As<Napi::Number>().Int32Value());
+				expire			= static_cast<time_t>(nexpire);
 
-				if(argpos < info.Length() && info[argpos]->IsFunction()){
+				if(argpos < info.Length() && info[argpos].IsFunction()){
 					// target 6'th parameter is callback
-					callback= new Nan::Callback(info[argpos++].As<v8::Function>());
+					maybeCallback	= info[argpos++].As<Napi::Function>();
+					hasCallback		= true;
 				}
-			}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+			}else if(argpos < info.Length() && info[argpos].IsFunction()){
 				// target 5'th parameter is callback
-				callback= new Nan::Callback(info[argpos++].As<v8::Function>());
+				maybeCallback	= info[argpos++].As<Napi::Function>();
+				hasCallback		= true;
 			}
-		}else if(argpos < info.Length() && info[argpos]->IsInt32()){
+		}else if(argpos < info.Length() && info[argpos].IsNumber()){
 			// target 4'th parameter is expire
-			int32_t	nexpire		= Nan::To<int32_t>(info[argpos++]).FromJust();
-			expire				= static_cast<time_t>(nexpire);
+			int32_t	nexpire = static_cast<int32_t>(info[argpos++].As<Napi::Number>().Int32Value());
+			expire			= static_cast<time_t>(nexpire);
 
-			if(argpos < info.Length() && info[argpos]->IsFunction()){
+			if(argpos < info.Length() && info[argpos].IsFunction()){
 				// target 5'th parameter is callback
-				callback= new Nan::Callback(info[argpos++].As<v8::Function>());
+				maybeCallback	= info[argpos++].As<Napi::Function>();
+				hasCallback		= true;
 			}
-		}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+		}else if(argpos < info.Length() && info[argpos].IsFunction()){
 			// target 4'th parameter is callback
-			callback= new Nan::Callback(info[argpos++].As<v8::Function>());
+			maybeCallback	= info[argpos++].As<Napi::Function>();
+			hasCallback		= true;
 		}
-	}else if(argpos < info.Length() && info[argpos]->IsBoolean()){
+	}else if(argpos < info.Length() && info[argpos].IsBoolean()){
 		// target 3'rd parameter is attrchk
-		attrchk			= Nan::To<bool>(info[argpos++]).FromJust();
+		attrchk = info[argpos++].As<Napi::Boolean>().Value();
 
-		if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
+		if(argpos < info.Length() && (info[argpos].IsString() || info[argpos].IsNull())){
 			// target 4'th parameter is pass
-			if(info[argpos]->IsNull()){
+			if(info[argpos].IsNull()){
 				argpos++;
-				is_pass_set	= false;
 			}else{
-				Nan::Utf8String	buf2(info[argpos++]);
-				strpass		= std::string(*buf2);
-				is_pass_set	= true;
+				strpass = info[argpos++].As<Napi::String>().Utf8Value();
 			}
 
-			if(argpos < info.Length() && info[argpos]->IsInt32()){
+			if(argpos < info.Length() && info[argpos].IsNumber()){
 				// target 5'th parameter is expire
-				int32_t	nexpire		= Nan::To<int32_t>(info[argpos++]).FromJust();
-				expire				= static_cast<time_t>(nexpire);
+				int32_t	nexpire = static_cast<int32_t>(info[argpos++].As<Napi::Number>().Int32Value());
+				expire			= static_cast<time_t>(nexpire);
 
-				if(argpos < info.Length() && info[argpos]->IsFunction()){
+				if(argpos < info.Length() && info[argpos].IsFunction()){
 					// target 6'th parameter is callback
-					callback= new Nan::Callback(info[argpos++].As<v8::Function>());
+					maybeCallback	= info[argpos++].As<Napi::Function>();
+					hasCallback		= true;
 				}
-			}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+			}else if(argpos < info.Length() && info[argpos].IsFunction()){
 				// target 5'th parameter is callback
-				callback= new Nan::Callback(info[argpos++].As<v8::Function>());
+				maybeCallback	= info[argpos++].As<Napi::Function>();
+				hasCallback		= true;
 			}
-		}else if(argpos < info.Length() && info[argpos]->IsInt32()){
+		}else if(argpos < info.Length() && info[argpos].IsNumber()){
 			// target 4'th parameter is expire
-			int32_t	nexpire		= Nan::To<int32_t>(info[argpos++]).FromJust();
-			expire				= static_cast<time_t>(nexpire);
+			int32_t	nexpire = static_cast<int32_t>(info[argpos++].As<Napi::Number>().Int32Value());
+			expire			= static_cast<time_t>(nexpire);
 
-			if(argpos < info.Length() && info[argpos]->IsFunction()){
+			if(argpos < info.Length() && info[argpos].IsFunction()){
 				// target 5'th parameter is callback
-				callback= new Nan::Callback(info[argpos++].As<v8::Function>());
+				maybeCallback	= info[argpos++].As<Napi::Function>();
+				hasCallback		= true;
 			}
-		}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+		}else if(argpos < info.Length() && info[argpos].IsFunction()){
 			// target 4'th parameter is callback
-			callback= new Nan::Callback(info[argpos++].As<v8::Function>());
+			maybeCallback	= info[argpos++].As<Napi::Function>();
+			hasCallback		= true;
 		}
-	}else if(argpos < info.Length() && info[argpos]->IsInt32()){
+	}else if(argpos < info.Length() && info[argpos].IsNumber()){
 		// target 3'rd parameter is expire
-		int32_t	nexpire		= Nan::To<int32_t>(info[argpos++]).FromJust();
-		expire				= static_cast<time_t>(nexpire);
+		int32_t	nexpire = static_cast<int32_t>(info[argpos++].As<Napi::Number>().Int32Value());
+		expire			= static_cast<time_t>(nexpire);
 
-		if(argpos < info.Length() && info[argpos]->IsFunction()){
+		if(argpos < info.Length() && info[argpos].IsFunction()){
 			// target 4'th parameter is callback
-			callback= new Nan::Callback(info[argpos++].As<v8::Function>());
+			maybeCallback	= info[argpos++].As<Napi::Function>();
+			hasCallback		= true;
 		}
-	}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+	}else if(argpos < info.Length() && info[argpos].IsFunction()){
 		// target 3'rd parameter is callback
-		callback= new Nan::Callback(info[argpos++].As<v8::Function>());
+		maybeCallback	= info[argpos++].As<Napi::Function>();
+		hasCallback		= true;
 	}
 
 	// check over arguments
 	if(argpos < info.Length()){
-		Nan::ThrowSyntaxError("Last parameter is not callback function.");
-		return;
+		Napi::TypeError::New(env, "Last parameter is not callback function.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
 
 	// work
-	if(callback){
-		Nan::AsyncQueueWorker(new RenameWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, cuk.c_str(), auto_rejoin, no_giveup_rejoin, strold.c_str(), strnew.c_str(), (is_parent_set ? strparent.c_str() : NULL), attrchk, (is_pass_set ? strpass.c_str() : NULL), (expire > 0 ? &expire : NULL)));
-		info.GetReturnValue().Set(Nan::True());
+	if(hasCallback){
+		RenameWorker*	worker = new RenameWorker(maybeCallback, obj->_k2hdkcslave, conf, ctlport, cuk, auto_rejoin, no_giveup_rejoin, strold, strnew, strparent, attrchk, strpass, expire);
+		worker->Queue();
+		return Napi::Boolean::New(env, true);
 	}else{
 		K2hdkcComRen*	pComObj;
-		if(!obj->_k2hdkcslave){
+		if(!obj->IsInitialize()){
 			pComObj = GetOtSlaveK2hdkcComRen(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 		}else{
-			pComObj = GetPmSlaveK2hdkcComRen(obj->_k2hdkcslave);
+			pComObj = GetPmSlaveK2hdkcComRen(&(obj->_k2hdkcslave));
 		}
 		if(!pComObj){
-			Nan::ThrowSyntaxError("Internal error: Could not create command object.");
-			return;
+			Napi::TypeError::New(env, "Internal error: Could not create command object.").ThrowAsJavaScriptException();
+			return env.Undefined();
 		}
 
 		dkcres_type_t	rescode = DKC_NORESTYPE;
-		info.GetReturnValue().Set(Nan::New(
-			pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strold.c_str()), strold.length() + 1, reinterpret_cast<const unsigned char*>(strnew.c_str()), strnew.length() + 1, (is_parent_set ? reinterpret_cast<const unsigned char*>(strparent.c_str()) : NULL), (is_parent_set ? strparent.length() + 1 : 0), attrchk, (is_pass_set ? strpass.c_str() : NULL), (expire > 0 ? &expire : NULL), &rescode)
-		));
+		bool			result	= pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strold.c_str()), strold.length() + 1, reinterpret_cast<const unsigned char*>(strnew.c_str()), strnew.length() + 1, (strparent.empty() ? NULL : reinterpret_cast<const unsigned char*>(strparent.c_str())), (strparent.empty() ? 0 : strparent.length() + 1), attrchk, (strpass.empty() ? NULL : strpass.c_str()), (expire > 0 ? &expire : NULL), &rescode);
+
 		DKC_DELETE(pComObj);
+		return Napi::Boolean::New(env, result);
 	}
 }
 
@@ -2871,266 +2964,284 @@ NAN_METHOD(K2hdkcNode::Rename)
  *
  */
 
-NAN_METHOD(K2hdkcNode::QueuePush)
+Napi::Value K2hdkcNode::QueuePush(const Napi::CallbackInfo& info)
 {
-	K2hdkcNode*		obj		= Nan::ObjectWrap::Unwrap<K2hdkcNode>(info.This());
-	Nan::Callback*	callback= obj->_cbs.Find(stc_emitters[EMITTER_POS_QUEUEPUSH]);
-	int				argpos	= 0;
+	Napi::Env env = info.Env();
 
-	// for onetime connection
-	ParseArgumentsForOnetime(argpos);
+	// Unwrap
+	if(!info.This().IsObject() || !info.This().As<Napi::Object>().InstanceOf(K2hdkcNode::constructor.Value())){
+		Napi::TypeError::New(env, "Invalid this object(K2hdkcNode instance)").ThrowAsJavaScriptException();
+		return env.Undefined();
+	}
+	K2hdkcNode*		obj		= Napi::ObjectWrap<K2hdkcNode>::Unwrap(info.This().As<Napi::Object>());
+
+	// initial callback comes from emitter map if set
+	Napi::Function				maybeCallback;
+	bool						hasCallback		= false;
+	Napi::FunctionReference*	emitterCbRef	= obj->_cbs.Find(stc_emitters[EMITTER_POS_QUEUEPUSH]);
+	if(emitterCbRef){
+		maybeCallback	= emitterCbRef->Value();
+		hasCallback		= true;
+	}
+
+	// For onetime connection
+	size_t		argpos			= 0;
+	std::string	conf;
+	int16_t		ctlport			= static_cast<int16_t>(CHM_INVALID_PORT);
+	std::string	cuk;
+	bool		auto_rejoin		= false;
+	bool		no_giveup_rejoin= false;
+	if(!K2hdkcNode::ParseArgumentsForOnetime(info, obj, argpos, conf, ctlport, cuk, auto_rejoin, no_giveup_rejoin)){
+		return env.Undefined();
+	}
 
 	// target arguments
-	string			strprefix;
-	bool			is_key_set		= false;
-	string			strkey;
-	string			strval;
-	bool			is_fifo			= true;
-	bool			attrchk			= true;
-	bool			is_pass_set		= false;
-	string			strpass;
-	time_t			expire			= 0;
+	std::string	strprefix;
+	std::string	strkey;
+	std::string	strval;
+	bool		is_fifo	= true;
+	bool		attrchk	= true;
+	std::string	strpass;
+	time_t		expire	= 0;
 
 	// target prefix
 	if(info.Length() <= (argpos + 1)){
-		Nan::ThrowSyntaxError("There is no prefix nor value parameter.");
-		return;
+		Napi::TypeError::New(env, "There is no prefix nor value parameter.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
-	if(!info[argpos]->IsString()){
-		Nan::ThrowSyntaxError("The prefix name must be string");
-		return;
-	}else{
-		Nan::Utf8String	buf(info[argpos++]);
-		strprefix				= std::string(*buf);
+	if(!info[argpos].IsString()){
+		Napi::TypeError::New(env, "The prefix name must be string.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
+	strprefix = info[argpos++].As<Napi::String>().Utf8Value();
 
 	// target (key and val) or val
-	if(info[argpos]->IsString()){
-		if((argpos + 1) < info.Length() && (info[argpos + 1]->IsString() || info[argpos + 1]->IsNull())){
+	if(info[argpos].IsString()){
+		if((argpos + 1) < info.Length() && (info[argpos + 1].IsString() || info[argpos + 1].IsNull())){
 			// 2'nd argument is key, 3'rd argument is value.
-			Nan::Utf8String	buf1(info[argpos++]);
-			strkey				= std::string(*buf1);					// temporary set to key buffer
-			is_key_set			= true;
-			Nan::Utf8String	buf2(info[argpos++]);
-			strval				= std::string(*buf2);
+			strkey = info[argpos++].As<Napi::String>().Utf8Value();
+			strval = info[argpos++].As<Napi::String>().Utf8Value();
 		}else{
 			// 2'nd argument is value(key is not set).
-			Nan::Utf8String	buf(info[argpos++]);
-			strval				= std::string(*buf);
-			is_key_set			= false;
+			strval = info[argpos++].As<Napi::String>().Utf8Value();
 		}
-	}else if(info[argpos]->IsNull()){
-		if((argpos + 1) < info.Length() && (info[argpos + 1]->IsString() || info[argpos + 1]->IsNull())){
+	}else if(info[argpos].IsNull()){
+		if((argpos + 1) < info.Length() && (info[argpos + 1].IsString() || info[argpos + 1].IsNull())){
 			// 2'nd argument is key( = null), 3'rd argument is value.
-			is_key_set			= false;
 			argpos++;
-			Nan::Utf8String	buf(info[argpos++]);
-			strval				= std::string(*buf);
+			strval = info[argpos++].As<Napi::String>().Utf8Value();
 		}else{
-			Nan::ThrowSyntaxError("The key name or value must be string");
-			return;
+			Napi::TypeError::New(env, "The key name or value must be string.").ThrowAsJavaScriptException();
+			return env.Undefined();
 		}
 	}else{
-		Nan::ThrowSyntaxError("The key name or value must be string");
-		return;
+		Napi::TypeError::New(env, "The key name or value must be string.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
 
 	// other arguments for target
-	if(argpos < info.Length() && info[argpos]->IsBoolean()){
+	if(argpos < info.Length() && info[argpos].IsBoolean()){
 		// 3'rd argument is fifo/lifo mode
-		is_fifo					= Nan::To<bool>(info[argpos++]).FromJust();
+		is_fifo = info[argpos++].As<Napi::Boolean>().Value();
 
-		if(argpos < info.Length() && info[argpos]->IsBoolean()){
+		if(argpos < info.Length() && info[argpos].IsBoolean()){
 			// 4'th argument is attrchk
-			attrchk				= Nan::To<bool>(info[argpos++]).FromJust();
+			attrchk = info[argpos++].As<Napi::Boolean>().Value();
 
-			if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
+			if(argpos < info.Length() && (info[argpos].IsString() || info[argpos].IsNull())){
 				// 5'th argument is pass
-				if(info[argpos]->IsNull()){
+				if(info[argpos].IsNull()){
 					argpos++;
-					is_pass_set	= false;
 				}else{
-					Nan::Utf8String	buf(info[argpos++]);
-					strpass		= std::string(*buf);
-					is_pass_set	= true;
+					strpass = info[argpos++].As<Napi::String>().Utf8Value();
 				}
 
-				if(argpos < info.Length() && info[argpos]->IsInt32()){
+				if(argpos < info.Length() && info[argpos].IsNumber()){
 					// 6'th argument is expire
-					int32_t	nexpire	= Nan::To<int32_t>(info[argpos++]).FromJust();
+					int32_t	nexpire = static_cast<int32_t>(info[argpos++].As<Napi::Number>().Int32Value());
 					expire			= static_cast<time_t>(nexpire);
 
-					if(argpos < info.Length() && info[argpos]->IsFunction()){
+					if(argpos < info.Length() && info[argpos].IsFunction()){
 						// 7'th argument is callback
-						callback= new Nan::Callback(info[argpos++].As<v8::Function>());
+						maybeCallback	= info[argpos++].As<Napi::Function>();
+						hasCallback		= true;
 					}
-				}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+				}else if(argpos < info.Length() && info[argpos].IsFunction()){
 					// 6'th argument is callback
-					callback= new Nan::Callback(info[argpos++].As<v8::Function>());
+					maybeCallback	= info[argpos++].As<Napi::Function>();
+					hasCallback		= true;
 				}
-			}else if(argpos < info.Length() && info[argpos]->IsInt32()){
+			}else if(argpos < info.Length() && info[argpos].IsNumber()){
 				// 5'th argument is expire
-				int32_t	nexpire	= Nan::To<int32_t>(info[argpos++]).FromJust();
+				int32_t	nexpire = static_cast<int32_t>(info[argpos++].As<Napi::Number>().Int32Value());
 				expire			= static_cast<time_t>(nexpire);
 
-				if(argpos < info.Length() && info[argpos]->IsFunction()){
+				if(argpos < info.Length() && info[argpos].IsFunction()){
 					// 6'th argument is callback
-					callback= new Nan::Callback(info[argpos++].As<v8::Function>());
+					maybeCallback	= info[argpos++].As<Napi::Function>();
+					hasCallback		= true;
 				}
-			}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+			}else if(argpos < info.Length() && info[argpos].IsFunction()){
 				// 5'th argument is callback
-				callback= new Nan::Callback(info[argpos++].As<v8::Function>());
+				maybeCallback	= info[argpos++].As<Napi::Function>();
+				hasCallback		= true;
 			}
-		}else if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
+		}else if(argpos < info.Length() && (info[argpos].IsString() || info[argpos].IsNull())){
 			// 4'th argument is pass
-			if(info[argpos]->IsNull()){
+			if(info[argpos].IsNull()){
 				argpos++;
-				is_pass_set	= false;
 			}else{
-				Nan::Utf8String	buf(info[argpos++]);
-				strpass		= std::string(*buf);
-				is_pass_set	= true;
+				strpass = info[argpos++].As<Napi::String>().Utf8Value();
 			}
 
-			if(argpos < info.Length() && info[argpos]->IsInt32()){
+			if(argpos < info.Length() && info[argpos].IsNumber()){
 				// 5'th argument is expire
-				int32_t	nexpire	= Nan::To<int32_t>(info[argpos++]).FromJust();
+				int32_t	nexpire = static_cast<int32_t>(info[argpos++].As<Napi::Number>().Int32Value());
 				expire			= static_cast<time_t>(nexpire);
 
-				if(argpos < info.Length() && info[argpos]->IsFunction()){
+				if(argpos < info.Length() && info[argpos].IsFunction()){
 					// 6'th argument is callback
-					callback= new Nan::Callback(info[argpos++].As<v8::Function>());
+					maybeCallback	= info[argpos++].As<Napi::Function>();
+					hasCallback		= true;
 				}
-			}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+			}else if(argpos < info.Length() && info[argpos].IsFunction()){
 				// 5'th argument is callback
-				callback= new Nan::Callback(info[argpos++].As<v8::Function>());
+				maybeCallback	= info[argpos++].As<Napi::Function>();
+				hasCallback		= true;
 			}
-		}else if(argpos < info.Length() && info[argpos]->IsInt32()){
+		}else if(argpos < info.Length() && info[argpos].IsNumber()){
 			// 4'th argument is expire
-			int32_t	nexpire	= Nan::To<int32_t>(info[argpos++]).FromJust();
+			int32_t	nexpire = static_cast<int32_t>(info[argpos++].As<Napi::Number>().Int32Value());
 			expire			= static_cast<time_t>(nexpire);
 
-			if(argpos < info.Length() && info[argpos]->IsFunction()){
+			if(argpos < info.Length() && info[argpos].IsFunction()){
 				// 5'th argument is callback
-				callback= new Nan::Callback(info[argpos++].As<v8::Function>());
+				maybeCallback	= info[argpos++].As<Napi::Function>();
+				hasCallback		= true;
 			}
-		}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+		}else if(argpos < info.Length() && info[argpos].IsFunction()){
 			// 4'th argument is callback
-			callback= new Nan::Callback(info[argpos++].As<v8::Function>());
+			maybeCallback	= info[argpos++].As<Napi::Function>();
+			hasCallback		= true;
 		}
 
-	}else if(argpos < info.Length() && info[argpos]->IsBoolean()){
+	// cppcheck-suppress unmatchedSuppression
+	// cppcheck-suppress multiCondition
+	}else if(argpos < info.Length() && info[argpos].IsBoolean()){
 		// 3'rd argument is attrchk
-		attrchk				= Nan::To<bool>(info[argpos++]).FromJust();
+		attrchk = info[argpos++].As<Napi::Boolean>().Value();
 
-		if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
+		if(argpos < info.Length() && (info[argpos].IsString() || info[argpos].IsNull())){
 			// 4'th argument is pass
-			if(info[argpos]->IsNull()){
+			if(info[argpos].IsNull()){
 				argpos++;
-				is_pass_set	= false;
 			}else{
-				Nan::Utf8String	buf(info[argpos++]);
-				strpass		= std::string(*buf);
-				is_pass_set	= true;
+				strpass = info[argpos++].As<Napi::String>().Utf8Value();
 			}
 
-			if(argpos < info.Length() && info[argpos]->IsInt32()){
+			if(argpos < info.Length() && info[argpos].IsNumber()){
 				// 5'th argument is expire
-				int32_t	nexpire	= Nan::To<int32_t>(info[argpos++]).FromJust();
+				int32_t	nexpire = static_cast<int32_t>(info[argpos++].As<Napi::Number>().Int32Value());
 				expire			= static_cast<time_t>(nexpire);
 
-				if(argpos < info.Length() && info[argpos]->IsFunction()){
+				if(argpos < info.Length() && info[argpos].IsFunction()){
 					// 6'th argument is callback
-					callback= new Nan::Callback(info[argpos++].As<v8::Function>());
+					maybeCallback	= info[argpos++].As<Napi::Function>();
+					hasCallback		= true;
 				}
-			}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+			}else if(argpos < info.Length() && info[argpos].IsFunction()){
 				// 5'th argument is callback
-				callback= new Nan::Callback(info[argpos++].As<v8::Function>());
+				maybeCallback	= info[argpos++].As<Napi::Function>();
+				hasCallback		= true;
 			}
-		}else if(argpos < info.Length() && info[argpos]->IsInt32()){
+		}else if(argpos < info.Length() && info[argpos].IsNumber()){
 			// 4'th argument is expire
-			int32_t	nexpire	= Nan::To<int32_t>(info[argpos++]).FromJust();
+			int32_t	nexpire = static_cast<int32_t>(info[argpos++].As<Napi::Number>().Int32Value());
 			expire			= static_cast<time_t>(nexpire);
 
-			if(argpos < info.Length() && info[argpos]->IsFunction()){
+			if(argpos < info.Length() && info[argpos].IsFunction()){
 				// 5'th argument is callback
-				callback= new Nan::Callback(info[argpos++].As<v8::Function>());
+				maybeCallback	= info[argpos++].As<Napi::Function>();
+				hasCallback		= true;
 			}
-		}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+		}else if(argpos < info.Length() && info[argpos].IsFunction()){
 			// 4'th argument is callback
-			callback= new Nan::Callback(info[argpos++].As<v8::Function>());
+			maybeCallback	= info[argpos++].As<Napi::Function>();
+			hasCallback		= true;
 		}
-	}else if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
+	}else if(argpos < info.Length() && (info[argpos].IsString() || info[argpos].IsNull())){
 		// 3'rd argument is pass
-		if(info[argpos]->IsNull()){
+		if(info[argpos].IsNull()){
 			argpos++;
-			is_pass_set	= false;
 		}else{
-			Nan::Utf8String	buf(info[argpos++]);
-			strpass		= std::string(*buf);
-			is_pass_set	= true;
+			strpass = info[argpos++].As<Napi::String>().Utf8Value();
 		}
 
-		if(argpos < info.Length() && info[argpos]->IsInt32()){
+		if(argpos < info.Length() && info[argpos].IsNumber()){
 			// 4'th argument is expire
-			int32_t	nexpire	= Nan::To<int32_t>(info[argpos++]).FromJust();
+			int32_t	nexpire = static_cast<int32_t>(info[argpos++].As<Napi::Number>().Int32Value());
 			expire			= static_cast<time_t>(nexpire);
 
-			if(argpos < info.Length() && info[argpos]->IsFunction()){
+			if(argpos < info.Length() && info[argpos].IsFunction()){
 				// 5'th argument is callback
-				callback= new Nan::Callback(info[argpos++].As<v8::Function>());
+				maybeCallback	= info[argpos++].As<Napi::Function>();
+				hasCallback		= true;
 			}
-		}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+		}else if(argpos < info.Length() && info[argpos].IsFunction()){
 			// 5'th argument is callback
-			callback= new Nan::Callback(info[argpos++].As<v8::Function>());
+			maybeCallback	= info[argpos++].As<Napi::Function>();
+			hasCallback		= true;
 		}
-	}else if(argpos < info.Length() && info[argpos]->IsInt32()){
+	}else if(argpos < info.Length() && info[argpos].IsNumber()){
 		// 3'rd argument is expire
-		int32_t	nexpire	= Nan::To<int32_t>(info[argpos++]).FromJust();
+		int32_t	nexpire = static_cast<int32_t>(info[argpos++].As<Napi::Number>().Int32Value());
 		expire			= static_cast<time_t>(nexpire);
 
-		if(argpos < info.Length() && info[argpos]->IsFunction()){
+		if(argpos < info.Length() && info[argpos].IsFunction()){
 			// 4'th argument is callback
-			callback= new Nan::Callback(info[argpos++].As<v8::Function>());
+			maybeCallback	= info[argpos++].As<Napi::Function>();
+			hasCallback		= true;
 		}
-	}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+	}else if(argpos < info.Length() && info[argpos].IsFunction()){
 		// 3'rd argument is callback
-		callback= new Nan::Callback(info[argpos++].As<v8::Function>());
+		maybeCallback	= info[argpos++].As<Napi::Function>();
+		hasCallback		= true;
 	}
 
 	// check over arguments
 	if(argpos < info.Length()){
-		Nan::ThrowSyntaxError("Last parameter is not callback function.");
-		return;
+		Napi::TypeError::New(env, "Last parameter is not callback function.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
 
 	// work
-	if(callback){
-		Nan::AsyncQueueWorker(new QueuePushWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, cuk.c_str(), auto_rejoin, no_giveup_rejoin, strprefix.c_str(), (is_key_set ? strkey.c_str() : NULL), strval.c_str(),  is_fifo, attrchk, (is_pass_set ? strpass.c_str() : NULL), (expire > 0 ? &expire : NULL)));
-		info.GetReturnValue().Set(Nan::True());
+	if(hasCallback){
+		QueuePushWorker*	worker = new QueuePushWorker(maybeCallback, obj->_k2hdkcslave, conf, ctlport, cuk, auto_rejoin, no_giveup_rejoin, strprefix, strkey, strval, is_fifo, attrchk, strpass, expire);
+		worker->Queue();
+		return Napi::Boolean::New(env, true);
 	}else{
 		K2hdkcComQPush*	pComObj;
-		if(!obj->_k2hdkcslave){
+		if(!obj->IsInitialize()){
 			pComObj = GetOtSlaveK2hdkcComQPush(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 		}else{
-			pComObj = GetPmSlaveK2hdkcComQPush(obj->_k2hdkcslave);
+			pComObj = GetPmSlaveK2hdkcComQPush(&(obj->_k2hdkcslave));
 		}
 		if(!pComObj){
-			Nan::ThrowSyntaxError("Internal error: Could not create command object.");
-			return;
+			Napi::TypeError::New(env, "Internal error: Could not create command object.").ThrowAsJavaScriptException();
+			return env.Undefined();
 		}
 
 		dkcres_type_t	rescode = DKC_NORESTYPE;
 		bool			result	= false;
-		if(is_key_set){
+		if(!strkey.empty()){
 			// key queue
-			result = pComObj->KeyQueueCommandSend(reinterpret_cast<const unsigned char*>(strprefix.c_str()), strprefix.length() + 1, reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, reinterpret_cast<const unsigned char*>(strval.c_str()), strval.length() + 1, is_fifo, NULL, 0UL, attrchk, (is_pass_set ? strpass.c_str() : NULL), (expire > 0 ? &expire : NULL), &rescode);
+			result = pComObj->KeyQueueCommandSend(reinterpret_cast<const unsigned char*>(strprefix.c_str()), strprefix.length() + 1, reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, reinterpret_cast<const unsigned char*>(strval.c_str()), strval.length() + 1, is_fifo, NULL, 0UL, attrchk, (strpass.empty() ? NULL : strpass.c_str()), (expire > 0 ? &expire : NULL), &rescode);
 		}else{
 			// queue
-			result = pComObj->QueueCommandSend(reinterpret_cast<const unsigned char*>(strprefix.c_str()), strprefix.length() + 1, reinterpret_cast<const unsigned char*>(strval.c_str()), strval.length() + 1, is_fifo, NULL, 0UL, attrchk, (is_pass_set ? strpass.c_str() : NULL), (expire > 0 ? &expire : NULL), &rescode);
+			result = pComObj->QueueCommandSend(reinterpret_cast<const unsigned char*>(strprefix.c_str()), strprefix.length() + 1, reinterpret_cast<const unsigned char*>(strval.c_str()), strval.length() + 1, is_fifo, NULL, 0UL, attrchk, (strpass.empty() ? NULL : strpass.c_str()), (expire > 0 ? &expire : NULL), &rescode);
 		}
-		info.GetReturnValue().Set(Nan::New(result));
 		DKC_DELETE(pComObj);
+		return Napi::Boolean::New(env, result);
 	}
 }
 
@@ -3192,122 +3303,139 @@ NAN_METHOD(K2hdkcNode::QueuePush)
  *
  */
 
-NAN_METHOD(K2hdkcNode::QueuePop)
+Napi::Value K2hdkcNode::QueuePop(const Napi::CallbackInfo& info)
 {
-	K2hdkcNode*		obj		= Nan::ObjectWrap::Unwrap<K2hdkcNode>(info.This());
-	Nan::Callback*	callback= obj->_cbs.Find(stc_emitters[EMITTER_POS_QUEUEPOP]);
-	int				argpos	= 0;
+	Napi::Env env = info.Env();
 
-	// for onetime connection
-	ParseArgumentsForOnetime(argpos);
+	// Unwrap
+	if(!info.This().IsObject() || !info.This().As<Napi::Object>().InstanceOf(K2hdkcNode::constructor.Value())){
+		Napi::TypeError::New(env, "Invalid this object(K2hdkcNode instance)").ThrowAsJavaScriptException();
+		return env.Undefined();
+	}
+	K2hdkcNode*		obj		= Napi::ObjectWrap<K2hdkcNode>::Unwrap(info.This().As<Napi::Object>());
+
+	// initial callback comes from emitter map if set
+	Napi::Function				maybeCallback;
+	bool						hasCallback		= false;
+	Napi::FunctionReference*	emitterCbRef	= obj->_cbs.Find(stc_emitters[EMITTER_POS_QUEUEPOP]);
+	if(emitterCbRef){
+		maybeCallback	= emitterCbRef->Value();
+		hasCallback		= true;
+	}
+
+	// For onetime connection
+	size_t		argpos			= 0;
+	std::string	conf;
+	int16_t		ctlport			= static_cast<int16_t>(CHM_INVALID_PORT);
+	std::string	cuk;
+	bool		auto_rejoin		= false;
+	bool		no_giveup_rejoin= false;
+	if(!K2hdkcNode::ParseArgumentsForOnetime(info, obj, argpos, conf, ctlport, cuk, auto_rejoin, no_giveup_rejoin)){
+		return env.Undefined();
+	}
 
 	// target arguments
-	string			strprefix;
-	bool			is_fifo			= true;
-	bool			is_key_queue	= false;
-	bool			is_pass_set		= false;
-	string			strpass;
+	std::string	strprefix;
+	bool		is_fifo		= true;
+	bool		is_key_queue= false;
+	std::string	strpass;
 
 	// target prefix
 	if(info.Length() <= argpos){
-		Nan::ThrowSyntaxError("There is no prefix parameter.");
-		return;
+		Napi::TypeError::New(env, "There is no prefix parameter.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
-	if(!info[argpos]->IsString()){
-		Nan::ThrowSyntaxError("The prefix name must be string");
-		return;
-	}else{
-		Nan::Utf8String	buf(info[argpos++]);
-		strprefix				= std::string(*buf);
+	if(!info[argpos].IsString()){
+		Napi::TypeError::New(env, "The prefix name must be string.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
+	strprefix = info[argpos++].As<Napi::String>().Utf8Value();
 
 	// other arguments for target
-	if(argpos < info.Length() && info[argpos]->IsBoolean()){
+	if(argpos < info.Length() && info[argpos].IsBoolean()){
 		// 2'nd argument is fifo/lifo mode
-		is_fifo					= Nan::To<bool>(info[argpos++]).FromJust();
+		is_fifo = info[argpos++].As<Napi::Boolean>().Value();
 
-		if(argpos < info.Length() && info[argpos]->IsBoolean()){
+		if(argpos < info.Length() && info[argpos].IsBoolean()){
 			// 3'rd argument is queue/keyqueue type
-			is_key_queue		= Nan::To<bool>(info[argpos++]).FromJust();
+			is_key_queue = info[argpos++].As<Napi::Boolean>().Value();
 
-			if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
+			if(argpos < info.Length() && (info[argpos].IsString() || info[argpos].IsNull())){
 				// 4'th argument is pass
-				if(info[argpos]->IsNull()){
+				if(info[argpos].IsNull()){
 					argpos++;
-					is_pass_set	= false;
 				}else{
-					Nan::Utf8String	buf(info[argpos++]);
-					strpass		= std::string(*buf);
-					is_pass_set	= true;
+					strpass = info[argpos++].As<Napi::String>().Utf8Value();
 				}
 
-				if(argpos < info.Length() && info[argpos]->IsFunction()){
+				if(argpos < info.Length() && info[argpos].IsFunction()){
 					// 5'th argument is callback
-					callback= new Nan::Callback(info[argpos++].As<v8::Function>());
+					maybeCallback	= info[argpos++].As<Napi::Function>();
+					hasCallback		= true;
 				}
-			}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+			}else if(argpos < info.Length() && info[argpos].IsFunction()){
 				// 4'th argument is callback
-				callback= new Nan::Callback(info[argpos++].As<v8::Function>());
+				maybeCallback	= info[argpos++].As<Napi::Function>();
+				hasCallback		= true;
 			}
-		}else if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
+		}else if(argpos < info.Length() && (info[argpos].IsString() || info[argpos].IsNull())){
 			// 3'rd argument is pass
-			if(info[argpos]->IsNull()){
+			if(info[argpos].IsNull()){
 				argpos++;
-				is_pass_set	= false;
 			}else{
-				Nan::Utf8String	buf(info[argpos++]);
-				strpass		= std::string(*buf);
-				is_pass_set	= true;
+				strpass = info[argpos++].As<Napi::String>().Utf8Value();
 			}
 
-			if(argpos < info.Length() && info[argpos]->IsFunction()){
+			if(argpos < info.Length() && info[argpos].IsFunction()){
 				// 4'th argument is callback
-				callback= new Nan::Callback(info[argpos++].As<v8::Function>());
+				maybeCallback	= info[argpos++].As<Napi::Function>();
+				hasCallback		= true;
 			}
-		}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+		}else if(argpos < info.Length() && info[argpos].IsFunction()){
 			// 3'rd argument is callback
-			callback= new Nan::Callback(info[argpos++].As<v8::Function>());
+			maybeCallback	= info[argpos++].As<Napi::Function>();
+			hasCallback		= true;
 		}
-	}else if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
+	}else if(argpos < info.Length() && (info[argpos].IsString() || info[argpos].IsNull())){
 		// 2'nd argument is pass
-		if(info[argpos]->IsNull()){
+		if(info[argpos].IsNull()){
 			argpos++;
-			is_pass_set	= false;
 		}else{
-			Nan::Utf8String	buf(info[argpos++]);
-			strpass		= std::string(*buf);
-			is_pass_set	= true;
+			strpass = info[argpos++].As<Napi::String>().Utf8Value();
 		}
 
-		if(argpos < info.Length() && info[argpos]->IsFunction()){
+		if(argpos < info.Length() && info[argpos].IsFunction()){
 			// 3'rd argument is callback
-			callback= new Nan::Callback(info[argpos++].As<v8::Function>());
+			maybeCallback	= info[argpos++].As<Napi::Function>();
+			hasCallback		= true;
 		}
-	}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+	}else if(argpos < info.Length() && info[argpos].IsFunction()){
 		// 2'nd argument is callback
-		callback= new Nan::Callback(info[argpos++].As<v8::Function>());
+		maybeCallback	= info[argpos++].As<Napi::Function>();
+		hasCallback		= true;
 	}
 
 	// check over arguments
 	if(argpos < info.Length()){
-		Nan::ThrowSyntaxError("Last parameter is not callback function.");
-		return;
+		Napi::TypeError::New(env, "Last parameter is not callback function.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
 
 	// work
-	if(callback){
-		Nan::AsyncQueueWorker(new QueuePopWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, cuk.c_str(), auto_rejoin, no_giveup_rejoin, strprefix.c_str(), is_fifo, is_key_queue, (is_pass_set ? strpass.c_str() : NULL)));
-		info.GetReturnValue().Set(Nan::True());
+	if(hasCallback){
+		QueuePopWorker*	worker = new QueuePopWorker(maybeCallback, obj->_k2hdkcslave, conf, ctlport, cuk, auto_rejoin, no_giveup_rejoin, strprefix, is_fifo, is_key_queue, strpass);
+		worker->Queue();
+		return Napi::Boolean::New(env, true);
 	}else{
 		K2hdkcComQPop*	pComObj;
-		if(!obj->_k2hdkcslave){
+		if(!obj->IsInitialize()){
 			pComObj = GetOtSlaveK2hdkcComQPop(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 		}else{
-			pComObj = GetPmSlaveK2hdkcComQPop(obj->_k2hdkcslave);
+			pComObj = GetPmSlaveK2hdkcComQPop(&(obj->_k2hdkcslave));
 		}
 		if(!pComObj){
-			Nan::ThrowSyntaxError("Internal error: Could not create command object.");
-			return;
+			Napi::TypeError::New(env, "Internal error: Could not create command object.").ThrowAsJavaScriptException();
+			return env.Undefined();
 		}
 
 		dkcres_type_t	rescode = DKC_NORESTYPE;
@@ -3318,37 +3446,41 @@ NAN_METHOD(K2hdkcNode::QueuePop)
 			size_t					keytmplen	= 0L;
 			const unsigned char*	pvaltmp		= NULL;
 			size_t					valtmplen	= 0L;
-			result = pComObj->KeyQueueCommandSend(reinterpret_cast<const unsigned char*>(strprefix.c_str()), strprefix.length() + 1, is_fifo, true, (is_pass_set ? strpass.c_str() : NULL), &pkeytmp, &keytmplen, &pvaltmp, &valtmplen, &rescode);
+			result = pComObj->KeyQueueCommandSend(reinterpret_cast<const unsigned char*>(strprefix.c_str()), strprefix.length() + 1, is_fifo, true, (strpass.empty() ? NULL : strpass.c_str()), &pkeytmp, &keytmplen, &pvaltmp, &valtmplen, &rescode);
 
 			if(result && (pkeytmp && 0 < keytmplen)){
-				Local<Array>	retarr	= Nan::New<Array>();
-				string			strtmpkey(reinterpret_cast<const char*>(pkeytmp), keytmplen);
+				Napi::Array	retarr = Napi::Array::New(env, 2);
+				std::string	strtmpkey(reinterpret_cast<const char*>(pkeytmp), ('\0' == pkeytmp[keytmplen - 1] ? keytmplen - 1 : keytmplen));
+
 				if(pvaltmp && 0 < valtmplen){
-					string		strtmpval(reinterpret_cast<const char*>(pvaltmp), valtmplen);
-					Nan::Set(retarr, 0, Nan::New<String>(strtmpkey.c_str()).ToLocalChecked());
-					Nan::Set(retarr, 1, Nan::New<String>(strtmpval.c_str()).ToLocalChecked());
+					std::string	strtmpval(reinterpret_cast<const char*>(pvaltmp), ('\0' == pvaltmp[valtmplen - 1] ? valtmplen - 1 : valtmplen));
+					retarr.Set((uint32_t)0, Napi::String::New(env, strtmpkey));
+					retarr.Set((uint32_t)1, Napi::String::New(env, strtmpval));
 				}else{
-					Nan::Set(retarr, 0, Nan::New<String>(strtmpkey.c_str()).ToLocalChecked());
-					Nan::Set(retarr, 1, Nan::Null());
+					retarr.Set((uint32_t)0, Napi::String::New(env, strtmpkey));
+					retarr.Set((uint32_t)1, env.Null());
 				}
-				info.GetReturnValue().Set(retarr);
+				DKC_DELETE(pComObj);
+				return retarr;
 			}else{
-				info.GetReturnValue().Set(Nan::Null());
+				DKC_DELETE(pComObj);
+				return env.Null();
 			}
 		}else{
 			// queue
 			const unsigned char*	pvaltmp		= NULL;
 			size_t					valtmplen	= 0L;
-			result = pComObj->QueueCommandSend(reinterpret_cast<const unsigned char*>(strprefix.c_str()), strprefix.length() + 1, is_fifo, true, (is_pass_set ? strpass.c_str() : NULL), &pvaltmp, &valtmplen, &rescode);
+			result = pComObj->QueueCommandSend(reinterpret_cast<const unsigned char*>(strprefix.c_str()), strprefix.length() + 1, is_fifo, true, (strpass.empty() ? NULL : strpass.c_str()), &pvaltmp, &valtmplen, &rescode);
 
 			if(result && (pvaltmp && 0 < valtmplen)){
-				string	strresult(reinterpret_cast<const char*>(pvaltmp), valtmplen);
-				info.GetReturnValue().Set(Nan::New<String>(strresult.c_str()).ToLocalChecked());
+				std::string	strresult(reinterpret_cast<const char*>(pvaltmp), ('\0' == pvaltmp[valtmplen - 1] ? valtmplen - 1 : valtmplen));
+				DKC_DELETE(pComObj);
+				return Napi::String::New(env, strresult);
 			}else{
-				info.GetReturnValue().Set(Nan::Null());
+				DKC_DELETE(pComObj);
+				return env.Null();
 			}
 		}
-		DKC_DELETE(pComObj);
 	}
 }
 
@@ -3412,205 +3544,219 @@ NAN_METHOD(K2hdkcNode::QueuePop)
  *
  */
 
-NAN_METHOD(K2hdkcNode::QueueRemove)
+Napi::Value K2hdkcNode::QueueRemove(const Napi::CallbackInfo& info)
 {
-	K2hdkcNode*		obj		= Nan::ObjectWrap::Unwrap<K2hdkcNode>(info.This());
-	Nan::Callback*	callback= obj->_cbs.Find(stc_emitters[EMITTER_POS_QUEUEREMOVE]);
-	int				argpos	= 0;
+	Napi::Env env = info.Env();
 
-	// for onetime connection
-	ParseArgumentsForOnetime(argpos);
+	// Unwrap
+	if(!info.This().IsObject() || !info.This().As<Napi::Object>().InstanceOf(K2hdkcNode::constructor.Value())){
+		Napi::TypeError::New(env, "Invalid this object(K2hdkcNode instance)").ThrowAsJavaScriptException();
+		return env.Undefined();
+	}
+	K2hdkcNode*		obj		= Napi::ObjectWrap<K2hdkcNode>::Unwrap(info.This().As<Napi::Object>());
+
+	// initial callback comes from emitter map if set
+	Napi::Function				maybeCallback;
+	bool						hasCallback		= false;
+	Napi::FunctionReference*	emitterCbRef	= obj->_cbs.Find(stc_emitters[EMITTER_POS_QUEUEREMOVE]);
+	if(emitterCbRef){
+		maybeCallback	= emitterCbRef->Value();
+		hasCallback		= true;
+	}
+
+	// For onetime connection
+	size_t		argpos			= 0;
+	std::string	conf;
+	int16_t		ctlport			= static_cast<int16_t>(CHM_INVALID_PORT);
+	std::string	cuk;
+	bool		auto_rejoin		= false;
+	bool		no_giveup_rejoin= false;
+	if(!K2hdkcNode::ParseArgumentsForOnetime(info, obj, argpos, conf, ctlport, cuk, auto_rejoin, no_giveup_rejoin)){
+		return env.Undefined();
+	}
 
 	// target arguments
-	string			strprefix;
-	int				count			= 0;
-	bool			is_fifo			= true;
-	bool			is_key_queue	= false;
-	bool			is_pass_set		= false;
-	string			strpass;
+	std::string	strprefix;
+	int			count			= 0;
+	bool		is_fifo			= true;
+	bool		is_key_queue	= false;
+	std::string	strpass;
 
 	// target prefix
 	if(info.Length() <= argpos){
-		Nan::ThrowSyntaxError("There is no prefix parameter.");
-		return;
+		Napi::TypeError::New(env, "There is no prefix parameter.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
-	if(!info[argpos]->IsString()){
-		Nan::ThrowSyntaxError("The prefix name must be string");
-		return;
-	}else{
-		Nan::Utf8String	buf(info[argpos++]);
-		strprefix				= std::string(*buf);
+	if(!info[argpos].IsString()){
+		Napi::TypeError::New(env, "The prefix name must be string.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
+	strprefix = info[argpos++].As<Napi::String>().Utf8Value();
 
 	// other arguments for target
-	if(argpos < info.Length() && info[argpos]->IsInt32()){
+	if(argpos < info.Length() && info[argpos].IsNumber()){
 		// 2'nd argument is count
-		count					= Nan::To<int64_t>(info[argpos++]).FromJust();
+		count = info[argpos++].As<Napi::Number>().Int32Value();
 
-		if(argpos < info.Length() && info[argpos]->IsBoolean()){
+		if(argpos < info.Length() && info[argpos].IsBoolean()){
 			// 3'rd argument is fifo/lifo mode
-			is_fifo				= Nan::To<bool>(info[argpos++]).FromJust();
+			is_fifo = info[argpos++].As<Napi::Boolean>().Value();
 
-			if(argpos < info.Length() && info[argpos]->IsBoolean()){
+			if(argpos < info.Length() && info[argpos].IsBoolean()){
 				// 4'th argument is queue/keyqueue type
-				is_key_queue	= Nan::To<bool>(info[argpos++]).FromJust();
+				is_key_queue = info[argpos++].As<Napi::Boolean>().Value();
 
-				if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
+				if(argpos < info.Length() && (info[argpos].IsString() || info[argpos].IsNull())){
 					// 5'th argument is pass
-					if(info[argpos]->IsNull()){
+					if(info[argpos].IsNull()){
 						argpos++;
-						is_pass_set	= false;
 					}else{
-						Nan::Utf8String	buf(info[argpos++]);
-						strpass		= std::string(*buf);
-						is_pass_set	= true;
+						strpass = info[argpos++].As<Napi::String>().Utf8Value();
 					}
 
-					if(argpos < info.Length() && info[argpos]->IsFunction()){
+					if(argpos < info.Length() && info[argpos].IsFunction()){
 						// 6'th argument is callback
-						callback= new Nan::Callback(info[argpos++].As<v8::Function>());
+						maybeCallback	= info[argpos++].As<Napi::Function>();
+						hasCallback		= true;
 					}
-				}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+				}else if(argpos < info.Length() && info[argpos].IsFunction()){
 					// 5'th argument is callback
-					callback= new Nan::Callback(info[argpos++].As<v8::Function>());
+					maybeCallback	= info[argpos++].As<Napi::Function>();
+					hasCallback		= true;
 				}
-			}else if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
+			}else if(argpos < info.Length() && (info[argpos].IsString() || info[argpos].IsNull())){
 				// 4'th argument is pass
-				if(info[argpos]->IsNull()){
+				if(info[argpos].IsNull()){
 					argpos++;
-					is_pass_set	= false;
 				}else{
-					Nan::Utf8String	buf(info[argpos++]);
-					strpass		= std::string(*buf);
-					is_pass_set	= true;
+					strpass = info[argpos++].As<Napi::String>().Utf8Value();
 				}
 
-				if(argpos < info.Length() && info[argpos]->IsFunction()){
+				if(argpos < info.Length() && info[argpos].IsFunction()){
 					// 5'th argument is callback
-					callback	= new Nan::Callback(info[argpos++].As<v8::Function>());
+					maybeCallback	= info[argpos++].As<Napi::Function>();
+					hasCallback		= true;
 				}
-			}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+			}else if(argpos < info.Length() && info[argpos].IsFunction()){
 				// 4'th argument is callback
-				callback		= new Nan::Callback(info[argpos++].As<v8::Function>());
+				maybeCallback	= info[argpos++].As<Napi::Function>();
+				hasCallback		= true;
 			}
-		}else if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
+		}else if(argpos < info.Length() && (info[argpos].IsString() || info[argpos].IsNull())){
 			// 3'rd argument is pass
-			if(info[argpos]->IsNull()){
+			if(info[argpos].IsNull()){
 				argpos++;
-				is_pass_set	= false;
 			}else{
-				Nan::Utf8String	buf(info[argpos++]);
-				strpass		= std::string(*buf);
-				is_pass_set	= true;
+				strpass = info[argpos++].As<Napi::String>().Utf8Value();
 			}
 
-			if(argpos < info.Length() && info[argpos]->IsFunction()){
+			if(argpos < info.Length() && info[argpos].IsFunction()){
 				// 4'th argument is callback
-				callback		= new Nan::Callback(info[argpos++].As<v8::Function>());
+				maybeCallback	= info[argpos++].As<Napi::Function>();
+				hasCallback		= true;
 			}
-		}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+		}else if(argpos < info.Length() && info[argpos].IsFunction()){
 			// 3'rd argument is callback
-			callback			= new Nan::Callback(info[argpos++].As<v8::Function>());
+			maybeCallback	= info[argpos++].As<Napi::Function>();
+			hasCallback		= true;
 		}
-	}else if(argpos < info.Length() && info[argpos]->IsBoolean()){
+	}else if(argpos < info.Length() && info[argpos].IsBoolean()){
 		// 2'nd argument is fifo/lifo mode
-		is_fifo					= Nan::To<bool>(info[argpos++]).FromJust();
+		is_fifo = info[argpos++].As<Napi::Boolean>().Value();
 
-		if(argpos < info.Length() && info[argpos]->IsBoolean()){
+		if(argpos < info.Length() && info[argpos].IsBoolean()){
 			// 3'rd argument is queue/keyqueue type
-			is_key_queue		= Nan::To<bool>(info[argpos++]).FromJust();
+			is_key_queue = info[argpos++].As<Napi::Boolean>().Value();
 
-			if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
+			if(argpos < info.Length() && (info[argpos].IsString() || info[argpos].IsNull())){
 				// 4'th argument is pass
-				if(info[argpos]->IsNull()){
+				if(info[argpos].IsNull()){
 					argpos++;
-					is_pass_set	= false;
 				}else{
-					Nan::Utf8String	buf(info[argpos++]);
-					strpass		= std::string(*buf);
-					is_pass_set	= true;
+					strpass = info[argpos++].As<Napi::String>().Utf8Value();
 				}
 
-				if(argpos < info.Length() && info[argpos]->IsFunction()){
+				if(argpos < info.Length() && info[argpos].IsFunction()){
 					// 5'th argument is callback
-					callback	= new Nan::Callback(info[argpos++].As<v8::Function>());
+					maybeCallback	= info[argpos++].As<Napi::Function>();
+					hasCallback		= true;
 				}
-			}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+			}else if(argpos < info.Length() && info[argpos].IsFunction()){
 				// 4'th argument is callback
-				callback		= new Nan::Callback(info[argpos++].As<v8::Function>());
+				maybeCallback	= info[argpos++].As<Napi::Function>();
+				hasCallback		= true;
 			}
-		}else if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
+		}else if(argpos < info.Length() && (info[argpos].IsString() || info[argpos].IsNull())){
 			// 3'rd argument is pass
-			if(info[argpos]->IsNull()){
+			if(info[argpos].IsNull()){
 				argpos++;
-				is_pass_set	= false;
 			}else{
-				Nan::Utf8String	buf(info[argpos++]);
-				strpass		= std::string(*buf);
-				is_pass_set	= true;
+				strpass = info[argpos++].As<Napi::String>().Utf8Value();
 			}
 
-			if(argpos < info.Length() && info[argpos]->IsFunction()){
+			if(argpos < info.Length() && info[argpos].IsFunction()){
 				// 4'th argument is callback
-				callback		= new Nan::Callback(info[argpos++].As<v8::Function>());
+				maybeCallback	= info[argpos++].As<Napi::Function>();
+				hasCallback		= true;
 			}
-		}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+		}else if(argpos < info.Length() && info[argpos].IsFunction()){
 			// 3'rd argument is callback
-			callback			= new Nan::Callback(info[argpos++].As<v8::Function>());
+			maybeCallback	= info[argpos++].As<Napi::Function>();
+			hasCallback		= true;
 		}
-	}else if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
+	}else if(argpos < info.Length() && (info[argpos].IsString() || info[argpos].IsNull())){
 		// 2'nd argument is pass
-		if(info[argpos]->IsNull()){
+		if(info[argpos].IsNull()){
 			argpos++;
-			is_pass_set	= false;
 		}else{
-			Nan::Utf8String	buf(info[argpos++]);
-			strpass		= std::string(*buf);
-			is_pass_set	= true;
+			strpass = info[argpos++].As<Napi::String>().Utf8Value();
 		}
 
-		if(argpos < info.Length() && info[argpos]->IsFunction()){
+		if(argpos < info.Length() && info[argpos].IsFunction()){
 			// 3'rd argument is callback
-			callback			= new Nan::Callback(info[argpos++].As<v8::Function>());
+			maybeCallback	= info[argpos++].As<Napi::Function>();
+			hasCallback		= true;
 		}
-	}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+	}else if(argpos < info.Length() && info[argpos].IsFunction()){
 		// 2'nd argument is callback
-		callback				= new Nan::Callback(info[argpos++].As<v8::Function>());
+		maybeCallback	= info[argpos++].As<Napi::Function>();
+		hasCallback		= true;
 	}
 
 	// check over arguments
 	if(argpos < info.Length()){
-		Nan::ThrowSyntaxError("Last parameter is not callback function.");
-		return;
+		Napi::TypeError::New(env, "Last parameter is not callback function.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
 
 	// work
-	if(callback){
-		Nan::AsyncQueueWorker(new QueueRemoveWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, cuk.c_str(), auto_rejoin, no_giveup_rejoin, strprefix.c_str(), count, is_fifo, is_key_queue, (is_pass_set ? strpass.c_str() : NULL)));
-		info.GetReturnValue().Set(Nan::True());
+	if(hasCallback){
+		QueueRemoveWorker*	worker = new QueueRemoveWorker(maybeCallback, obj->_k2hdkcslave, conf, ctlport, cuk, auto_rejoin, no_giveup_rejoin, strprefix, count, is_fifo, is_key_queue, strpass);
+		worker->Queue();
+		return Napi::Boolean::New(env, true);
 	}else{
 		K2hdkcComQDel*	pComObj;
-		if(!obj->_k2hdkcslave){
+		if(!obj->IsInitialize()){
 			pComObj = GetOtSlaveK2hdkcComQDel(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 		}else{
-			pComObj = GetPmSlaveK2hdkcComQDel(obj->_k2hdkcslave);
+			pComObj = GetPmSlaveK2hdkcComQDel(&(obj->_k2hdkcslave));
 		}
 		if(!pComObj){
-			Nan::ThrowSyntaxError("Internal error: Could not create command object.");
-			return;
+			Napi::TypeError::New(env, "Internal error: Could not create command object.").ThrowAsJavaScriptException();
+			return env.Undefined();
 		}
 
 		dkcres_type_t	rescode = DKC_NORESTYPE;
 		bool			result	= false;
 		if(is_key_queue){
 			// key queue
-			result = pComObj->KeyQueueCommandSend(reinterpret_cast<const unsigned char*>(strprefix.c_str()), strprefix.length() + 1, count, is_fifo, true, (is_pass_set ? strpass.c_str() : NULL), &rescode);
+			result = pComObj->KeyQueueCommandSend(reinterpret_cast<const unsigned char*>(strprefix.c_str()), strprefix.length() + 1, count, is_fifo, true, (strpass.empty() ? NULL : strpass.c_str()), &rescode);
 		}else{
 			// queue
-			result = pComObj->QueueCommandSend(reinterpret_cast<const unsigned char*>(strprefix.c_str()), strprefix.length() + 1, count, is_fifo, true, (is_pass_set ? strpass.c_str() : NULL), &rescode);
+			result = pComObj->QueueCommandSend(reinterpret_cast<const unsigned char*>(strprefix.c_str()), strprefix.length() + 1, count, is_fifo, true, (strpass.empty() ? NULL : strpass.c_str()), &rescode);
 		}
-		info.GetReturnValue().Set(Nan::New(result));
 		DKC_DELETE(pComObj);
+		return Napi::Boolean::New(env, result);
 	}
 }
 
@@ -3670,135 +3816,155 @@ NAN_METHOD(K2hdkcNode::QueueRemove)
  *
  */
 
-NAN_METHOD(K2hdkcNode::CasInit)
+Napi::Value K2hdkcNode::CasInit(const Napi::CallbackInfo& info)
 {
-	K2hdkcNode*		obj		= Nan::ObjectWrap::Unwrap<K2hdkcNode>(info.This());
-	Nan::Callback*	callback= obj->_cbs.Find(stc_emitters[EMITTER_POS_CASINIT]);
-	int				argpos	= 0;
+	Napi::Env env = info.Env();
 
-	// for onetime connection
-	ParseArgumentsForOnetime(argpos);
+	// Unwrap
+	if(!info.This().IsObject() || !info.This().As<Napi::Object>().InstanceOf(K2hdkcNode::constructor.Value())){
+		Napi::TypeError::New(env, "Invalid this object(K2hdkcNode instance)").ThrowAsJavaScriptException();
+		return env.Undefined();
+	}
+	K2hdkcNode*		obj		= Napi::ObjectWrap<K2hdkcNode>::Unwrap(info.This().As<Napi::Object>());
+
+	// initial callback comes from emitter map if set
+	Napi::Function				maybeCallback;
+	bool						hasCallback		= false;
+	Napi::FunctionReference*	emitterCbRef	= obj->_cbs.Find(stc_emitters[EMITTER_POS_CASINIT]);
+	if(emitterCbRef){
+		maybeCallback	= emitterCbRef->Value();
+		hasCallback		= true;
+	}
+
+	// For onetime connection
+	size_t		argpos			= 0;
+	std::string	conf;
+	int16_t		ctlport			= static_cast<int16_t>(CHM_INVALID_PORT);
+	std::string	cuk;
+	bool		auto_rejoin		= false;
+	bool		no_giveup_rejoin= false;
+	if(!K2hdkcNode::ParseArgumentsForOnetime(info, obj, argpos, conf, ctlport, cuk, auto_rejoin, no_giveup_rejoin)){
+		return env.Undefined();
+	}
 
 	// target arguments
-	string		strkey;
-	uint32_t	value		= 0;
-	bool		is_pass_set	= false;
-	string		strpass;
-	time_t		expire		= 0;
+	std::string	strkey;
+	uint32_t	value	= 0;
+	std::string	strpass;
+	time_t		expire	= 0;
 
 	// target key arguments(for both ontime and permanent connection)
 	if(info.Length() <= argpos){
-		Nan::ThrowSyntaxError("There is no key name parameter.");
-		return;
+		Napi::TypeError::New(env, "There is no key name parameter.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
-	if(!info[argpos]->IsString()){
-		Nan::ThrowSyntaxError("The key name must be string");
-		return;
-	}else{
-		Nan::Utf8String	buf(info[argpos++]);
-		strkey					= std::string(*buf);
+	if(!info[argpos].IsString()){
+		Napi::TypeError::New(env, "The key name must be string.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
+	strkey = info[argpos++].As<Napi::String>().Utf8Value();
 
 	// other arguments for target
-	if(argpos < info.Length() && info[argpos]->IsUint32()){
+	if(argpos < info.Length() && info[argpos].IsNumber()){
 		// 2'nd argument is value
-		value			= Nan::To<uint32_t>(info[argpos++]).FromJust();
+		value = info[argpos++].As<Napi::Number>().Int32Value();
 
-		if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
+		if(argpos < info.Length() && (info[argpos].IsString() || info[argpos].IsNull())){
 			// 3'rd argument is pass
-			if(info[argpos]->IsNull()){
+			if(info[argpos].IsNull()){
 				argpos++;
-				is_pass_set		= false;
 			}else{
-				Nan::Utf8String	buf(info[argpos++]);
-				strpass			= std::string(*buf);
-				is_pass_set		= true;
+				strpass = info[argpos++].As<Napi::String>().Utf8Value();
 			}
 
-			if(argpos < info.Length() && info[argpos]->IsInt32()){
+			if(argpos < info.Length() && info[argpos].IsNumber()){
 				// 4'th argument is expire
-				int32_t	nexpire	= Nan::To<int32_t>(info[argpos++]).FromJust();
+				int32_t	nexpire = static_cast<int32_t>(info[argpos++].As<Napi::Number>().Int32Value());
 				expire			= static_cast<time_t>(nexpire);
 
-				if(argpos < info.Length() && info[argpos]->IsFunction()){
+				if(argpos < info.Length() && info[argpos].IsFunction()){
 					// 5'th argument is callback
-					callback= new Nan::Callback(info[argpos++].As<v8::Function>());
+					maybeCallback	= info[argpos++].As<Napi::Function>();
+					hasCallback		= true;
 				}
-
-			}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+			}else if(argpos < info.Length() && info[argpos].IsFunction()){
 				// 4'th argument is callback
-				callback	= new Nan::Callback(info[argpos++].As<v8::Function>());
+				maybeCallback	= info[argpos++].As<Napi::Function>();
+				hasCallback		= true;
 			}
 
-		}else if(argpos < info.Length() && info[argpos]->IsInt32()){
+		}else if(argpos < info.Length() && info[argpos].IsNumber()){
 			// 3'rd argument is expire
-			int32_t	nexpire		= Nan::To<int32_t>(info[argpos++]).FromJust();
+			int32_t	nexpire = static_cast<int32_t>(info[argpos++].As<Napi::Number>().Int32Value());
 			expire				= static_cast<time_t>(nexpire);
 
-			if(argpos < info.Length() && info[argpos]->IsFunction()){
+			if(argpos < info.Length() && info[argpos].IsFunction()){
 				// 4'th argument is callback
-				callback	= new Nan::Callback(info[argpos++].As<v8::Function>());
+				maybeCallback	= info[argpos++].As<Napi::Function>();
+				hasCallback		= true;
 			}
-
-		}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+		}else if(argpos < info.Length() && info[argpos].IsFunction()){
 			// 3'rd argument is callback
-			callback		= new Nan::Callback(info[argpos++].As<v8::Function>());
+			maybeCallback	= info[argpos++].As<Napi::Function>();
+			hasCallback		= true;
 		}
-	}else if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
+	}else if(argpos < info.Length() && (info[argpos].IsString() || info[argpos].IsNull())){
 		// 2'nd argument is pass
-		if(info[argpos]->IsNull()){
+		if(info[argpos].IsNull()){
 			argpos++;
-			is_pass_set		= false;
 		}else{
-			Nan::Utf8String	buf(info[argpos++]);
-			strpass			= std::string(*buf);
-			is_pass_set		= true;
+			strpass = info[argpos++].As<Napi::String>().Utf8Value();
 		}
 
-		if(argpos < info.Length() && info[argpos]->IsInt32()){
+		if(argpos < info.Length() && info[argpos].IsNumber()){
 			// 3'rd argument is expire
-			int32_t	nexpire	= Nan::To<int32_t>(info[argpos++]).FromJust();
+			int32_t	nexpire = static_cast<int32_t>(info[argpos++].As<Napi::Number>().Int32Value());
 			expire			= static_cast<time_t>(nexpire);
 
-			if(argpos < info.Length() && info[argpos]->IsFunction()){
+			if(argpos < info.Length() && info[argpos].IsFunction()){
 				// 4'th argument is callback
-				callback= new Nan::Callback(info[argpos++].As<v8::Function>());
+				maybeCallback	= info[argpos++].As<Napi::Function>();
+				hasCallback		= true;
 			}
-
-		}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+		}else if(argpos < info.Length() && info[argpos].IsFunction()){
 			// 3'rd argument is callback
-			callback	= new Nan::Callback(info[argpos++].As<v8::Function>());
+			maybeCallback	= info[argpos++].As<Napi::Function>();
+			hasCallback		= true;
 		}
 
-	}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+	}else if(argpos < info.Length() && info[argpos].IsFunction()){
 		// 2'nd argument is callback
-		callback		= new Nan::Callback(info[argpos++].As<v8::Function>());
+		maybeCallback	= info[argpos++].As<Napi::Function>();
+		hasCallback		= true;
 	}
 
 	// check over arguments
 	if(argpos < info.Length()){
-		Nan::ThrowSyntaxError("Last parameter is not callback function.");
-		return;
+		Napi::TypeError::New(env, "Last parameter is not callback function.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
 
 	// work
-	if(callback){
-		Nan::AsyncQueueWorker(new CasInitWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, cuk.c_str(), auto_rejoin, no_giveup_rejoin, strkey.c_str(), value, (is_pass_set ? strpass.c_str() : NULL), (expire > 0 ? &expire : NULL)));
-		info.GetReturnValue().Set(Nan::True());
+	if(hasCallback){
+		CasInitWorker*	worker = new CasInitWorker(maybeCallback, obj->_k2hdkcslave, conf, ctlport, cuk, auto_rejoin, no_giveup_rejoin, strkey, value, strpass, expire);
+		worker->Queue();
+		return Napi::Boolean::New(env, true);
 	}else{
 		K2hdkcComCasInit*	pComObj;
-		if(!obj->_k2hdkcslave){
+		if(!obj->IsInitialize()){
 			pComObj = GetOtSlaveK2hdkcComCasInit(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 		}else{
-			pComObj = GetPmSlaveK2hdkcComCasInit(obj->_k2hdkcslave);
+			pComObj = GetPmSlaveK2hdkcComCasInit(&(obj->_k2hdkcslave));
 		}
 		if(!pComObj){
-			Nan::ThrowSyntaxError("Internal error: Could not create command object.");
-			return;
+			Napi::TypeError::New(env, "Internal error: Could not create command object.").ThrowAsJavaScriptException();
+			return env.Undefined();
 		}
 		dkcres_type_t	rescode = DKC_NORESTYPE;
-		info.GetReturnValue().Set(Nan::New(pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, reinterpret_cast<const unsigned char*>(&value), sizeof(uint32_t), (is_pass_set ? strpass.c_str() : NULL), (expire > 0 ? &expire : NULL), &rescode)));
+		bool			result	= pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, reinterpret_cast<const unsigned char*>(&value), sizeof(uint32_t), (strpass.empty() ? NULL : strpass.c_str()), (expire > 0 ? &expire : NULL), &rescode);
+
 		DKC_DELETE(pComObj);
+		return Napi::Boolean::New(env, result);
 	}
 }
 
@@ -3850,87 +4016,108 @@ NAN_METHOD(K2hdkcNode::CasInit)
  *
  */
 
-NAN_METHOD(K2hdkcNode::CasGet)
+Napi::Value K2hdkcNode::CasGet(const Napi::CallbackInfo& info)
 {
-	K2hdkcNode*		obj		= Nan::ObjectWrap::Unwrap<K2hdkcNode>(info.This());
-	Nan::Callback*	callback= obj->_cbs.Find(stc_emitters[EMITTER_POS_CASGET]);
-	int				argpos	= 0;
+	Napi::Env env = info.Env();
 
-	// for onetime connection
-	ParseArgumentsForOnetime(argpos);
+	// Unwrap
+	if(!info.This().IsObject() || !info.This().As<Napi::Object>().InstanceOf(K2hdkcNode::constructor.Value())){
+		Napi::TypeError::New(env, "Invalid this object(K2hdkcNode instance)").ThrowAsJavaScriptException();
+		return env.Undefined();
+	}
+	K2hdkcNode*		obj		= Napi::ObjectWrap<K2hdkcNode>::Unwrap(info.This().As<Napi::Object>());
+
+	// initial callback comes from emitter map if set
+	Napi::Function				maybeCallback;
+	bool						hasCallback		= false;
+	Napi::FunctionReference*	emitterCbRef	= obj->_cbs.Find(stc_emitters[EMITTER_POS_CASGET]);
+	if(emitterCbRef){
+		maybeCallback	= emitterCbRef->Value();
+		hasCallback		= true;
+	}
+
+	// For onetime connection
+	size_t		argpos			= 0;
+	std::string	conf;
+	int16_t		ctlport			= static_cast<int16_t>(CHM_INVALID_PORT);
+	std::string	cuk;
+	bool		auto_rejoin		= false;
+	bool		no_giveup_rejoin= false;
+	if(!K2hdkcNode::ParseArgumentsForOnetime(info, obj, argpos, conf, ctlport, cuk, auto_rejoin, no_giveup_rejoin)){
+		return env.Undefined();
+	}
 
 	// target arguments
-	string		strkey;
-	bool		is_pass_set	= false;
-	string		strpass;
+	std::string	strkey;
+	std::string	strpass;
 
 	// target key arguments(for both ontime and permanent connection)
 	if(info.Length() <= argpos){
-		Nan::ThrowSyntaxError("There is no key name parameter.");
-		return;
+		Napi::TypeError::New(env, "There is no key name parameter.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
-	if(!info[argpos]->IsString()){
-		Nan::ThrowSyntaxError("The key name must be string");
-		return;
-	}else{
-		Nan::Utf8String	buf(info[argpos++]);
-		strkey					= std::string(*buf);
+	if(!info[argpos].IsString()){
+		Napi::TypeError::New(env, "The key name must be string.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
+	strkey = info[argpos++].As<Napi::String>().Utf8Value();
 
 	// other arguments for target
-	if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
+	if(argpos < info.Length() && (info[argpos].IsString() || info[argpos].IsNull())){
 		// 3'rd argument is pass
-		if(info[argpos]->IsNull()){
+		if(info[argpos].IsNull()){
 			argpos++;
-			is_pass_set		= false;
 		}else{
-			Nan::Utf8String	buf(info[argpos++]);
-			strpass			= std::string(*buf);
-			is_pass_set		= true;
+			strpass = info[argpos++].As<Napi::String>().Utf8Value();
 		}
 
-		if(argpos < info.Length() && info[argpos]->IsFunction()){
+		if(argpos < info.Length() && info[argpos].IsFunction()){
 			// 4'th argument is callback
-			callback	= new Nan::Callback(info[argpos++].As<v8::Function>());
+			maybeCallback	= info[argpos++].As<Napi::Function>();
+			hasCallback		= true;
 		}
-	}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+	}else if(argpos < info.Length() && info[argpos].IsFunction()){
 		// 3'rd argument is callback
-		callback		= new Nan::Callback(info[argpos++].As<v8::Function>());
+		maybeCallback	= info[argpos++].As<Napi::Function>();
+		hasCallback		= true;
 	}
 
 	// check over arguments
 	if(argpos < info.Length()){
-		Nan::ThrowSyntaxError("Last parameter is not callback function.");
-		return;
+		Napi::TypeError::New(env, "Last parameter is not callback function.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
 
 	// work
-	if(callback){
-		Nan::AsyncQueueWorker(new CasGetWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, cuk.c_str(), auto_rejoin, no_giveup_rejoin, strkey.c_str(), (is_pass_set ? strpass.c_str() : NULL)));
-		info.GetReturnValue().Set(Nan::True());
+	if(hasCallback){
+		CasGetWorker*	worker = new CasGetWorker(maybeCallback, obj->_k2hdkcslave, conf, ctlport, cuk, auto_rejoin, no_giveup_rejoin, strkey, strpass);
+		worker->Queue();
+		return Napi::Boolean::New(env, true);
 	}else{
 		K2hdkcComCasGet*	pComObj;
-		if(!obj->_k2hdkcslave){
+		if(!obj->IsInitialize()){
 			pComObj = GetOtSlaveK2hdkcComCasGet(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 		}else{
-			pComObj = GetPmSlaveK2hdkcComCasGet(obj->_k2hdkcslave);
+			pComObj = GetPmSlaveK2hdkcComCasGet(&(obj->_k2hdkcslave));
 		}
 		if(!pComObj){
-			Nan::ThrowSyntaxError("Internal error: Could not create command object.");
-			return;
+			Napi::TypeError::New(env, "Internal error: Could not create command object.").ThrowAsJavaScriptException();
+			return env.Undefined();
 		}
 
 		dkcres_type_t			rescode		= DKC_NORESTYPE;
 		const unsigned char*	pvaltmp		= NULL;
 		size_t					valtmplen	= 0L;
-		if(pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, true, (is_pass_set ? strpass.c_str() : NULL), &pvaltmp, &valtmplen, &rescode) && (valtmplen == sizeof(uint32_t))){
+		if(pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, true, (strpass.empty() ? NULL : strpass.c_str()), &pvaltmp, &valtmplen, &rescode) && (valtmplen == sizeof(uint32_t))){
 			uint32_t	resultval = 0;
-			memcpy(reinterpret_cast<unsigned char*>(&resultval), pvaltmp, valtmplen);
-			info.GetReturnValue().Set(Nan::New(resultval));
+			std::memcpy(reinterpret_cast<unsigned char*>(&resultval), pvaltmp, std::min<size_t>(valtmplen, sizeof(resultval)));
+
+			DKC_DELETE(pComObj);
+			return Napi::Number::New(env, resultval);
 		}else{
-			info.GetReturnValue().Set(Nan::Undefined());
+			DKC_DELETE(pComObj);
+			return env.Undefined();
 		}
-		DKC_DELETE(pComObj);
 	}
 }
 
@@ -3994,117 +4181,138 @@ NAN_METHOD(K2hdkcNode::CasGet)
  *
  */
 
-NAN_METHOD(K2hdkcNode::CasSet)
+Napi::Value K2hdkcNode::CasSet(const Napi::CallbackInfo& info)
 {
-	K2hdkcNode*		obj		= Nan::ObjectWrap::Unwrap<K2hdkcNode>(info.This());
-	Nan::Callback*	callback= obj->_cbs.Find(stc_emitters[EMITTER_POS_CASSET]);
-	int				argpos	= 0;
+	Napi::Env env = info.Env();
 
-	// for onetime connection
-	ParseArgumentsForOnetime(argpos);
+	// Unwrap
+	if(!info.This().IsObject() || !info.This().As<Napi::Object>().InstanceOf(K2hdkcNode::constructor.Value())){
+		Napi::TypeError::New(env, "Invalid this object(K2hdkcNode instance)").ThrowAsJavaScriptException();
+		return env.Undefined();
+	}
+	K2hdkcNode*		obj		= Napi::ObjectWrap<K2hdkcNode>::Unwrap(info.This().As<Napi::Object>());
+
+	// initial callback comes from emitter map if set
+	Napi::Function				maybeCallback;
+	bool						hasCallback		= false;
+	Napi::FunctionReference*	emitterCbRef	= obj->_cbs.Find(stc_emitters[EMITTER_POS_CASSET]);
+	if(emitterCbRef){
+		maybeCallback	= emitterCbRef->Value();
+		hasCallback		= true;
+	}
+
+	// For onetime connection
+	size_t		argpos			= 0;
+	std::string	conf;
+	int16_t		ctlport			= static_cast<int16_t>(CHM_INVALID_PORT);
+	std::string	cuk;
+	bool		auto_rejoin		= false;
+	bool		no_giveup_rejoin= false;
+	if(!K2hdkcNode::ParseArgumentsForOnetime(info, obj, argpos, conf, ctlport, cuk, auto_rejoin, no_giveup_rejoin)){
+		return env.Undefined();
+	}
 
 	// target arguments
-	string		strkey;
-	uint32_t	oldval		= 0;
-	uint32_t	newval		= 0;
-	bool		is_pass_set	= false;
-	string		strpass;
-	time_t		expire		= 0;
+	std::string	strkey;
+	uint32_t	oldval	= 0;
+	uint32_t	newval	= 0;
+	std::string	strpass;
+	time_t		expire	= 0;
 
 	// target key arguments(for both ontime and permanent connection)
 	if(info.Length() <= (argpos + 2)){
-		Nan::ThrowSyntaxError("There is no key name parameter.");
-		return;
+		Napi::TypeError::New(env, "There is no key name parameter.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
-	if(!info[argpos]->IsString()){
-		Nan::ThrowSyntaxError("The key name must be string");
-		return;
-	}else{
-		Nan::Utf8String	buf(info[argpos++]);
-		strkey				= std::string(*buf);
+	if(!info[argpos].IsString()){
+		Napi::TypeError::New(env, "The key name must be string.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
+	strkey = info[argpos++].As<Napi::String>().Utf8Value();
+
 	// old value argument
-	if(!info[argpos]->IsUint32()){
-		Nan::ThrowSyntaxError("The old value must be uint");
-		return;
-	}else{
-		oldval				= Nan::To<uint32_t>(info[argpos++]).FromJust();
+	if(!info[argpos].IsNumber()){
+		Napi::TypeError::New(env, "The old value must be uint.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
+	oldval = info[argpos++].As<Napi::Number>().Uint32Value();
+
 	// new value argument
-	if(!info[argpos]->IsUint32()){
-		Nan::ThrowSyntaxError("The new value must be uint");
-		return;
-	}else{
-		newval				= Nan::To<uint32_t>(info[argpos++]).FromJust();
+	if(!info[argpos].IsNumber()){
+		Napi::TypeError::New(env, "The new value must be uint.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
+	newval = info[argpos++].As<Napi::Number>().Uint32Value();
 
 	// other arguments for target
-	if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
+	if(argpos < info.Length() && (info[argpos].IsString() || info[argpos].IsNull())){
 		// 4'th argument is pass
-		if(info[argpos]->IsNull()){
+		if(info[argpos].IsNull()){
 			argpos++;
-			is_pass_set		= false;
 		}else{
-			Nan::Utf8String	buf(info[argpos++]);
-			strpass			= std::string(*buf);
-			is_pass_set		= true;
+			strpass = info[argpos++].As<Napi::String>().Utf8Value();
 		}
 
-		if(argpos < info.Length() && info[argpos]->IsInt32()){
+		if(argpos < info.Length() && info[argpos].IsNumber()){
 			// 5'th argument is expire
-			int32_t	nexpire	= Nan::To<int32_t>(info[argpos++]).FromJust();
+			int32_t	nexpire = static_cast<int32_t>(info[argpos++].As<Napi::Number>().Int32Value());
 			expire			= static_cast<time_t>(nexpire);
 
-			if(argpos < info.Length() && info[argpos]->IsFunction()){
+			if(argpos < info.Length() && info[argpos].IsFunction()){
 				// 6'th argument is callback
-				callback	= new Nan::Callback(info[argpos++].As<v8::Function>());
+				maybeCallback	= info[argpos++].As<Napi::Function>();
+				hasCallback		= true;
 			}
 
-		}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+		}else if(argpos < info.Length() && info[argpos].IsFunction()){
 			// 5'th argument is callback
-			callback		= new Nan::Callback(info[argpos++].As<v8::Function>());
+			maybeCallback	= info[argpos++].As<Napi::Function>();
+			hasCallback		= true;
 		}
-
-	}else if(argpos < info.Length() && info[argpos]->IsInt32()){
+	}else if(argpos < info.Length() && info[argpos].IsNumber()){
 		// 4'th argument is expire
-		int32_t	nexpire		= Nan::To<int32_t>(info[argpos++]).FromJust();
-		expire				= static_cast<time_t>(nexpire);
+		int32_t	nexpire = static_cast<int32_t>(info[argpos++].As<Napi::Number>().Int32Value());
+		expire			= static_cast<time_t>(nexpire);
 
-		if(argpos < info.Length() && info[argpos]->IsFunction()){
+		if(argpos < info.Length() && info[argpos].IsFunction()){
 			// 5'th argument is callback
-			callback		= new Nan::Callback(info[argpos++].As<v8::Function>());
+			maybeCallback	= info[argpos++].As<Napi::Function>();
+			hasCallback		= true;
 		}
-
-	}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+	}else if(argpos < info.Length() && info[argpos].IsFunction()){
 		// 4'th argument is callback
-		callback			= new Nan::Callback(info[argpos++].As<v8::Function>());
+		maybeCallback	= info[argpos++].As<Napi::Function>();
+		hasCallback		= true;
 	}
 
 	// check over arguments
 	if(argpos < info.Length()){
-		Nan::ThrowSyntaxError("Last parameter is not callback function.");
-		return;
+		Napi::TypeError::New(env, "Last parameter is not callback function.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
 
 	// work
-	if(callback){
-		Nan::AsyncQueueWorker(new CasSetWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, cuk.c_str(), auto_rejoin, no_giveup_rejoin, strkey.c_str(), oldval, newval, (is_pass_set ? strpass.c_str() : NULL), (expire > 0 ? &expire : NULL)));
-		info.GetReturnValue().Set(Nan::True());
+	if(hasCallback){
+		CasSetWorker*	worker = new CasSetWorker(maybeCallback, obj->_k2hdkcslave, conf, ctlport, cuk, auto_rejoin, no_giveup_rejoin, strkey, oldval, newval, strpass, expire);
+		worker->Queue();
+		return Napi::Boolean::New(env, true);
 	}else{
 		K2hdkcComCasSet*	pComObj;
-		if(!obj->_k2hdkcslave){
+		if(!obj->IsInitialize()){
 			pComObj = GetOtSlaveK2hdkcComCasSet(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 		}else{
-			pComObj = GetPmSlaveK2hdkcComCasSet(obj->_k2hdkcslave);
+			pComObj = GetPmSlaveK2hdkcComCasSet(&(obj->_k2hdkcslave));
 		}
 		if(!pComObj){
-			Nan::ThrowSyntaxError("Internal error: Could not create command object.");
-			return;
+			Napi::TypeError::New(env, "Internal error: Could not create command object.").ThrowAsJavaScriptException();
+			return env.Undefined();
 		}
 
 		dkcres_type_t	rescode = DKC_NORESTYPE;
-		info.GetReturnValue().Set(Nan::New(pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, reinterpret_cast<const unsigned char*>(&oldval), sizeof(uint32_t), reinterpret_cast<const unsigned char*>(&newval), sizeof(uint32_t), true, (is_pass_set ? strpass.c_str() : NULL), (expire > 0 ? &expire : NULL), &rescode)));
+		bool			result	= pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, reinterpret_cast<const unsigned char*>(&oldval), sizeof(uint32_t), reinterpret_cast<const unsigned char*>(&newval), sizeof(uint32_t), true, (strpass.empty() ? NULL : strpass.c_str()), (expire > 0 ? &expire : NULL), &rescode);
+
 		DKC_DELETE(pComObj);
+		return Napi::Boolean::New(env, result);
 	}
 }
 
@@ -4164,140 +4372,164 @@ NAN_METHOD(K2hdkcNode::CasSet)
  *
  */
 
-NAN_METHOD(K2hdkcNode::CasIncDec)
+Napi::Value K2hdkcNode::CasIncDec(const Napi::CallbackInfo& info)
 {
-	K2hdkcNode*		obj		= Nan::ObjectWrap::Unwrap<K2hdkcNode>(info.This());
-	Nan::Callback*	callback= obj->_cbs.Find(stc_emitters[EMITTER_POS_CASINCDEC]);
-	int				argpos	= 0;
+	Napi::Env env = info.Env();
 
-	// for onetime connection
-	ParseArgumentsForOnetime(argpos);
+	// Unwrap
+	if(!info.This().IsObject() || !info.This().As<Napi::Object>().InstanceOf(K2hdkcNode::constructor.Value())){
+		Napi::TypeError::New(env, "Invalid this object(K2hdkcNode instance)").ThrowAsJavaScriptException();
+		return env.Undefined();
+	}
+	K2hdkcNode*		obj		= Napi::ObjectWrap<K2hdkcNode>::Unwrap(info.This().As<Napi::Object>());
+
+	// initial callback comes from emitter map if set
+	Napi::Function				maybeCallback;
+	bool						hasCallback		= false;
+	Napi::FunctionReference*	emitterCbRef	= obj->_cbs.Find(stc_emitters[EMITTER_POS_CASINCDEC]);
+	if(emitterCbRef){
+		maybeCallback	= emitterCbRef->Value();
+		hasCallback		= true;
+	}
+
+	// For onetime connection
+	size_t		argpos			= 0;
+	std::string	conf;
+	int16_t		ctlport			= static_cast<int16_t>(CHM_INVALID_PORT);
+	std::string	cuk;
+	bool		auto_rejoin		= false;
+	bool		no_giveup_rejoin= false;
+	if(!K2hdkcNode::ParseArgumentsForOnetime(info, obj, argpos, conf, ctlport, cuk, auto_rejoin, no_giveup_rejoin)){
+		return env.Undefined();
+	}
 
 	// target arguments
-	string		strkey;
+	std::string	strkey;
 	bool		is_increment= true;
-	bool		is_pass_set	= false;
-	string		strpass;
+	std::string	strpass;
 	time_t		expire		= 0;
 
 	// target key arguments(for both ontime and permanent connection)
 	if(info.Length() <= argpos){
-		Nan::ThrowSyntaxError("There is no key name parameter.");
-		return;
+		Napi::TypeError::New(env, "There is no key name parameter.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
-	if(!info[argpos]->IsString()){
-		Nan::ThrowSyntaxError("The key name must be string");
-		return;
-	}else{
-		Nan::Utf8String	buf(info[argpos++]);
-		strkey				= std::string(*buf);
+	if(!info[argpos].IsString()){
+		Napi::TypeError::New(env, "The key name must be string.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
+	strkey = info[argpos++].As<Napi::String>().Utf8Value();
 
 	// other arguments for target
-	if(argpos < info.Length() && info[argpos]->IsBoolean()){
+	if(argpos < info.Length() && info[argpos].IsBoolean()){
 		// 2'nd argument is increment/decrement mode
-		is_increment		= Nan::To<bool>(info[argpos++]).FromJust();
+		is_increment = info[argpos++].As<Napi::Boolean>().Value();
 
-		if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
+		if(argpos < info.Length() && (info[argpos].IsString() || info[argpos].IsNull())){
 			// 3'rd argument is pass
-			if(info[argpos]->IsNull()){
+			if(info[argpos].IsNull()){
 				argpos++;
-				is_pass_set		= false;
 			}else{
-				Nan::Utf8String	buf(info[argpos++]);
-				strpass			= std::string(*buf);
-				is_pass_set		= true;
+				strpass = info[argpos++].As<Napi::String>().Utf8Value();
 			}
 
-			if(argpos < info.Length() && info[argpos]->IsInt32()){
+			if(argpos < info.Length() && info[argpos].IsNumber()){
 				// 4'th argument is expire
-				int32_t	nexpire	= Nan::To<int32_t>(info[argpos++]).FromJust();
+				int32_t	nexpire = static_cast<int32_t>(info[argpos++].As<Napi::Number>().Int32Value());
 				expire			= static_cast<time_t>(nexpire);
 
-				if(argpos < info.Length() && info[argpos]->IsFunction()){
+				if(argpos < info.Length() && info[argpos].IsFunction()){
 					// 5'th argument is callback
-					callback	= new Nan::Callback(info[argpos++].As<v8::Function>());
+					maybeCallback	= info[argpos++].As<Napi::Function>();
+					hasCallback		= true;
 				}
-			}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+			}else if(argpos < info.Length() && info[argpos].IsFunction()){
 				// 4'th argument is callback
-				callback		= new Nan::Callback(info[argpos++].As<v8::Function>());
+				maybeCallback	= info[argpos++].As<Napi::Function>();
+				hasCallback		= true;
 			}
-		}else if(argpos < info.Length() && info[argpos]->IsInt32()){
+		}else if(argpos < info.Length() && info[argpos].IsNumber()){
 			// 3'rd argument is expire
-			int32_t	nexpire		= Nan::To<int32_t>(info[argpos++]).FromJust();
-			expire				= static_cast<time_t>(nexpire);
-
-			if(argpos < info.Length() && info[argpos]->IsFunction()){
-				// 4'th argument is callback
-				callback		= new Nan::Callback(info[argpos++].As<v8::Function>());
-			}
-		}else if(argpos < info.Length() && info[argpos]->IsFunction()){
-			// 3'rd argument is callback
-			callback			= new Nan::Callback(info[argpos++].As<v8::Function>());
-		}
-	}else if(argpos < info.Length() && (info[argpos]->IsString() || info[argpos]->IsNull())){
-		// 2'nd argument is pass
-		if(info[argpos]->IsNull()){
-			argpos++;
-			is_pass_set		= false;
-		}else{
-			Nan::Utf8String	buf(info[argpos++]);
-			strpass			= std::string(*buf);
-			is_pass_set		= true;
-		}
-
-		if(argpos < info.Length() && info[argpos]->IsInt32()){
-			// 3'rd argument is expire
-			int32_t	nexpire	= Nan::To<int32_t>(info[argpos++]).FromJust();
+			int32_t	nexpire = static_cast<int32_t>(info[argpos++].As<Napi::Number>().Int32Value());
 			expire			= static_cast<time_t>(nexpire);
 
-			if(argpos < info.Length() && info[argpos]->IsFunction()){
+			if(argpos < info.Length() && info[argpos].IsFunction()){
 				// 4'th argument is callback
-				callback	= new Nan::Callback(info[argpos++].As<v8::Function>());
+				maybeCallback	= info[argpos++].As<Napi::Function>();
+				hasCallback		= true;
 			}
-		}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+		}else if(argpos < info.Length() && info[argpos].IsFunction()){
 			// 3'rd argument is callback
-			callback		= new Nan::Callback(info[argpos++].As<v8::Function>());
+			maybeCallback	= info[argpos++].As<Napi::Function>();
+			hasCallback		= true;
 		}
-	}else if(argpos < info.Length() && info[argpos]->IsInt32()){
-		// 2'nd argument is expire
-		int32_t	nexpire		= Nan::To<int32_t>(info[argpos++]).FromJust();
-		expire				= static_cast<time_t>(nexpire);
+	}else if(argpos < info.Length() && (info[argpos].IsString() || info[argpos].IsNull())){
+		// 2'nd argument is pass
+		if(info[argpos].IsNull()){
+			argpos++;
+		}else{
+			strpass = info[argpos++].As<Napi::String>().Utf8Value();
+		}
 
-		if(argpos < info.Length() && info[argpos]->IsFunction()){
+		if(argpos < info.Length() && info[argpos].IsNumber()){
+			// 3'rd argument is expire
+			int32_t	nexpire = static_cast<int32_t>(info[argpos++].As<Napi::Number>().Int32Value());
+			expire			= static_cast<time_t>(nexpire);
+
+			if(argpos < info.Length() && info[argpos].IsFunction()){
+				// 4'th argument is callback
+				maybeCallback	= info[argpos++].As<Napi::Function>();
+				hasCallback		= true;
+			}
+		}else if(argpos < info.Length() && info[argpos].IsFunction()){
 			// 3'rd argument is callback
-			callback		= new Nan::Callback(info[argpos++].As<v8::Function>());
+			maybeCallback	= info[argpos++].As<Napi::Function>();
+			hasCallback		= true;
 		}
-	}else if(argpos < info.Length() && info[argpos]->IsFunction()){
+	}else if(argpos < info.Length() && info[argpos].IsNumber()){
+		// 2'nd argument is expire
+		int32_t	nexpire = static_cast<int32_t>(info[argpos++].As<Napi::Number>().Int32Value());
+		expire			= static_cast<time_t>(nexpire);
+
+		if(argpos < info.Length() && info[argpos].IsFunction()){
+			// 3'rd argument is callback
+			maybeCallback	= info[argpos++].As<Napi::Function>();
+			hasCallback		= true;
+		}
+	}else if(argpos < info.Length() && info[argpos].IsFunction()){
 		// 2'nd argument is callback
-		callback			= new Nan::Callback(info[argpos++].As<v8::Function>());
+		maybeCallback	= info[argpos++].As<Napi::Function>();
+		hasCallback		= true;
 	}
 
 	// check over arguments
 	if(argpos < info.Length()){
-		Nan::ThrowSyntaxError("Last parameter is not callback function.");
-		return;
+		Napi::TypeError::New(env, "Last parameter is not callback function.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
 
 	// work
-	if(callback){
-		Nan::AsyncQueueWorker(new CasIncDecWorker(callback, obj->_k2hdkcslave, conf.c_str(), ctlport, cuk.c_str(), auto_rejoin, no_giveup_rejoin, strkey.c_str(), is_increment, (is_pass_set ? strpass.c_str() : NULL), (expire > 0 ? &expire : NULL)));
-		info.GetReturnValue().Set(Nan::True());
+	if(hasCallback){
+		CasIncDecWorker*	worker = new CasIncDecWorker(maybeCallback, obj->_k2hdkcslave, conf, ctlport, cuk, auto_rejoin, no_giveup_rejoin, strkey, is_increment, strpass, expire);
+		worker->Queue();
+		return Napi::Boolean::New(env, true);
 	}else{
 		K2hdkcComCasIncDec*	pComObj;
-		if(!obj->_k2hdkcslave){
+		if(!obj->IsInitialize()){
 			pComObj = GetOtSlaveK2hdkcComCasIncDec(conf.c_str(), ctlport, (cuk.empty() ? NULL : cuk.c_str()), auto_rejoin, no_giveup_rejoin);
 		}else{
-			pComObj = GetPmSlaveK2hdkcComCasIncDec(obj->_k2hdkcslave);
+			pComObj = GetPmSlaveK2hdkcComCasIncDec(&(obj->_k2hdkcslave));
 		}
 		if(!pComObj){
-			Nan::ThrowSyntaxError("Internal error: Could not create command object.");
-			return;
+			Napi::TypeError::New(env, "Internal error: Could not create command object.").ThrowAsJavaScriptException();
+			return env.Undefined();
 		}
 
 		dkcres_type_t	rescode = DKC_NORESTYPE;
-		info.GetReturnValue().Set(Nan::New(pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, is_increment, true, (is_pass_set ? strpass.c_str() : NULL), (expire > 0 ? &expire : NULL), &rescode)));
+		bool			result	= pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, is_increment, true, (strpass.empty() ? NULL : strpass.c_str()), (expire > 0 ? &expire : NULL), &rescode);
+
 		DKC_DELETE(pComObj);
+		return Napi::Boolean::New(env, result);
 	}
 }
 
@@ -4317,13 +4549,15 @@ NAN_METHOD(K2hdkcNode::CasIncDec)
  *
  */
 
-NAN_METHOD(K2hdkcNode::PrintVersion)
+Napi::Value K2hdkcNode::PrintVersion(const Napi::CallbackInfo& info)
 {
-	int			fd	= (0 < info.Length() && info[0]->IsInt32()) ? Nan::To<int32_t>(info[0]).FromJust() : -1;
-	FILE*		fp	= (-1 == fd ? stdout : fdopen(fd, "a"));
+	Napi::Env env = info.Env();
+
+	int		fd = (0 < info.Length() && info[0].IsNumber()) ? info[0].ToNumber().Int32Value() : -1;
+	FILE*	fp = (-1 == fd ? stdout : fdopen(fd, "a"));
 	if(!fp){
-		Nan::ThrowError("could not open output stream.");
-		return;
+		Napi::Error::New(env, "could not open output stream.").ThrowAsJavaScriptException();
+		return env.Undefined();
 	}
 	k2hdkc_print_version(fp);
 
@@ -4332,7 +4566,7 @@ NAN_METHOD(K2hdkcNode::PrintVersion)
 	// Otherwise, calling flash on nodejs(javascript) is not effected.
 	fflush(fp);
 
-	info.GetReturnValue().Set(Nan::True());
+	return Napi::Boolean::New(env, true);
 }
 
 //@}

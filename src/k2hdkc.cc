@@ -15,25 +15,38 @@
  * REVISION:
  */
 
+#include <napi.h>
 #include "k2hdkc_node.h"
-
-using namespace v8 ;
 
 //---------------------------------------------------------
 // k2hdkc node object
 //---------------------------------------------------------
-NAN_METHOD(CreateObject)
+// [NOTE]
+// The logic for receiving arguments when switching to N-API has been removed.
+// This is because the arguments were not used in the first place and did not
+// need to be defined.
+//
+Napi::Value CreateObject(const Napi::CallbackInfo& info)
 {
-	K2hdkcNode::NewInstance(info);
+	return K2hdkcNode::NewInstance(info);
 }
 
-void InitAll(Local<Object> exports, Local<Object> module)
+Napi::Object InitAll(Napi::Env env, Napi::Object exports)
 {
-	K2hdkcNode::Init();
-	Nan::SetMethod(module, "exports", CreateObject);
+	// Class registration (creating a constructor)
+	K2hdkcNode::Init(env, exports);
+
+	// Create a factory function that returns module.exports
+	Napi::Function createFn = Napi::Function::New(env, CreateObject, "k2hdkc");
+
+	// Allow to use "require('k2hdkc').K2hdkcNode"
+	createFn.Set("K2hdkcNode", K2hdkcNode::constructor.Value());
+
+	// Replace module.exports with this function (does not break existing "require('k2hdkc')()".)
+	return createFn;
 }
 
-NODE_MODULE(k2hdkc , InitAll)
+NODE_API_MODULE(k2hdkc, InitAll)
 
 /*
  * Local variables:

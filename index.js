@@ -17,7 +17,10 @@
 
 'use strict';
 
-module.exports = require('bindings')('k2hdkc');
+//
+// Thin CommonJS re-export to built CJS artifact (safe for existing users)
+//
+module.exports = require('./build/cjs/index.js');
 
 /*
  * Local variables:

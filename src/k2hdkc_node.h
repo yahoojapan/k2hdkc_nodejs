@@ -24,80 +24,86 @@
 //---------------------------------------------------------
 // K2hdkcNode Class
 //---------------------------------------------------------
-class K2hdkcNode : public Nan::ObjectWrap
+class K2hdkcNode : public Napi::ObjectWrap<K2hdkcNode>
 {
 	public:
-		static void	Init(void);
-		static NAN_METHOD(NewInstance);
-		static v8::Local<v8::Object> GetInstance(Nan::NAN_METHOD_ARGS_TYPE info);
+		static void Init(Napi::Env env, Napi::Object exports);
+		static Napi::Object NewInstance(const Napi::CallbackInfo& info);
+		static Napi::Object GetInstance(const Napi::CallbackInfo& info);
+
+		// Constructor / Destructor
+		explicit K2hdkcNode(const Napi::CallbackInfo& info);
+		~K2hdkcNode();
 
 	private:
-		K2hdkcNode(void);
-		~K2hdkcNode(void);
+		static bool ParseArgumentsForOnetime(const Napi::CallbackInfo& info, K2hdkcNode* obj, size_t& argpos, std::string& conf, int16_t& ctlport, std::string& cuk, bool& auto_rejoin, bool& no_giveup_rejoin);
 
 		void Clean(void);
+		bool IsInitialize(void);
 
-		static NAN_METHOD(New);
+		Napi::Value On(const Napi::CallbackInfo& info);
+		Napi::Value OnInit(const Napi::CallbackInfo& info);
+		Napi::Value OnGet(const Napi::CallbackInfo& info);
+		Napi::Value OnGetSubkeys(const Napi::CallbackInfo& info);
+		Napi::Value OnGetAttrs(const Napi::CallbackInfo& info);
+		Napi::Value OnSet(const Napi::CallbackInfo& info);
+		Napi::Value OnSetSubkeys(const Napi::CallbackInfo& info);
+		Napi::Value OnSetAll(const Napi::CallbackInfo& info);
+		Napi::Value OnRemove(const Napi::CallbackInfo& info);
+		Napi::Value OnRename(const Napi::CallbackInfo& info);
+		Napi::Value OnQueuePush(const Napi::CallbackInfo& info);
+		Napi::Value OnQueuePop(const Napi::CallbackInfo& info);
+		Napi::Value OnQueueRemove(const Napi::CallbackInfo& info);
+		Napi::Value OnCasInit(const Napi::CallbackInfo& info);
+		Napi::Value OnCasGet(const Napi::CallbackInfo& info);
+		Napi::Value OnCasSet(const Napi::CallbackInfo& info);
+		Napi::Value OnCasIncDec(const Napi::CallbackInfo& info);
+		Napi::Value Off(const Napi::CallbackInfo& info);
+		Napi::Value OffInit(const Napi::CallbackInfo& info);
+		Napi::Value OffGet(const Napi::CallbackInfo& info);
+		Napi::Value OffGetSubkeys(const Napi::CallbackInfo& info);
+		Napi::Value OffGetAttrs(const Napi::CallbackInfo& info);
+		Napi::Value OffSet(const Napi::CallbackInfo& info);
+		Napi::Value OffSetSubkeys(const Napi::CallbackInfo& info);
+		Napi::Value OffSetAll(const Napi::CallbackInfo& info);
+		Napi::Value OffRemove(const Napi::CallbackInfo& info);
+		Napi::Value OffRename(const Napi::CallbackInfo& info);
+		Napi::Value OffQueuePush(const Napi::CallbackInfo& info);
+		Napi::Value OffQueuePop(const Napi::CallbackInfo& info);
+		Napi::Value OffQueueRemove(const Napi::CallbackInfo& info);
+		Napi::Value OffCasInit(const Napi::CallbackInfo& info);
+		Napi::Value OffCasGet(const Napi::CallbackInfo& info);
+		Napi::Value OffCasSet(const Napi::CallbackInfo& info);
+		Napi::Value OffCasIncDec(const Napi::CallbackInfo& info);
 
-		static NAN_METHOD(On);
-		static NAN_METHOD(OnInit);
-		static NAN_METHOD(OnGet);
-		static NAN_METHOD(OnGetSubkeys);
-		static NAN_METHOD(OnGetAttrs);
-		static NAN_METHOD(OnSet);
-		static NAN_METHOD(OnSetSubkeys);
-		static NAN_METHOD(OnSetAll);
-		static NAN_METHOD(OnRemove);
-		static NAN_METHOD(OnRename);
-		static NAN_METHOD(OnQueuePush);
-		static NAN_METHOD(OnQueuePop);
-		static NAN_METHOD(OnQueueRemove);
-		static NAN_METHOD(OnCasInit);
-		static NAN_METHOD(OnCasGet);
-		static NAN_METHOD(OnCasSet);
-		static NAN_METHOD(OnCasIncDec);
-		static NAN_METHOD(Off);
-		static NAN_METHOD(OffInit);
-		static NAN_METHOD(OffGet);
-		static NAN_METHOD(OffGetSubkeys);
-		static NAN_METHOD(OffGetAttrs);
-		static NAN_METHOD(OffSet);
-		static NAN_METHOD(OffSetSubkeys);
-		static NAN_METHOD(OffSetAll);
-		static NAN_METHOD(OffRemove);
-		static NAN_METHOD(OffRename);
-		static NAN_METHOD(OffQueuePush);
-		static NAN_METHOD(OffQueuePop);
-		static NAN_METHOD(OffQueueRemove);
-		static NAN_METHOD(OffCasInit);
-		static NAN_METHOD(OffCasGet);
-		static NAN_METHOD(OffCasSet);
-		static NAN_METHOD(OffCasIncDec);
+		Napi::Value Init(const Napi::CallbackInfo& info);
+		Napi::Value Clean(const Napi::CallbackInfo& info);
+		Napi::Value IsPermanent(const Napi::CallbackInfo& info);
+		Napi::Value GetValue(const Napi::CallbackInfo& info);
+		Napi::Value GetSubkeys(const Napi::CallbackInfo& info);
+		Napi::Value GetAttrs(const Napi::CallbackInfo& info);
+		Napi::Value SetValue(const Napi::CallbackInfo& info);		// Alias to AddSubkey
+		Napi::Value SetSubkeys(const Napi::CallbackInfo& info);		// Alias to ClearSubkeys
+		Napi::Value SetAll(const Napi::CallbackInfo& info);
+		Napi::Value Remove(const Napi::CallbackInfo& info);
+		Napi::Value Rename(const Napi::CallbackInfo& info);
+		Napi::Value QueuePush(const Napi::CallbackInfo& info);
+		Napi::Value QueuePop(const Napi::CallbackInfo& info);
+		Napi::Value QueueRemove(const Napi::CallbackInfo& info);	// Alias to QueueDel
+		Napi::Value CasInit(const Napi::CallbackInfo& info);
+		Napi::Value CasGet(const Napi::CallbackInfo& info);
+		Napi::Value CasSet(const Napi::CallbackInfo& info);
+		Napi::Value CasIncDec(const Napi::CallbackInfo& info);
+		Napi::Value PrintVersion(const Napi::CallbackInfo& info);
 
-		static NAN_METHOD(Init);
-		static NAN_METHOD(Clean);
-		static NAN_METHOD(IsPermanent);
-		static NAN_METHOD(GetValue);
-		static NAN_METHOD(GetSubkeys);
-		static NAN_METHOD(GetAttrs);
-		static NAN_METHOD(SetValue);			// Alias to AddSubkey
-		static NAN_METHOD(SetSubkeys);			// Alias to ClearSubkeys
-		static NAN_METHOD(SetAll);
-		static NAN_METHOD(Remove);
-		static NAN_METHOD(Rename);
-		static NAN_METHOD(QueuePush);
-		static NAN_METHOD(QueuePop);
-		static NAN_METHOD(QueueRemove);			// Alias to QueueDel
-		static NAN_METHOD(CasInit);
-		static NAN_METHOD(CasGet);
-		static NAN_METHOD(CasSet);
-		static NAN_METHOD(CasIncDec);
-		static NAN_METHOD(PrintVersion);
+	public:
+		// constructor reference
+		static Napi::FunctionReference	constructor;
+
+		StackEmitCB	_cbs;
 
 	private:
-		static Nan::Persistent<v8::Function>	constructor;
-		K2hdkcSlave*							_k2hdkcslave;
-		StackEmitCB								_cbs;
+		K2hdkcSlave	_k2hdkcslave;
 };
 
 #endif
