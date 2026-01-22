@@ -21,15 +21,15 @@
 //---------------------------------------------------------
 // common headers
 //---------------------------------------------------------
-#include <node.h>
+#include <cstddef>
+
 #include <k2hdkc/k2hdkccommon.h>
 #include <k2hdkc/k2hdkc.h>
 #include <k2hdkc/k2hdkcslave.h>
 #include <k2hdkc/k2hdkccom.h>
 #include <k2hdkc/k2hdkcutil.h>
 
-#include <nan.h>
-
+#include <napi.h>
 #include <string>
 #include <iostream>
 #include <map>
