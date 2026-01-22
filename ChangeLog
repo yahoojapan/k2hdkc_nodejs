@@ -1,3 +1,9 @@
+k2hdkc (2.0.0) unstable; urgency=low
+
+  * Updated to N-API base and Changed packaging and Supported TS/ESM - #60
+
+ -- Takeshi Nakatani <ggtakec@gmail.com>  Thu, 22 Jan 2026 10:37:10 +0900
+
 k2hdkc (1.0.13) unstable; urgency=low
 
   * Updated a dependent package version(mocha) - #58
