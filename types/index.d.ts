@@ -1246,6 +1246,9 @@ declare module 'k2hdkc'
 	//
 	export type K2hdkcNode			= k2hdkc.K2hdkcNode;
 	export type K2hdkcFactoryType	= k2hdkc.K2hdkcFactoryType;
+
+	// Add convenient alias (PascalCase)
+	export type K2hdkc				= K2hdkcNode;
 }
 
 /*
