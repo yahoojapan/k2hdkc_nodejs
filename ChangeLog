@@ -1,3 +1,9 @@
+k2hdkc (2.0.1) unstable; urgency=low
+
+  * Added type aliases and exports for Typescript - #62
+
+ -- Takeshi Nakatani <ggtakec@gmail.com>  Fri, 23 Jan 2026 18:52:29 +0900
+
 k2hdkc (2.0.0) unstable; urgency=low
 
   * Updated to N-API base and Changed packaging and Supported TS/ESM - #60
