@@ -26,7 +26,7 @@
 //
 // callable / constructible main factory
 //
-declare function k2hdkc(): k2hdkc.K2hdkcNode;
+declare function k2hdkc(conf?: string | null, port?: number | null, cuk?: string | null, auto_rejoin?: boolean, no_giveup_rejoin?: boolean):	k2hdkc.K2hdkcNode;
 
 declare namespace k2hdkc
 {
@@ -81,7 +81,8 @@ declare namespace k2hdkc
 	export class K2hdkcNode
 	{
 		// Constructor
-		constructor();	// always no arguments
+		constructor(conf?: string | null, port?: number | null, cuk?: string | null, auto_rejoin?: boolean, no_giveup_rejoin?: boolean);
+//		constructor();	// always no arguments
 
 		//-----------------------------------------------------
 		// Methods (Callback can be called)
@@ -1205,8 +1206,8 @@ declare namespace k2hdkc
 	// K2hdkcFactoryType
 	//---------------------------------------------------------
 	export type K2hdkcFactoryType = {
-		():			K2hdkcNode;
-		new():		K2hdkcNode;
+		(conf?: string | null, port?: number | null, cuk?: string | null, auto_rejoin?: boolean, no_giveup_rejoin?: boolean):		K2hdkcNode;
+		new(conf?: string | null, port?: number | null, cuk?: string | null, auto_rejoin?: boolean, no_giveup_rejoin?: boolean):	K2hdkcNode;
 		K2hdkcNode:	typeof K2hdkcNode;
 	};
 } // end namespace k2hdkc
