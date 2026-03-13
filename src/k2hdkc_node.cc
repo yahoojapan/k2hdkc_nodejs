@@ -1583,9 +1583,10 @@ Napi::Value K2hdkcNode::GetSubkeys(const Napi::CallbackInfo& info)
 			uint32_t	pos		= 0;
 			for(const auto& str: strarr){
 				std::string	strtmp(str);
+				// Removes any non-printble characters(except spaces and tabs) at the end of the string.
 				while(!strtmp.empty()){
 					unsigned char tmpch = static_cast<unsigned char>(strtmp.back());
-					if('\0' != tmpch && !std::isspace(tmpch)){
+					if(('\0' != tmpch && !std::isspace(tmpch)) || ' ' == tmpch || '\t' == tmpch){
 						break;
 					}
 					strtmp.pop_back();
@@ -1856,7 +1857,10 @@ Napi::Value K2hdkcNode::SetValue(const Napi::CallbackInfo& info)
 	std::string	strval;
 	std::string	strsubkey;
 	std::string	strpass;
-	time_t		expire = 0;
+	time_t		expire			= 0;
+	bool		is_val_set 		= false;
+	bool		is_subkey_set	= false;
+	bool		is_pass_set		= false;
 
 	// target key arguments(for both ontime and permanent connection)
 	if(info.Length() <= (argpos + 1)){
@@ -1871,9 +1875,11 @@ Napi::Value K2hdkcNode::SetValue(const Napi::CallbackInfo& info)
 
 	// target value arguments(for both ontime and permanent connection)
 	if(info[argpos].IsString()){
-		strval = info[argpos++].As<Napi::String>().Utf8Value();
+		strval		= info[argpos++].As<Napi::String>().Utf8Value();
+		is_val_set 	= true;
 	}else{
 		argpos++;
+		is_val_set 	= false;
 	}
 
 	// other arguments for target
@@ -1881,16 +1887,20 @@ Napi::Value K2hdkcNode::SetValue(const Napi::CallbackInfo& info)
 		// target 2'nd parameter is subkey(string or null)
 		if(info[argpos].IsNull()){
 			argpos++;
+			is_subkey_set	= false;
 		}else{
-			strsubkey = info[argpos++].As<Napi::String>().Utf8Value();
+			strsubkey		= info[argpos++].As<Napi::String>().Utf8Value();
+			is_subkey_set	= true;
 		}
 
 		if(argpos < info.Length() && (info[argpos].IsString() || info[argpos].IsNull())){
 			// target 3'rd parameter is pass
 			if(info[argpos].IsNull()){
 				argpos++;
+				is_pass_set	= false;
 			}else{
-				strpass = info[argpos++].As<Napi::String>().Utf8Value();
+				strpass		= info[argpos++].As<Napi::String>().Utf8Value();
+				is_pass_set	= true;
 			}
 
 			if(argpos < info.Length() && info[argpos].IsNumber()){
@@ -1947,13 +1957,13 @@ Napi::Value K2hdkcNode::SetValue(const Napi::CallbackInfo& info)
 
 	// work
 	if(hasCallback){
-		SetValueWorker*	worker = new SetValueWorker(maybeCallback, obj->_k2hdkcslave, conf, ctlport, cuk, auto_rejoin, no_giveup_rejoin, strkey, strval, strsubkey, strpass, expire);
+		SetValueWorker*	worker = new SetValueWorker(maybeCallback, obj->_k2hdkcslave, conf, ctlport, cuk, auto_rejoin, no_giveup_rejoin, strkey, (is_val_set ? &strval : NULL), (is_subkey_set ? &strsubkey : NULL), (is_pass_set ? &strpass : NULL), expire);
 		worker->Queue();
 		return Napi::Boolean::New(env, true);
 	}else{
 		dkcres_type_t	rescode = DKC_NORESTYPE;
 		bool			result	= false;
-		if(!strsubkey.empty()){
+		if(is_subkey_set){
 			// subkey is specified, set value into subkey
 			K2hdkcComAddSubkey*	pComObj;
 			if(!obj->IsInitialize()){
@@ -1965,7 +1975,7 @@ Napi::Value K2hdkcNode::SetValue(const Napi::CallbackInfo& info)
 				Napi::TypeError::New(env, "Internal error: Could not create command object.").ThrowAsJavaScriptException();
 				return env.Undefined();
 			}
-			result = pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, reinterpret_cast<const unsigned char*>(strsubkey.c_str()), strsubkey.length() + 1, (strval.empty() ? NULL : reinterpret_cast<const unsigned char*>(strval.c_str())), (strval.empty() ? 0 : strval.length() + 1), true, (strpass.empty() ? NULL : strpass.c_str()), (expire > 0 ? &expire : NULL), &rescode);
+			result = pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, reinterpret_cast<const unsigned char*>(strsubkey.c_str()), strsubkey.length() + 1, (is_val_set ? reinterpret_cast<const unsigned char*>(strval.c_str()) : NULL), (is_val_set ? strval.length() + 1 : 0), true, (is_pass_set ? strpass.c_str() : NULL), (expire > 0 ? &expire : NULL), &rescode);
 			DKC_DELETE(pComObj);
 		}else{
 			// set value to key
@@ -1979,7 +1989,7 @@ Napi::Value K2hdkcNode::SetValue(const Napi::CallbackInfo& info)
 				Napi::TypeError::New(env, "Internal error: Could not create command object.").ThrowAsJavaScriptException();
 				return env.Undefined();
 			}
-			result = pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, (strval.empty() ? NULL : reinterpret_cast<const unsigned char*>(strval.c_str())), (strval.empty() ? 0 : strval.length() + 1), false, (strpass.empty() ? NULL : strpass.c_str()), (expire > 0 ? &expire : NULL), &rescode);
+			result = pComObj->CommandSend(reinterpret_cast<const unsigned char*>(strkey.c_str()), strkey.length() + 1, (is_val_set ? reinterpret_cast<const unsigned char*>(strval.c_str()) : NULL), (is_val_set ? strval.length() + 1 : 0), false, (is_pass_set ? strpass.c_str() : NULL), (expire > 0 ? &expire : NULL), &rescode);
 			DKC_DELETE(pComObj);
 		}
 		return Napi::Boolean::New(env, result);
