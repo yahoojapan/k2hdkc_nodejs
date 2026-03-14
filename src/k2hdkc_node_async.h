@@ -515,16 +515,16 @@ class GetAttrsWorker : public Napi::AsyncWorker
 //---------------------------------------------------------
 // SetValueWorker class
 //
-// Constructor:			constructor(const Napi::Function& callback, K2hdkcSlave& slaveobj, const std::string& configuration, int control_port, const std::string& inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const std::string& key, const std::string& val, const std::string& subkey, const std::string& pass, const time_t input_expire)
+// Constructor:			constructor(const Napi::Function& callback, K2hdkcSlave& slaveobj, const std::string& configuration, int control_port, const std::string& inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const std::string& key, const std::string* pval, const std::string* psubkey, const std::string* ppass, const time_t input_expire)
 // Callback function:	function(string error)
 //
 //---------------------------------------------------------
 class SetValueWorker : public Napi::AsyncWorker
 {
 	public:
-		SetValueWorker(const Napi::Function& callback, K2hdkcSlave& slaveobj, const std::string& configuration, int control_port, const std::string& inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const std::string& key, const std::string& val, const std::string& subkey, const std::string& pass, const time_t input_expire) :
+		SetValueWorker(const Napi::Function& callback, K2hdkcSlave& slaveobj, const std::string& configuration, int control_port, const std::string& inputcuk, bool is_auto_rejoin, bool is_nogiveup_rejoin, const std::string& key, const std::string* pval, const std::string* psubkey, const std::string* ppass, const time_t input_expire) :
 			Napi::AsyncWorker(callback), _callbackRef(Napi::Persistent(callback)),
-			_slaveobj(slaveobj), _conf(configuration), _ctlport(control_port), _cuk(inputcuk), _auto_rejoin(is_auto_rejoin), _no_giveup_rejoin(is_nogiveup_rejoin), _strkey(key), _strval(val), _strsubkey(subkey), _strpass(pass), _expire(input_expire)
+			_slaveobj(slaveobj), _conf(configuration), _ctlport(control_port), _cuk(inputcuk), _auto_rejoin(is_auto_rejoin), _no_giveup_rejoin(is_nogiveup_rejoin), _strkey(key), _is_val_set(NULL != pval), _strval(pval ? *pval : ""), _is_subkey_set(NULL != psubkey), _strsubkey(psubkey ? *psubkey : ""), _is_pass_set(NULL != ppass), _strpass(ppass ? *ppass : ""), _expire(input_expire)
 		{
 			_callbackRef.Ref();
 		}
@@ -552,7 +552,7 @@ class SetValueWorker : public Napi::AsyncWorker
 
 			// work
 			dkcres_type_t	rescode = DKC_NORESTYPE;
-			if(!_strsubkey.empty()){
+			if(_is_subkey_set){
 				// subkey is specified, set value into subkey
 				K2hdkcComAddSubkey*	pComObj;
 				if(!_slaveobj.GetChmCntrlObject()){
@@ -564,7 +564,7 @@ class SetValueWorker : public Napi::AsyncWorker
 					SetError("Internal error: Could not create command object.");
 					return;
 				}
-				if(!pComObj->CommandSend(reinterpret_cast<const unsigned char*>(_strkey.c_str()), _strkey.length() + 1, reinterpret_cast<const unsigned char*>(_strsubkey.c_str()), _strsubkey.length() + 1, (_strval.empty() ? NULL : reinterpret_cast<const unsigned char*>(_strval.c_str())), (_strval.empty() ? 0 : _strval.length() + 1), true, (_strpass.empty() ? NULL : _strpass.c_str()), (_expire > 0 ? &_expire : NULL), &rescode)){
+				if(!pComObj->CommandSend(reinterpret_cast<const unsigned char*>(_strkey.c_str()), _strkey.length() + 1, reinterpret_cast<const unsigned char*>(_strsubkey.c_str()), _strsubkey.length() + 1, (_is_val_set ? reinterpret_cast<const unsigned char*>(_strval.c_str()) : NULL), (_is_val_set ? _strval.length() + 1 : 0), true, (_is_pass_set ? _strpass.c_str() : NULL), (_expire > 0 ? &_expire : NULL), &rescode)){
 					SetError("Failed to set value into subkey/key.");
 				}
 				DKC_DELETE(pComObj);
@@ -580,7 +580,7 @@ class SetValueWorker : public Napi::AsyncWorker
 					SetError("Internal error: Could not create command object.");
 					return;
 				}
-				if(!pComObj->CommandSend(reinterpret_cast<const unsigned char*>(_strkey.c_str()), _strkey.length() + 1, (_strval.empty() ? NULL : reinterpret_cast<const unsigned char*>(_strval.c_str())), (_strval.empty() ? 0 : _strval.length() + 1), false, (_strpass.empty() ? NULL : _strpass.c_str()), (_expire > 0 ? &_expire : NULL), &rescode)){
+				if(!pComObj->CommandSend(reinterpret_cast<const unsigned char*>(_strkey.c_str()), _strkey.length() + 1, (_is_val_set ? reinterpret_cast<const unsigned char*>(_strval.c_str()) : NULL), (_is_val_set ? _strval.length() + 1 : 0), false, (_is_pass_set  ? _strpass.c_str() : NULL), (_expire > 0 ? &_expire : NULL), &rescode)){
 					SetError("Failed to set value into key.");
 				}
 				DKC_DELETE(pComObj);
@@ -625,8 +625,11 @@ class SetValueWorker : public Napi::AsyncWorker
 		bool					_no_giveup_rejoin;
 
 		std::string				_strkey;
+		bool					_is_val_set;
 		std::string				_strval;
+		bool					_is_subkey_set;
 		std::string				_strsubkey;
+		bool					_is_pass_set;
 		std::string				_strpass;
 		time_t					_expire;
 };
