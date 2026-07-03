@@ -5,10 +5,9 @@
     "rootDir": "tests",
     "sourceMap": false,
     "types": ["node", "mocha"],
-    "baseUrl": ".",
     "paths": {
-      "k2hdkc": ["types/index.d.ts"],
-      "k2hdkc/*": ["types/*"]
+      "k2hdkc": ["./types/index.d.ts"],
+      "k2hdkc/*": ["./types/*"]
     }
   },
   "include": [
