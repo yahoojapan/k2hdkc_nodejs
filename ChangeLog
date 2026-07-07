@@ -1,3 +1,9 @@
+k2hdkc (2.0.6) unstable; urgency=low
+
+  * Fixed a bug in nodejstypevars.sh - #72
+
+ -- Takeshi Nakatani <ggtakec@gmail.com>  Tue, 07 Jul 2026 12:30:45 +0900
+
 k2hdkc (2.0.5) unstable; urgency=low
 
   * Supports Alpine3.24 and manual GHA trigger, Updates dependencies - #70
